@@ -18,11 +18,18 @@
 
 <main id="main">
   <section class="hero" style="padding-bottom:0">
-    <div class="wrap">
-      <span class="eyebrow">Submit</span>
-      <h1>Send in your game</h1>
-      <p class="lead">Sign in, add your details and your file. It's live in the gallery about two minutes later. Submissions close <span data-slot="deadline-text">at the deadline</span>.</p>
-      <p><a href="sample.html#upload">See how the sample game was submitted</a></p>
+    <div class="wrap hero-grid" style="align-items:start">
+      <div>
+        <span class="eyebrow">Submit</span>
+        <h1>Send in your game</h1>
+        <p class="lead">Sign in, add your details and your file. It's live in the gallery about two minutes later. Submissions close <span data-slot="deadline-text">at the deadline</span>.</p>
+      </div>
+      <aside class="card">
+        <span class="eyebrow">Before you submit</span>
+        <h3>One game, <span data-max-updates>2</span> updates</h3>
+        <p class="muted">Your AI chat is your canvas: experiment there as much as you like. This page is the stage: submit your finished game once, then send up to <span data-max-updates>2</span> updates to polish it. You can't swap it for a different game.</p>
+        <a class="btn btn-small" href="sample.html#upload">First time? See it step by step <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </aside>
     </div>
   </section>
 
@@ -97,7 +104,6 @@
           <button class="btn btn-primary" id="sf-submit" type="submit" style="margin-top:1.25rem">Submit my game</button>
         </form>
         <div data-slot="submit-result" style="margin-top:1.25rem" aria-live="polite"></div>
-        <p class="muted" style="margin-top:1.25rem;font-size:.92rem"><strong>One game, <span data-max-updates>2</span> updates.</strong> Your AI chat is your canvas: experiment there as much as you like. This page is the stage: submit your finished game once, then you can send up to <span data-max-updates>2</span> updates to polish it. You can't swap it for a different game.</p>
       </div>
     </div></div>
   </section>
