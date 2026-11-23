@@ -24,11 +24,10 @@
     "blurb": "Just another day in the life of a Founder :)",
     "emoji": "😎",
     "added": "2026-11-23",
-    "version": 1,
+    "version": 2,
     "award": null,
-    "photo": "games/photos/jadon-founder-s-life.jpg",
-    "retired": "2026-11-23",
-    "replacedBy": "jadon-test-hungry-noodle"
+    "updated": "2026-11-23",
+    "photo": "games/photos/jadon-founder-s-life.jpg"
   },
   {
     "slug": "jadon-test-hungry-noodle",
@@ -43,6 +42,8 @@
     "added": "2026-11-23",
     "version": 1,
     "award": null,
-    "photo": "games/photos/jadon-test-hungry-noodle.jpg"
+    "photo": "games/photos/jadon-test-hungry-noodle.jpg",
+    "retired": "2026-11-23",
+    "replacedBy": "jadon-founder-s-life"
   }
 ]

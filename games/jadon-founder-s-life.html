@@ -54,6 +54,9 @@
   #dlgChoices { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
   .choice { text-align: left; font-family: inherit; font-weight: 800; font-size: clamp(14px, 2vw, 16px); color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 10px; padding: 8px 12px 8px 28px; cursor: pointer; position: relative; box-shadow: 0 3px 0 var(--ink); animation: popin .3s cubic-bezier(.2,1.5,.4,1) both; }
   .choice.sel { background: #ffe27a; }
+  .choice:disabled { opacity: .45; text-decoration: line-through; cursor: not-allowed; box-shadow: none; }
+  #todo span.opt { background: #ffd9c9; }
+  #todo span.whim { background: #ff7a59; color: #fff; margin-top: 4px; }
   .choice.sel::before { content: "▶"; position: absolute; left: 9px; animation: nudge .6s infinite; }
   @keyframes nudge { 50% { transform: translateX(3px); } }
   @keyframes popin { from { transform: scale(.6); opacity: 0; } }
@@ -116,27 +119,30 @@ const NPCS = {
     idle: ["No candidates right now. I'm just vibing on LinkedIn.", "I'm writing a post called 'What my divorce taught me about B2B sales'.", "Go away, I'm doing a culture."],
     deck: [
       { t: "A guy who says he \"basically invented the internet\" wants to be your CTO. His only reference is his mum.",
-        c: [{ t: "Hire him. Visionaries are weird.", o: [O(.4, 3, 0, 5, "He rewrote the whole platform in one weekend. 📰 TechCrunch: \"Who IS this guy?\""), O(.6, .6, 0, -10, "He invented a new internet. It only works in his garage.")] },
-            { t: "Politely pass.", o: [O(1, 1.1, 2, 5, "The board appreciates your \"judgement\". His mum leaves a 1-star Glassdoor review.")] }] },
+        c: [{ t: "Hire him. Visionaries are weird.", o: [O(.5, 3, 0, 5, "He rewrote the whole platform in one weekend. 📰 TechCrunch: \"Who IS this guy?\""), O(.5, .6, 0, -10, "He invented a new internet. It only works in his garage.")] },
+            { t: "Politely pass.", o: [O(.6, 1.5, 0, 5, "The board appreciates your \"judgement\". His mum leaves a 1-star Glassdoor review."), O(.4, 0.6, 0, -10, "He joins your competitor out of spite. They triple overnight. 📰 \"The one that got away.\"")] }] },
       { t: "An intern offers to work for free in exchange for \"exposure\" and a bean bag.",
-        c: [{ t: "Welcome aboard, intern!", o: [O(.7, 1, 25, 3, "The intern fixed the billing bug nobody could find in 3 years. +$25M."), O(.3, .7, 0, -8, "The intern deleted production. \"For exposure.\"")] },
-            { t: "Give him THREE bean bags.", o: [O(1, 1.5, 0, -5, "He's now Chief Bean Bag Officer. Morale ×1.5. Board deeply confused.")] }] },
+        c: [{ t: "Welcome aboard, intern!", o: [O(.6, 1, 25, 3, "The intern fixed the billing bug nobody could find in 3 years. +$25M."), O(.4, .7, 0, -8, "The intern deleted production. \"For exposure.\"")] },
+            { t: "Give him THREE bean bags.", o: [O(.5, 2, 0, 0, "The bean bag setup goes viral. Job applications ×100. Valuation ×2."), O(.5, 0.7, 0, -5, "One bean bag exploded. 4 million tiny beads. Office closed for a week.")] }] },
       { t: "A famous ex-Big-Tech VP wants to join. Salary demand: $4M and a pet llama in the office.",
-        c: [{ t: "Hire the VP (and the llama).", o: [O(.5, 2.5, 0, 15, "Instant credibility. The llama gets a blue tick."), O(.5, .8, 0, -10, "The VP schedules meetings about meetings. The llama is the only productive one.")] },
-            { t: "Hire ONLY the llama.", o: [O(.3, 5, 0, 5, "The llama goes viral. Brand deal with a shampoo company. ×5!!"), O(.7, .85, 0, -5, "It's a llama. It spat on an investor.")] },
-            { t: "No thanks.", o: [O(1, 1.05, 0, 0, "Probably wise. Nothing happens. The llama is sad somewhere.")] }] },
+        c: [{ t: "Hire the VP (and the llama).", o: [O(.5, 2.5, 0, 15, "Instant credibility. The llama gets a blue tick."), O(.5, .7, 0, -10, "The VP schedules meetings about meetings. The llama is the only productive one.")] },
+            { t: "Hire ONLY the llama.", o: [O(.45, 5, 0, 5, "The llama goes viral. Brand deal with a shampoo company. ×5!!"), O(.55, .75, 0, -5, "It's a llama. It spat on an investor.")] },
+            { t: "No thanks.", o: [O(.55, 1.4, 0, 0, "Probably wise. Nothing happens."), O(.45, 0.65, 0, -8, "The llama, insulted, starts a rival company. It's doing great. You are not.")] }] },
       { t: "Your cousin Gary needs a job. He's \"good with computers\".",
-        c: [{ t: "Family first. Hire Gary.", o: [O(.2, 4, 0, 5, "Plot twist: Gary is a secret cybersecurity genius. ×4!"), O(.8, .7, 0, -12, "Gary installed 14 toolbars on the production servers.")] },
-            { t: "Sorry Gary.", o: [O(1, 1.1, 0, 6, "Thanksgiving will be awkward. The board nods approvingly.")] }] },
+        c: [{ t: "Family first. Hire Gary.", o: [O(.4, 4, 0, 5, "Plot twist: Gary is a secret cybersecurity genius. ×4!"), O(.6, .7, 0, -10, "Gary installed 14 toolbars on the production servers.")] },
+            { t: "Sorry Gary.", o: [O(.55, 1.4, 0, 6, "Thanksgiving will be awkward. The board nods approvingly."), O(.45, 0.65, 0, -10, "Gary posts about it. It goes viral. 📰 \"CEO CRUSHES COUSIN'S DREAMS\". Customers boycott.")] }] },
       { t: "Rita suggests hiring 200 people at once to \"look like a big company\".",
-        c: [{ t: "DO IT. Hypergrowth!", o: [O(.5, 2.2, 0, 10, "The press calls you \"the hottest company in tech\". You can't remember anyone's name."), O(.5, .45, 0, -25, "200 people. 3 chairs. 1 toilet. Burn rate apocalypse.")] },
-            { t: "Hire 3 really good people.", o: [O(1, 1.3, 0, 5, "Boring. Effective. Nobody writes a headline about it.")] }] },
+        c: [{ t: "DO IT. Hypergrowth!", o: [O(.5, 2.5, 0, 10, "The press calls you \"the hottest company in tech\". You can't remember anyone's name."), O(.5, .45, 0, -20, "200 people. 3 chairs. 1 toilet. Burn rate apocalypse.")] },
+            { t: "Hire 3 really good people.", o: [O(.6, 1.6, 0, 5, "Boring. Effective. Nobody writes a headline about it."), O(.4, 0.65, 0, -8, "All three quit on day one to start a llama farm together.")] }] },
       { t: "A golden retriever applied. The CV is just a photo of a tennis ball.",
-        c: [{ t: "Hire as Chief Happiness Officer.", o: [O(1, 1.4, 0, 8, "Productivity up 40%. Scientists are baffled.")] },
-            { t: "Reject. We're a serious company.", o: [O(1, .85, 0, -6, "The team is devastated. Two engineers quit in protest.")] }] },
+        c: [{ t: "Hire as Chief Happiness Officer.", o: [O(.7, 1.6, 0, 8, "Productivity up 60%. Scientists are baffled."), O(.3, .65, 0, -5, "He ate the server cables. All of them. He is very sorry (he is not).")] },
+            { t: "Reject. We're a serious company.", o: [O(.5, 0.75, 0, -6, "The team is devastated. Two engineers quit in protest."), O(.5, 2.2, 0, 5, "He joins Chad's VC fund, makes partner, and invests in you out of forgiveness. ×2.2")] }] },
       { t: "A candidate's only skill is \"vibes\". But the vibes are immaculate.",
-        c: [{ t: "Hire for vibes.", o: [O(.45, 2, 0, 0, "Every customer call ends in a group hug. Sales ×2."), O(.55, .8, 0, -8, "The vibes were a pyramid scheme.")] },
-            { t: "We need skills, not vibes.", o: [O(1, 1.1, 0, 4, "Correct. Also extremely boring of you.")] }] },
+        c: [{ t: "Hire for vibes.", o: [O(.5, 2, 0, 0, "Every customer call ends in a group hug. Sales ×2."), O(.5, .75, 0, -8, "The vibes were a pyramid scheme.")] },
+            { t: "We need skills, not vibes.", o: [O(.6, 1.45, 0, 4, "Correct. Also extremely boring of you."), O(.4, 0.7, 0, -6, "The skilled hire has the worst vibes in recorded history. All the office plants died.")] }] },
+      { t: "Two engineers are fighting over the desk by the window. Both say they'll quit. One has already brought a lawyer.",
+        c: [{ t: "Give it to the louder one.", o: [O(.5, 1.8, 0, 0, "The loud one ships twice as fast out of pure smugness. ×1.8"), O(.5, .65, 0, -8, "The quiet one quits and builds your biggest competitor. From a desk by a window.")] },
+            { t: "Brick up the window. Nobody wins.", o: [O(.55, 1.4, 0, 5, "Peace at last. It's very dark."), O(.45, .65, 0, -6, "Both quit anyway. The window remains bricked.")] }] },
     ],
   },
   product: {
@@ -145,26 +151,32 @@ const NPCS = {
     idle: ["Shh. I'm in the zone. The zone is a YouTube video about bridges.", "It works on my machine.", "I'm refactoring the refactor."],
     deck: [
       { t: "Should we add AI to the product? For context: we sell socks.",
-        c: [{ t: "Add AI. Investors love AI.", o: [O(.6, 4, 0, 10, "📰 \"AI SOCKS ARE THE FUTURE\". Investors are fainting. ×4!"), O(.4, .5, 0, -15, "The socks became sentient and unionized.")] },
-            { t: "Keep the socks dumb.", o: [O(1, 1.2, 0, 3, "Customers appreciate honest socks.")] }] },
+        c: [{ t: "Add AI. Investors love AI.", o: [O(.5, 4, 0, 10, "📰 \"AI SOCKS ARE THE FUTURE\". Investors are fainting. ×4!"), O(.5, .5, 0, -15, "The socks became sentient and unionized.")] },
+            { t: "Keep the socks dumb.", o: [O(.6, 1.45, 0, 3, "Customers appreciate honest socks."), O(.4, 2.5, 0, 5, "📰 \"THE LAST HONEST SOCK\". The anti-AI movement makes you their hero. ×2.5")] }] },
       { t: "Dave wants to rewrite the entire codebase in a programming language he invented last night.",
-        c: [{ t: "Approve DaveLang.", o: [O(.25, 5, 0, 10, "DaveLang is genius. Every big tech company wants it. ×5!!"), O(.75, .6, 0, -15, "DaveLang has no 'if' statements. Only 'maybe'.")] },
-            { t: "Ship features instead.", o: [O(1, 1.4, 0, 5, "Dave sulks, but customers get the export button they begged for.")] }] },
+        c: [{ t: "Approve DaveLang.", o: [O(.4, 5, 0, 10, "DaveLang is genius. Every big tech company wants it. ×5!!"), O(.6, .55, 0, -15, "DaveLang has no 'if' statements. Only 'maybe'.")] },
+            { t: "Ship features instead.", o: [O(.55, 1.6, 0, 5, "Dave sulks, but customers get the export button they begged for."), O(.45, 0.6, 0, -10, "Dave rage-quits and takes DaveLang to a competitor. They're now worth $40B. Ouch.")] }] },
       { t: "Huge bug: the app is charging everyone $0. Forever.",
-        c: [{ t: "Fix it immediately.", o: [O(1, 1.3, 0, 5, "Revenue reappears. The accountant stops crying.")] },
-            { t: "Call it a \"Free Forever\" plan.", o: [O(.5, 3, 0, 5, "10 million signups overnight. That's growth, baby. ×3"), O(.5, .4, 0, -20, "10 million users. $0 revenue. The accountant has left the building.")] }] },
+        c: [{ t: "Fix it immediately.", o: [O(.6, 1.3, 0, 5, "Revenue reappears. The accountant stops crying."), O(.4, .5, 0, -12, "The fix charges everyone $1 million instead. The refunds take 6 months.")] },
+            { t: "Call it a \"Free Forever\" plan.", o: [O(.5, 3, 0, 5, "10 million signups overnight. That's growth, baby. ×3"), O(.5, 0.4, 0, -20, "10 million users. $0 revenue. The accountant has left the building.")] }] },
       { t: "Dave wants to launch the big update... on Friday at 4:59pm.",
-        c: [{ t: "YOLO. Ship it.", o: [O(.5, 2.5, 0, 5, "It worked?! Nobody knows how. Don't touch anything."), O(.5, .6, 0, -10, "The servers melted. Dave is weeping in the server room.")] },
-            { t: "Wait until Tuesday like an adult.", o: [O(1, 1.2, 0, 4, "Smooth launch. Nobody notices, which is the dream.")] }] },
+        c: [{ t: "YOLO. Ship it.", o: [O(.55, 2.5, 0, 5, "It worked?! Nobody knows how. Don't touch anything."), O(.45, .6, 0, -10, "The servers melted. Dave is weeping in the server room.")] },
+            { t: "Wait until Tuesday like an adult.", o: [O(.55, 1.5, 0, 4, "Smooth launch. Nobody notices, which is the dream."), O(.45, 0.65, 0, -8, "A competitor launched the exact same thing on Monday. Dave screams into a bean bag.")] }] },
       { t: "A user requested dark mode.",
-        c: [{ t: "Build dark mode.", o: [O(1, 1.25, 0, 3, "Users rejoice. Eyeballs saved.")] },
-            { t: "Build DARKER mode. So dark you can't see anything.", o: [O(.3, 6, 0, 5, "Goths worldwide unite. A whole new market. ×6!!!"), O(.7, .7, 0, -5, "Customers can't find the logout button. Or anything.")] }] },
+        c: [{ t: "Build dark mode.", o: [O(.65, 1.25, 0, 3, "Users rejoice. Eyeballs saved."), O(.35, .65, 0, -5, "The \"user\" was Dave's mum. Nobody else wanted it. 3 months wasted.")] },
+            { t: "Build DARKER mode. So dark you can't see anything.", o: [O(.45, 5, 0, 5, "Goths worldwide unite. A whole new market. ×5!!!"), O(.55, 0.7, 0, -5, "Customers can't find the logout button. Or anything.")] }] },
       { t: "Dave drew a new strategy on the whiteboard: \"Blockchain... for hamsters.\"",
-        c: [{ t: "Pivot to HamsterChain™.", o: [O(.35, 4, 0, 5, "Hamster owners are a surprisingly rich demographic. ×4"), O(.65, .35, 0, -20, "The hamsters lost their life savings. The board is furious.")] },
-            { t: "Wipe the whiteboard.", o: [O(1, 1.1, 0, 3, "Dave sulks. The product remains blissfully hamster-free.")] }] },
+        c: [{ t: "Pivot to HamsterChain™.", o: [O(.45, 4, 0, 5, "Hamster owners are a surprisingly rich demographic. ×4"), O(.55, .4, 0, -18, "The hamsters lost their life savings. The board is furious.")] },
+            { t: "Wipe the whiteboard.", o: [O(.6, 1.45, 0, 3, "Dave sulks. The product remains blissfully hamster-free."), O(.4, 0.65, 0, -8, "Someone else built HamsterChain. Hamsters are now the richest demographic on Earth. Sigh.")] }] },
       { t: "Dave says the app would be 10× faster if we removed \"all the buttons\".",
-        c: [{ t: "Remove all buttons.", o: [O(.3, 3.5, 0, 0, "Minimalism award winner. Users just... vibe with it."), O(.7, .55, 0, -10, "Users can't do anything. Complaints arrive by carrier pigeon.")] },
-            { t: "Buttons stay.", o: [O(1, 1.15, 0, 2, "The buttons thank you.")] }] },
+        c: [{ t: "Remove all buttons.", o: [O(.45, 3.5, 0, 0, "Minimalism award winner. Users just... vibe with it."), O(.55, .55, 0, -10, "Users can't do anything. Complaints arrive by carrier pigeon.")] },
+            { t: "Buttons stay.", o: [O(.65, 1.45, 0, 2, "The buttons thank you."), O(.35, 0.7, 0, -6, "A button malfunctioned and ordered 10,000 pizzas. All pineapple.")] }] },
+      { t: "A customer wants to PAY us actual money. Chad warns: \"Once you have revenue, they value you on real numbers. Stay pre-revenue, bro.\"",
+        c: [{ t: "Refuse the money. Hype is worth more.", o: [O(.5, 2.5, 0, 5, "Valued purely on vibes. Investors go feral. ×2.5"), O(.5, .6, 0, -10, "Turns out electricity isn't free. The lights go out mid-demo.")] },
+            { t: "Take the money like a normal business.", o: [O(.55, 1.4, 0, 6, "Real revenue! Penny cries happy tears."), O(.45, .6, 0, -6, "Now investors can see the numbers. The numbers are... small.")] }] },
+      { t: "An engineer built something genuinely useful: a button that makes every meeting 10 minutes shorter. Investors yawn.",
+        c: [{ t: "Bet the whole company on it.", o: [O(.4, 4, 0, 5, "The world wanted shorter meetings after all. ×4"), O(.6, .55, 0, -10, "Middle managers revolted. They scheduled a meeting about it. It was very long.")] },
+            { t: "Shelve it. Add \"AI\" to the logo instead.", o: [O(.5, 1.8, 0, 5, "The logo now says AI. Valuation ×1.8. Nothing else changed."), O(.5, .6, 0, -6, "A rival shipped the meeting button. Everyone loves them. Your logo still says AI.")] }] },
     ],
   },
   fund: {
@@ -173,26 +185,29 @@ const NPCS = {
     idle: ["I only take meetings during my cold plunge.", "Have you considered being a little more like a famous billionaire?", "Ping me when you're at $10M ARR, bro."],
     deck: [
       { t: "A VC wants to take you to lunch. He's famous for... reasons. Some of them legal.",
-        c: [{ t: "Lunch AND take his money.", o: [O(.5, 3, 0, 10, "He wires the money before the starters arrive. ×3!"), O(.5, .5, 0, -20, "He's on the news the next day. You're in the photo. With a breadstick.")] },
-            { t: "Order dessert, then leave.", o: [O(1, 1.05, 1, 0, "He paid. You took a doggy bag. +$1M of tiramisu value.")] }] },
+        c: [{ t: "Lunch AND take his money.", o: [O(.5, 3, 0, 10, "He wires the money before the starters arrive. ×3!"), O(.5, .5, 0, -18, "He's on the news the next day. You're in the photo. With a breadstick.")] },
+            { t: "Order dessert, then leave.", o: [O(.6, 1.35, 1, 0, "He paid. You took a doggy bag. +$1M of tiramisu value."), O(.4, 2, 0, 5, "Your dramatic exit made him OBSESSED with you. Term sheet arrives by carrier pigeon. ×2")] }] },
       { t: "Chad offers $80M but wants 99% of the company and naming rights to your firstborn.",
-        c: [{ t: "Accept. Money is money.", o: [O(1, 1, 80, -10, "+$80M. Your future child is now named \"Series B\".")] },
-            { t: "Counter at 98%.", o: [O(.5, 1, 150, 10, "He respected the hustle! +$150M."), O(.5, .9, 0, -5, "He left. Laughing. He's still laughing.")] }] },
+        c: [{ t: "Accept. Money is money.", o: [O(.65, 1, 80, -10, "+$80M. Your future child is now named \"Series B\"."), O(.35, .4, 0, -18, "Fine print: the $80M was in Monopoly money.")] },
+            { t: "Counter at 98%.", o: [O(.5, 1, 150, 10, "He respected the hustle! +$150M."), O(.5, 0.8, 0, -5, "He left. Laughing. He's still laughing.")] }] },
       { t: "A mysterious investor wants to pay you in \"Exposure Tokens\".",
-        c: [{ t: "Accept the tokens.", o: [O(.2, 10, 0, 10, "The tokens MOONED. You're a crypto oracle now. ×10!!!"), O(.8, .3, 0, -25, "The tokens are worth exactly one arcade ticket.")] },
-            { t: "Ask for real money.", o: [O(1, 1, 12, 5, "He sighs and sends +$12M of actual dollars.")] }] },
+        c: [{ t: "Accept the tokens.", o: [O(.3, 10, 0, 10, "The tokens MOONED. You're a crypto oracle now. ×10!!!"), O(.7, .3, 0, -20, "The tokens are worth exactly one arcade ticket.")] },
+            { t: "Ask for real money.", o: [O(.6, 1, 12, 5, "He sighs and sends +$12M of actual dollars."), O(.4, 0.7, 0, -6, "He pays in real money. Real Monopoly money. Again. How does this keep happening?")] }] },
       { t: "Pitch Day! 3 minutes, 5 investors, and one inflatable dinosaur costume available.",
-        c: [{ t: "Pitch in the dinosaur costume.", o: [O(.4, 4, 0, 5, "Iconic. Unforgettable. Term sheets everywhere. ×4"), O(.6, .7, 0, -10, "They thought it was a cry for help.")] },
-            { t: "Pitch normally.", o: [O(.6, 1.8, 0, 5, "Solid pitch. A modest bidding war."), O(.4, 1, 0, 0, "Polite nods. Someone checks their phone.")] }] },
+        c: [{ t: "Pitch in the dinosaur costume.", o: [O(.5, 4, 0, 5, "Iconic. Unforgettable. Term sheets everywhere. ×4"), O(.5, .65, 0, -10, "They thought it was a cry for help.")] },
+            { t: "Pitch normally.", o: [O(.55, 1.6, 0, 5, "Solid pitch. A modest bidding war."), O(.45, 0.7, 0, -8, "Your pitch was SO normal, three investors fell asleep. One snored \"pass\".")] }] },
       { t: "Your grandma offers a bridge round of $3M from her biscuit tin.",
-        c: [{ t: "Take grandma's money.", o: [O(1, 1.5, 3, -5, "Grandma now attends board meetings. She is TERRIFYING.")] },
-            { t: "Decline, grandma.", o: [O(1, 1, 0, 3, "She gives you a biscuit anyway.")] }] },
+        c: [{ t: "Take grandma's money.", o: [O(.5, 1.4, 3, -5, "Grandma now attends board meetings. She is TERRIFYING."), O(.5, 3, 0, 8, "Grandma is secretly a legendary angel investor. She brings her bridge club. ×3")] },
+            { t: "Decline, grandma.", o: [O(.5, 1.35, 0, 3, "She gives you a biscuit anyway."), O(.5, 0.65, 0, -10, "Offended, grandma invests in your competitor instead. She is ruthless.")] }] },
       { t: "A top-tier VC: \"We'll invest, but only if you start wearing a turtleneck every day.\"",
-        c: [{ t: "Turtleneck life.", o: [O(.7, 2, 0, 10, "You look like a genius now. ×2"), O(.3, .9, 0, -5, "It's not working for you. At all.")] },
-            { t: "Refuse. I am a hoodie person.", o: [O(.5, 1.3, 0, 5, "They respect the hoodie."), O(.5, .8, 0, -5, "They do not respect the hoodie.")] }] },
+        c: [{ t: "Turtleneck life.", o: [O(.55, 2, 0, 10, "You look like a genius now. ×2"), O(.45, .7, 0, -8, "It's not working for you. At all. The VC pulls out mid-sentence.")] },
+            { t: "Refuse. I am a hoodie person.", o: [O(.5, 2.2, 0, 5, "The hoodie gets its own fashion line. Paris calls. ×2.2"), O(.5, 0.75, 0, -5, "They do not respect the hoodie.")] }] },
       { t: "Chad wants to do the deal on his yacht. It is currently sinking.",
         c: [{ t: "Sign it fast, before it sinks.", o: [O(.55, 2.5, 0, 5, "Signed with 2 seconds to spare. ×2.5"), O(.45, .6, 0, -10, "The contract dissolved in sea water. So did your laptop.")] },
-            { t: "Insist on a Zoom call.", o: [O(1, 1.15, 0, 3, "Chad joins from a lifeboat. Small cheque, but a cheque.")] }] },
+            { t: "Insist on a Zoom call.", o: [O(.6, 1.45, 0, 3, "Chad joins from a lifeboat. Small cheque, but a cheque."), O(.4, 0.7, 0, -6, "Chad's Zoom filter turned him into a potato. He blames you. Deal cancelled.")] }] },
+      { t: "An investor asks: \"What's your moat?\" You do not have a moat.",
+        c: [{ t: "Dig an actual moat around the office.", o: [O(.4, 4, 0, 5, "Investors love a literal visionary. ×4"), O(.6, .6, 0, -8, "The office flooded. Biscuit loves it. Nobody else does.")] },
+            { t: "Say \"Our moat is our culture\" with intense eye contact.", o: [O(.55, 1.6, 0, 4, "He blinks first. Term sheet secured."), O(.45, .65, 0, -6, "He asks what the culture is. You say \"vibes\". He leaves.")] }] },
     ],
   },
   finance: {
@@ -201,26 +216,29 @@ const NPCS = {
     idle: ["Every time you buy a snack I lose a year of my life.", "The spreadsheet is fine. The spreadsheet is FINE.", "I'm counting the paperclips. Again."],
     deck: [
       { t: "We could put ALL our cash into a dog-themed cryptocurrency. Penny is sweating.",
-        c: [{ t: "All in. To the moon. 🚀", o: [O(.3, 6, 0, 5, "The dog coin mooned. Penny faints from happiness. ×6!!"), O(.7, .25, 0, -25, "The dog coin is now worth one (1) dog biscuit.")] },
-            { t: "Boring government bonds.", o: [O(1, 1.15, 0, 6, "Penny smiles for the first time in 4 years.")] }] },
+        c: [{ t: "All in. To the moon. 🚀", o: [O(.4, 6, 0, 5, "The dog coin mooned. Penny faints from happiness. ×6!!"), O(.6, .3, 0, -20, "The dog coin is now worth one (1) dog biscuit.")] },
+            { t: "Boring government bonds.", o: [O(.6, 1.45, 0, 6, "Penny smiles for the first time in 4 years."), O(.4, 0.6, 0, -10, "📰 \"Bond market has worst day since the dinosaurs.\" Penny is lying on the floor.")] }] },
       { t: "Penny found $30M in the office couch cushions. Nobody knows how.",
-        c: [{ t: "Keep it. Finders keepers.", o: [O(1, 1, 30, 3, "+$30M. Penny is now checking every couch in the city.")] },
-            { t: "Donate it to a llama sanctuary.", o: [O(.5, 2, 0, 5, "Llama lovers become your biggest customers. ×2"), O(.5, .9, 0, -3, "The llamas say thanks. The board does not.")] }] },
+        c: [{ t: "Keep it. Finders keepers.", o: [O(.6, 1, 30, 3, "+$30M. Penny is now checking every couch in the city."), O(.4, .55, 0, -10, "It was the mob's money. They want it back. With interest.")] },
+            { t: "Donate it to a llama sanctuary.", o: [O(.55, 2.2, 0, 5, "Llama lovers become your biggest customers. ×2.2"), O(.45, 0.8, 0, -4, "The llamas say thanks. The board does not.")] }] },
       { t: "The auditors are coming. There's a cell in the spreadsheet that just says \"lol\".",
-        c: [{ t: "Fix the books honestly.", o: [O(1, .85, 0, 15, "Painful, but clean. The board trusts you a lot more now.")] },
-            { t: "Hide it with white text.", o: [O(.6, 1.5, 0, 0, "The auditors missed it. Penny is now 40% eye twitch."), O(.4, .3, 0, -30, "They found it. They also found \"lmao\" in cell Z99.")] }] },
+        c: [{ t: "Fix the books honestly.", o: [O(.6, .9, 0, 15, "Painful, but clean. The board trusts you a lot more now."), O(.4, 2, 0, 15, "The auditors are so moved they tweet about you. 📰 \"Most honest startup alive.\" ×2")] },
+            { t: "Hide it with white text.", o: [O(.55, 1.8, 0, 0, "The auditors missed it. Penny is now 40% eye twitch."), O(.45, 0.35, 0, -25, "They found it. They also found \"lmao\" in cell Z99.")] }] },
       { t: "Take a loan from \"Definitely Legit Bank (Cayman Islands Branch)\"?",
-        c: [{ t: "Take the loan.", o: [O(.4, 1, 150, 5, "Shockingly legit! +$150M."), O(.6, .5, 0, -15, "The bank was a man named Steve on a boat.")] },
-            { t: "Absolutely not.", o: [O(1, 1, 0, 5, "Penny nods so hard her bun falls out.")] }] },
+        c: [{ t: "Take the loan.", o: [O(.45, 1, 150, 5, "Shockingly legit! +$150M."), O(.55, .5, 0, -15, "The bank was a man named Steve on a boat.")] },
+            { t: "Absolutely not.", o: [O(.6, 1.35, 0, 5, "Penny nods so hard her bun falls out."), O(.4, 0.7, 0, -6, "Steve lends the money to your rival instead. Steve's boat is now a yacht. Rival is thriving.")] }] },
       { t: "Spend $20M on a company logo so big it's visible from space?",
-        c: [{ t: "Build the space logo.", o: [O(.3, 5, 0, 5, "Astronauts tweet it. Brand awareness: cosmic. ×5"), O(.7, .7, 0, -10, "It's visible from space as a typo.")] },
-            { t: "Buy everyone lunch instead.", o: [O(1, 1.2, 0, 3, "Team morale up. It was a very good burrito.")] }] },
+        c: [{ t: "Build the space logo.", o: [O(.45, 5, 0, 5, "Astronauts tweet it. Brand awareness: cosmic. ×5"), O(.55, .6, 0, -10, "It's visible from space as a typo.")] },
+            { t: "Buy everyone lunch instead.", o: [O(.65, 1.5, 0, 3, "Team morale up. It was a very good burrito."), O(.35, 0.65, 0, -8, "Food poisoning. The entire company. Same burrito.")] }] },
       { t: "Penny wants to cut costs by replacing all office chairs with yoga balls.",
-        c: [{ t: "Yoga balls for everyone.", o: [O(.5, 1.6, 0, 0, "Core strength up. Productivity up. ×1.6"), O(.5, .75, 0, -8, "17 injuries. 1 lawsuit. 0 working chairs.")] },
-            { t: "Keep the chairs.", o: [O(1, 1.05, 0, 2, "The chairs remain. Penny's dream dies quietly.")] }] },
+        c: [{ t: "Yoga balls for everyone.", o: [O(.55, 1.8, 0, 0, "Core strength up. Productivity up. ×1.8"), O(.45, .7, 0, -8, "17 injuries. 1 lawsuit. 0 working chairs.")] },
+            { t: "Keep the chairs.", o: [O(.65, 1.35, 0, 2, "The chairs remain. Penny's dream dies quietly."), O(.35, 0.65, 0, -6, "A chair collapsed during the investor demo. On camera. 40 million views.")] }] },
       { t: "An accountant says you could save millions in tax by registering the company to your cat.",
-        c: [{ t: "The cat is now CEO on paper.", o: [O(.35, 3, 0, -5, "It works. The cat's signature is a paw print. ×3"), O(.65, .5, 0, -20, "The tax office was not amused. Neither was the cat.")] },
-            { t: "Pay tax like a normal person.", o: [O(1, 1.1, 0, 6, "Penny gives you a rare thumbs up.")] }] },
+        c: [{ t: "The cat is now CEO on paper.", o: [O(.45, 3, 0, -5, "It works. The cat's signature is a paw print. ×3"), O(.55, .5, 0, -15, "The tax office was not amused. Neither was the cat.")] },
+            { t: "Pay tax like a normal person.", o: [O(.65, 1.4, 0, 6, "Penny gives you a rare thumbs up."), O(.35, 0.7, 0, -5, "The tax office lost your payment, then found it twice. Now you owe double.")] }] },
+      { t: "Your rival's CEO has a bigger logo on his hoodie. The board says yours looks \"very Series A\".",
+        c: [{ t: "Commission a hoodie with a logo so big it's basically a tent.", o: [O(.45, 2.5, 0, 8, "Status restored. You wear it to every meeting. ×2.5"), O(.55, .65, 0, -6, "You tripped over the logo on stage. 3 million views.")] },
+            { t: "Rise above it. Logos don't matter.", o: [O(.55, 1.3, 0, 5, "The board finds your maturity unsettling, but good."), O(.45, .65, 0, -6, "The board quietly buys YOU a bigger hoodie. It's humiliating.")] }] },
     ],
   },
   ops: {
@@ -229,29 +247,54 @@ const NPCS = {
     idle: ["Everything's on fire, but in a controlled way.", "I labelled every box. Then I labelled the labels.", "Don't touch the red button. Seriously."],
     deck: [
       { t: "The servers are overheating. Oscar has two ideas.",
-        c: [{ t: "Buy proper cooling.", o: [O(1, 1.2, 0, 5, "Cool servers. Cool team. Cool.")] },
-            { t: "Put the servers in a freezer full of ice cream.", o: [O(.5, 2, 0, 5, "Fastest servers in the world, AND free ice cream. ×2"), O(.5, .6, 0, -10, "The ice cream melted into the processors. Mint choc chip everywhere.")] }] },
+        c: [{ t: "Buy proper cooling.", o: [O(.6, 1.2, 0, 5, "Cool servers. Cool team. Cool."), O(.4, .6, 0, -8, "The AC froze solid. So did the servers. So did Dave.")] },
+            { t: "Put the servers in a freezer full of ice cream.", o: [O(.5, 2.5, 0, 5, "Fastest servers in the world, AND free ice cream. ×2.5"), O(.5, 0.7, 0, -10, "The ice cream melted into the processors. Mint choc chip everywhere.")] }] },
       { t: "Move HQ to the Moon? Rent is suspiciously cheap.",
-        c: [{ t: "One small step for startups.", o: [O(.15, 10, 0, 10, "The moon office goes galactically viral. ×10!!!"), O(.85, .5, 0, -20, "The Wi-Fi is terrible. Also there's no air.")] },
-            { t: "Stay on Earth.", o: [O(1, 1.1, 0, 3, "Gravity: still working. Great call.")] }] },
+        c: [{ t: "One small step for startups.", o: [O(.35, 8, 0, 10, "The moon office goes galactically viral. ×8!!!"), O(.65, .5, 0, -15, "The Wi-Fi is terrible. Also there's no air.")] },
+            { t: "Stay on Earth.", o: [O(.5, 1.4, 0, 3, "Gravity: still working. Great call."), O(.5, 0.6, 0, -10, "Your competitor moved to the Moon instead. 📰 \"Literally out of this world.\" You look tiny.")] }] },
       { t: "A pigeon has been delivering our packages faster than the courier.",
-        c: [{ t: "Hire a pigeon army.", o: [O(.4, 3, 0, 5, "PigeonPrime™ launched. Same-day delivery! ×3"), O(.6, .7, 0, -8, "The pigeons unionized. They demand bread.")] },
-            { t: "Stick with the courier.", o: [O(1, 1.1, 0, 2, "Reliable. Pigeon-free.")] }] },
+        c: [{ t: "Hire a pigeon army.", o: [O(.5, 3, 0, 5, "PigeonPrime™ launched. Same-day delivery! ×3"), O(.5, .7, 0, -8, "The pigeons unionized. They demand bread.")] },
+            { t: "Stick with the courier.", o: [O(.6, 1.4, 0, 2, "Reliable. Pigeon-free."), O(.4, 0.65, 0, -6, "The courier drove every package into a lake. The pigeons watched. Smugly.")] }] },
       { t: "Oscar built a giant red button that \"automates everything\".",
         c: [{ t: "Press the button.", o: [O(.5, 3, 0, 5, "Everything is automated. Oscar is a legend. ×3"), O(.5, .4, 0, -15, "The button ordered 40,000 rubber ducks to the office.")] },
-            { t: "Do NOT press the button.", o: [O(1, 1.1, 0, 3, "Nothing explodes. A rare win.")] }] },
+            { t: "Do NOT press the button.", o: [O(.5, 1.4, 0, 3, "Nothing explodes. A rare win."), O(.25, 4, 0, 5, "Biscuit pressed it anyway. Everything works?! Biscuit is promoted to COO. ×4"), O(.25, 0.6, 0, -10, "Biscuit pressed it anyway. 40,000 rubber ducks. Biscuit regrets nothing.")] }] },
       { t: "The office ran out of coffee. Morale is collapsing.",
-        c: [{ t: "Emergency $2M espresso machine.", o: [O(1, 1.4, -2, 3, "The engineers ship 3 features before lunch.")] },
-            { t: "Switch to decaf to save money.", o: [O(1, .6, 0, -12, "Mutiny. Someone wrote \"WHY\" on the wall in espresso.")] }] },
+        c: [{ t: "Emergency $2M espresso machine.", o: [O(.6, 1.4, -2, 3, "The engineers ship 3 features before lunch."), O(.4, .6, 0, -8, "The machine is too powerful. Three engineers can now see through time and refuse to work.")] },
+            { t: "Switch to decaf to save money.", o: [O(.6, 0.7, 0, -12, "Mutiny. Someone wrote \"WHY\" on the wall in espresso."), O(.4, 2.5, 0, 5, "Decaf makes everyone weirdly calm. Fewer bugs, zero meetings. ×2.5?!")] }] },
       { t: "Outsource all customer support to a parrot?",
-        c: [{ t: "Captain Squawk is hired.", o: [O(.35, 3, 0, 5, "Customers LOVE Captain Squawk. Support rating: 5 stars. ×3"), O(.65, .6, 0, -10, "The parrot told a customer to \"walk the plank\".")] },
-            { t: "Hire actual humans.", o: [O(1, 1.2, 0, 4, "Humans. Classic.")] }] },
+        c: [{ t: "Captain Squawk is hired.", o: [O(.5, 3, 0, 5, "Customers LOVE Captain Squawk. Support rating: 5 stars. ×3"), O(.5, .6, 0, -10, "The parrot told a customer to \"walk the plank\".")] },
+            { t: "Hire actual humans.", o: [O(.6, 1.5, 0, 4, "Humans. Classic."), O(.4, 0.7, 0, -5, "The humans heard about the parrot and demand parrot-level pay. In crackers.")] }] },
       { t: "Oscar found a warehouse full of unsold fidget spinners from 2017.",
-        c: [{ t: "Relaunch them as \"retro\".", o: [O(.45, 2.5, 0, 0, "Nostalgia is undefeated. ×2.5"), O(.55, .7, 0, -6, "Nobody wants them. Again.")] },
-            { t: "Recycle them.", o: [O(1, 1.1, 0, 3, "The planet thanks you. Mildly.")] }] },
+        c: [{ t: "Relaunch them as \"retro\".", o: [O(.5, 2.5, 0, 0, "Nostalgia is undefeated. ×2.5"), O(.5, .7, 0, -6, "Nobody wants them. Again.")] },
+            { t: "Recycle them.", o: [O(.6, 1.4, 0, 3, "The planet thanks you. Mildly."), O(.4, 0.6, 0, -6, "Fidget spinners went viral again the next day. You recycled $40M of them.")] }] },
+      { t: "Penny asked Oscar to \"move everything to the cloud\". Oscar has rented a hot air balloon and is loading the servers.",
+        c: [{ t: "Let it fly.", o: [O(.4, 3, 0, 5, "Uptime is literally up. 📰 \"The world's first airborne startup.\" ×3"), O(.6, .55, 0, -10, "The servers drifted to France. They're not coming back.")] },
+            { t: "Gently explain what \"the cloud\" means.", o: [O(.6, 1.35, 0, 4, "Oscar nods slowly and signs a sensible server contract."), O(.4, .65, 0, -5, "Oscar is hurt. The balloon company sues for emotional damages.")] }] },
     ],
   },
 };
+const HALL = {
+  gideon: { name: "Gideon", title: "Founder (ret.) of Snackrobat · acquired 2011 for $40K and a coupon", x: 16, y: 8, hall: true,
+    look: { id: "gideon", skin: "#e9b996", hair: "#3a2a1a", style: "long", beard: true, shirt: "#e85d2a", pants: "#5b4a8a", shades: true },
+    idle: ["Did I ever tell you about Snackrobat? An app that told you which snack you were. Acquired. 2011. Forty thousand dollars. And a coupon.",
+           "When I ran Snackrobat we didn't have product-market fit. We had SNACK-market fit.",
+           "You remind me of a young me. Pre-Snackrobat me. Hungry. Literally. I hadn't invented Snackrobat yet.",
+           "I still have the coupon. I'll never use it. It's a Snackrobat coupon.",
+           "I technically own 10% of your company because you used my Wi-Fi once. Snackrobat rules."] },
+  kevin: { name: "Kevin", x: 7, y: 6, hall: true,
+    look: { id: "kevin", skin: "#f3d1b5", hair: "#d9a441", style: "short", shirt: "#9ad1c9", pants: "#6b6b7b" },
+    idle: ["...", "I've been sitting here since month 1. They keep promoting me.", "My calendar says \"strategic thinking\". I'm thinking about lunch.",
+           "Someone gave me equity. I didn't ask for it.", "I don't know what I do. Neither does anyone. It's working."] },
+};
+const KEVIN_TITLES = ["Associate (unclear)", "Senior Associate", "Head of Vibes", "VP of Strategy-ish", "SVP of Whatever", "Chief Visionary Officer", "Co-CEO", "President of Everything", "Board Chair (Emeritus)", "Literally God"];
+const REX = { name: "Rex Halberd", title: "Billionaire angel investor · owns 4 jet skis, none in water",
+  look: { id: "rex", skin: "#f0c8a0", hair: "#d8d8d8", style: "spiky", shirt: "#ffcf33", pants: "#222233", vest: "#7a1f3d", shades: true } };
+const RIVAL = { name: "Solomon Vane", title: "Chief Visionary & Spiritual Leader, Gigantica", emoji: "🛐" };
+const BUZZ = [["leveraging", "doubling down on", "pivoting into", "operationalising", "unlocking"],
+              ["an AI-native", "a frictionless", "a decentralised", "a hyper-local", "a community-led"],
+              ["synergy flywheel", "platform-of-platforms", "vertical ecosystem", "growth moat", "value lattice"]];
+const RENAMES = [c => c + " X", c => c + "GPT", c => c.toUpperCase() + "!!", c => "The " + c + " Experience", c => c + "™ (the ™ is silent)", c => "Gigantica-Killer-" + c];
+const MISSION = [["radically humanise", "democratise", "decentralise", "reimagine", "heal the world through"], ["connected", "mindful", "frictionless", "synergised", "awakened"]];
 const ZONES = {
   hire:    { name: "HIRING",  icon: "🤝", floor: ["#f9dbe5", "#f3ccd9"], wall: "#fdeaf0" },
   product: { name: "PRODUCT", icon: "🧪", floor: ["#d6ecff", "#c7e2fb"], wall: "#e8f4ff" },
@@ -271,7 +314,7 @@ const FIRED = {
 };
 const ENDINGS = {
   ipo: ["You ring the stock exchange bell so hard it breaks. The stock opens at $420.69.", "IPO day! Your mum prints the ticker symbol on a mug. You become insufferable on podcasts."],
-  sell: ["MegaCorp buys you, then shuts the product down after 3 weeks. You buy an island. It's mostly a sandbar.", "You sell to MegaCorp. Your exit email is 4,000 words long and mentions \"the journey\" 31 times."],
+  sell: ["Gigantica buys you, then shuts the product down after 3 weeks. You buy an island. It's mostly a sandbar.", "You sell to your nemesis, Gigantica. Solomon Vane hugs you on stage for 11 uncomfortable minutes. Your exit email mentions \"the journey\" 31 times."],
 };
 const CO_A = ["Snack", "Sync", "Bloop", "Vibe", "Hustl", "Pivot", "Fluff", "Zoom", "Yeet", "Noodl", "Clowd", "Grind"];
 const CO_B = ["ly", "ify", "r", ".ai", "hub", ".io", "zilla", "scale", "verse"];
@@ -304,7 +347,8 @@ const props = [
   { x: 9, y: 7, w: 2, h: 1, d: "founderdesk", talk: DESK }, { x: 18, y: 6, w: 1, h: 1, d: "plant" }, { x: 18, y: 8, w: 1, h: 1, d: "plant" },
 ];
 const solidProp = (x, y) => props.find(p => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);
-const npcAt = (x, y) => Object.values(NPCS).find(n => n.x === x && n.y === y);
+const ALL_NPCS = () => [...Object.values(NPCS), ...Object.values(HALL)];
+const npcAt = (x, y) => ALL_NPCS().find(n => n.x === x && n.y === y);
 
 /* ============================================================
    HELPERS
@@ -500,16 +544,20 @@ const dog = { x: 7, y: 8, px: 7, py: 8, dir: "left", moving: false, fx: 0, fy: 0
 let decks = {}, active = [], dialog = null, particles = [], keys = [], lastT = now();
 
 function newGame() {
-  const co = pick(CO_A) + pick(CO_B);
-  G = { co, tag: `It's like Uber, but for ${pick(CO_FOR)}.`, val: 5, shown: 5, trust: 60, month: 1, decisions: 0, lastMeeting: 5, peak: 5,
-        best: null, worst: null, over: false };
+  const co = pick(CO_A) + pick(CO_B), thing = pick(CO_FOR);
+  G = { co, tag: `It's like Uber, but for ${thing}.`, mission: `Mission: to ${pick(MISSION[0])} ${thing} for a more ${pick(MISSION[1])} planet.`,
+        val: 5, shown: 5, trust: 60, month: 1, decisions: 0, lastMeeting: 5, peak: 5, best: null, worst: null, over: false,
+        kevin: 0, gideonNext: 2, nextRex: 3 + Math.floor(Math.random() * 3), rivalPending: false, whim: null };
   decks = {}; Object.keys(NPCS).forEach(k => decks[k] = shuffle(NPCS[k].deck));
   active = shuffle(Object.keys(NPCS)).slice(0, 2);
+  eventQ = [];
   Object.assign(player, { x: 12, y: 7, px: 12, py: 7, dir: "down", moving: false, path: [], target: null });
   particles = [];
   $("coName").textContent = co; $("coTag").textContent = G.tag;
   updateHUD(true);
 }
+const gideonReady = () => !G.over && G.decisions >= G.gideonNext;
+const kevinTitle = () => KEVIN_TITLES[Math.min(G.kevin, KEVIN_TITLES.length - 1)];
 
 /* ============================================================
    HUD
@@ -524,7 +572,11 @@ function updateHUD(instant) {
   const tb = $("trustBar"); tb.style.width = clamp(G.trust, 0, 100) + "%";
   tb.style.background = G.trust > 55 ? "var(--good)" : G.trust > 25 ? "#f0a531" : "var(--bad)";
   $("month").textContent = G.month;
-  $("todo").innerHTML = G.over ? "" : "Waiting for you: " + active.map(k => `<span>${ZONES[k].icon} ${ZONES[k].name}</span>`).join("");
+  $("coName").textContent = G.co;
+  let todo = G.over ? "" : "Waiting for you: " + active.map(k => `<span>${ZONES[k].icon} ${ZONES[k].name}</span>`).join("");
+  if (gideonReady()) todo += ` <span class="opt">🎤 Gideon (optional)</span>`;
+  if (G.whim && !G.over) todo += `<br><span class="whim">📞 REX RULE: ${G.whim.label} · ${G.whim.left} month${G.whim.left > 1 ? "s" : ""} left</span>`;
+  $("todo").innerHTML = todo;
 }
 function bigPop(text, up) {
   const el = document.createElement("div"); el.className = "pop " + (up ? "up" : "down"); el.textContent = text;
@@ -542,8 +594,8 @@ function portraitFor(who) {
   else box.textContent = who.emoji || "💬";
 }
 function showDialog(d) {
-  // d: { who:{name,title,look|emoji}, text, extra(html), choices:[{t, fn}] }
-  dialog = { ...d, shown: 0, sel: 0, typing: true, t0: now() };
+  // d: { who:{name,title,look|emoji}, text, extra(html), choices:[{t, fn, off}] }
+  dialog = { ...d, shown: 0, sel: Math.max(0, d.choices.findIndex(c => !c.off)), typing: true, t0: now() };
   $("dlg").classList.remove("hidden");
   portraitFor(d.who);
   $("dlgName").innerHTML = `${esc(d.who.name)}<small>${esc(d.who.title || "")}</small>`;
@@ -557,18 +609,27 @@ function finishTyping() {
   if (dialog.extra) $("dlgExtra").innerHTML = dialog.extra;
   const box = $("dlgChoices"); box.innerHTML = "";
   dialog.choices.forEach((c, i) => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "choice" + (i === 0 ? " sel" : ""); b.textContent = c.t;
+    const b = document.createElement("button"); b.type = "button"; b.className = "choice" + (i === dialog.sel ? " sel" : ""); b.textContent = c.t;
+    if (c.off) { b.disabled = true; b.title = "Rex says no"; }
     b.style.animationDelay = (i * .06) + "s";
     b.addEventListener("click", () => choose(i));
     b.addEventListener("pointerenter", () => setSel(i));
     box.appendChild(b);
   });
 }
-function setSel(i) { if (!dialog || dialog.typing) return; dialog.sel = i; [...$("dlgChoices").children].forEach((b, j) => b.classList.toggle("sel", j === i)); }
+function setSel(i) {
+  if (!dialog || dialog.typing || !dialog.choices[i] || dialog.choices[i].off) return;
+  dialog.sel = i; [...$("dlgChoices").children].forEach((b, j) => b.classList.toggle("sel", j === i));
+}
+function moveSel(step) {
+  if (!dialog || dialog.typing) return;
+  const n = dialog.choices.length;
+  for (let k = 1; k <= n; k++) { const i = (dialog.sel + step * k + n * 4) % n; if (!dialog.choices[i].off) { setSel(i); return; } }
+}
 function choose(i) {
   if (!dialog) return;
   if (dialog.typing) { finishTyping(); return; }
-  const c = dialog.choices[i]; if (!c) return;
+  const c = dialog.choices[i]; if (!c || c.off) return;
   SFX.select();
   const fn = c.fn; closeDialog(); fn && fn();
 }
@@ -584,67 +645,149 @@ const OK = (fn, label = "OK") => [{ t: label, fn }];
 /* ============================================================
    DECISIONS
    ============================================================ */
+let eventQ = [];
+function nextEvent() { updateHUD(); if (checkEnd()) return; const ev = eventQ.shift(); if (ev) ev(); }
+function pickOutcome(ch) {
+  let r = Math.random(), out = ch.o[ch.o.length - 1];
+  for (const o of ch.o) { if ((r -= o.p) < 0) { out = o; break; } }
+  return out;
+}
 function talkTo(npc) {
   if (G.over) return;
+  if (npc === HALL.kevin) { showDialog({ who: { ...npc, title: kevinTitle() }, text: pick(npc.idle), choices: OK(null, "...ok, Kevin") }); return; }
+  if (npc === HALL.gideon) { gideonTalk(); return; }
   if (!active.includes(npc.zone)) { showDialog({ who: npc, text: pick(npc.idle), choices: OK(null, "Cool cool cool") }); return; }
   if (!decks[npc.zone].length) decks[npc.zone] = shuffle(npc.deck);
   const sc = decks[npc.zone].pop();
-  showDialog({ who: npc, text: sc.t, choices: sc.c.map(ch => ({ t: ch.t, fn: () => resolve(npc, ch) })) });
+  const noBoring = G.whim && G.whim.k === "noboring";
+  showDialog({ who: npc, text: sc.t, choices: sc.c.map((ch, i) => {
+    const off = noBoring && i === sc.c.length - 1;
+    return { t: off ? "🚫 " + ch.t + " (Rex says no)" : ch.t, off, fn: () => applyOutcome(npc, pickOutcome(ch), ch.t, () => afterDecision(true)) };
+  }) });
 }
-function resolve(npc, ch) {
-  let r = Math.random(), out = ch.o[ch.o.length - 1];
-  for (const o of ch.o) { if ((r -= o.p) < 0) { out = o; break; } }
+function gideonTalk() {
+  const g = HALL.gideon;
+  if (!gideonReady()) { showDialog({ who: g, text: pick(g.idle), choices: OK(null, "Fascinating, Gideon") }); return; }
+  showDialog({ who: g, text: "Kid. Investors are cold today. Let me give them a speech. The same one I gave the day Snackrobat was acquired. I only take 10%. Of the credit. And the money.",
+    choices: [
+      { t: "🎤 Unleash the monologue (takes a month)", fn: () => {
+        G.gideonNext = G.decisions + 4;
+        applyOutcome(g, pickOutcome({ o: [
+          O(.45, 2.25, 0, 5, "Forty minutes. No notes. He compared your company to the moon landing AND Snackrobat. Investors wept. (×2.5, minus Gideon's 10% cut.)"),
+          O(.2, .8, 0, -3, "One investor said nothing for the entire speech, then wrote \"no\" on a napkin. Gideon has not recovered."),
+          O(.35, .6, 0, -8, "He spent the whole speech on Snackrobat. The investors left. One took the coupon.") ] }), "Let Gideon give a speech", () => afterDecision(false));
+      } },
+      { t: "Maybe later, Gideon.", fn: null },
+    ] });
+}
+function applyOutcome(who, out, choiceText, onDone) {
+  let m = out.m;
+  if (G.whim && G.whim.k === "hype") m = m > 1 ? 1 + (m - 1) * 1.5 : m < 1 ? m * .8 : m;
   const before = G.val;
-  G.val = Math.max(0, G.val * out.m + out.a);
+  G.val = Math.max(0, G.val * m + out.a);
   G.trust = clamp(G.trust + out.b, 0, 100);
   G.peak = Math.max(G.peak, G.val);
   const ratio = G.val / Math.max(before, .001);
-  if (!G.best || ratio > G.best.r) G.best = { r: ratio, t: ch.t };
-  if (!G.worst || ratio < G.worst.r) G.worst = { r: ratio, t: ch.t };
-
-  // juice
+  if (choiceText) {
+    if (!G.best || ratio > G.best.r) G.best = { r: ratio, t: choiceText };
+    if (!G.worst || ratio < G.worst.r) G.worst = { r: ratio, t: choiceText };
+    if (ratio >= 2.5 && !G.rivalPending && Math.random() < .5) G.rivalPending = true; // success attracts the mega-corp
+  }
   const up = ratio >= 1;
-  let label = out.m !== 1 ? "×" + (+out.m.toFixed(2)) : (out.a >= 0 ? "+" : "−") + fmt(Math.abs(out.a));
-  if (out.m === 1 && out.a === 0) label = "meh";
+  let label = m !== 1 ? "×" + (+m.toFixed(2)) : (out.a >= 0 ? "+" : "−") + fmt(Math.abs(out.a));
+  if (m === 1 && out.a === 0) label = "meh";
   bigPop(label, up);
   if (ratio >= 2.5) { SFX.bigwin(); rain("💸", 40); }
   else if (ratio > 1.001) { SFX.coin(); if (ratio >= 1.5) rain("💵", 15); }
   else if (ratio < .99) { SFX.womp(); if (ratio <= .6) { shakeStage(); rain("📉", 14); } }
   else SFX.select();
-
   const deltas = [];
   deltas.push(`<span class="delta ${up ? "up" : ratio < .99 ? "down" : ""}">📈 ${fmt(before)} → ${fmt(G.val)}</span>`);
   if (out.b) deltas.push(`<span class="delta ${out.b > 0 ? "up" : "down"}" style="animation-delay:.12s">${trustFace(G.trust)} Board ${out.b > 0 ? "+" : ""}${out.b}</span>`);
-  showDialog({ who: npc, text: out.msg, extra: `<div class="deltas">${deltas.join("")}</div>`, choices: OK(afterDecision, "Continue") });
+  if (G.whim && G.whim.k === "hype" && m !== out.m) deltas.push(`<span class="delta" style="animation-delay:.2s">📞 Pre-revenue: swing amplified</span>`);
+  showDialog({ who, text: out.msg, extra: `<div class="deltas">${deltas.join("")}</div>`, choices: OK(onDone, "Continue") });
   updateHUD();
 }
-function afterDecision() {
+function afterDecision(rotate) {
   G.decisions++; G.month++;
-  // rotate who needs you
-  const done = active.shift();
-  const pool = Object.keys(NPCS).filter(k => !active.includes(k) && k !== done);
-  active.push(pick(pool));
-  updateHUD();
-  if (checkEnd()) return;
-  if (G.decisions % 4 === 0) boardMeeting();
+  if (rotate) {
+    const done = active.shift();
+    const pool = Object.keys(NPCS).filter(k => !active.includes(k) && k !== done);
+    active.push(pick(pool));
+  }
+  if (G.whim && --G.whim.left <= 0) G.whim = null;
+  eventQ = [];
+  if (G.decisions % 4 === 0) eventQ.push(boardMeeting);
+  if (G.rivalPending) { G.rivalPending = false; eventQ.push(rivalEvent); }
+  if (G.decisions >= G.nextRex) { G.nextRex = G.decisions + 4 + Math.floor(Math.random() * 3); eventQ.push(rexCall); }
+  nextEvent();
 }
+const buzzword = () => `"We're ${pick(BUZZ[0])} ${pick(BUZZ[1])} ${pick(BUZZ[2])}."`;
 function boardMeeting() {
   const r = G.val / Math.max(G.lastMeeting, .001);
   const row = BOARD.find(b => r >= b[0]);
   const meeting = G.decisions / 4, impatience = meeting >= 5 ? 8 * (meeting - 4) : 0;
   const delta = row[1] - impatience;
-  G.trust = clamp(G.trust + delta, 0, 100); G.lastMeeting = G.val;
+  G.lastMeeting = G.val; G.kevin++;
   SFX.gavel();
-  if (delta < 0) shakeStage();
   let text = `📋 QUARTERLY BOARD MEETING. Valuation since last time: ×${r.toFixed(2)}. ${row[2]}`;
   if (impatience) text += ` Also: "It's month ${G.month}. Why are we not a unicorn yet?" (Impatience −${impatience})`;
-  if (G.trust > 0 && G.trust <= 25) text += " Whisper from the back: \"one more mistake...\"";
-  showDialog({ who: { name: "The Board", title: "3 people in identical fleeces", emoji: "👔" }, text,
-    extra: `<div class="deltas"><span class="delta ${delta > 0 ? "up" : "down"}">${trustFace(G.trust)} Board ${delta > 0 ? "+" : ""}${delta}</span></div>`,
-    choices: OK(() => { updateHUD(); checkEnd(); }, "Gulp. Continue") });
+  text += ` Kevin has been promoted to ${kevinTitle()}. Nobody knows what he does.`;
+  const who = { name: "The Board", title: "3 people in identical fleeces", emoji: "👔" };
+  const apply = (d, msg) => {
+    G.trust = clamp(G.trust + d, 0, 100);
+    if (d < 0) { shakeStage(); SFX.womp(); } else SFX.coin();
+    let t2 = msg; if (G.trust > 0 && G.trust <= 25) t2 += " Whisper from the back: \"one more mistake...\"";
+    showDialog({ who, text: t2, extra: `<div class="deltas"><span class="delta ${d > 0 ? "up" : "down"}">${trustFace(G.trust)} Board ${d > 0 ? "+" : ""}${d}</span></div>`, choices: OK(nextEvent, "Continue") });
+    updateHUD();
+  };
+  if (delta >= 0) {
+    G.trust = clamp(G.trust + delta, 0, 100);
+    showDialog({ who, text, extra: `<div class="deltas"><span class="delta up">${trustFace(G.trust)} Board +${delta}</span></div>`, choices: OK(nextEvent, "Nailed it") });
+    updateHUD(); return;
+  }
+  const bz = buzzword();
+  showDialog({ who, text: text + ` They want answers. Board trust is about to drop by ${-delta}.`, choices: [
+    { t: "Take the feedback like an adult.", fn: () => apply(delta, "You nod, take notes, and promise to do better. It stings, but only a normal amount.") },
+    { t: `Bluff: ${bz}`, fn: () => Math.random() < .5
+        ? apply(Math.round(-delta / 2), "The board nods slowly. Nobody wants to admit they didn't understand. Somebody writes it down.")
+        : apply(delta * 2, "A board member asks you to define it. You cannot. Neither can she. Somehow that makes it worse.") },
+  ] });
   updateHUD();
 }
+function rivalEvent() {
+  const thing = G.tag.replace("It's like Uber, but for ", "").replace(".", "");
+  showDialog({ who: RIVAL, text: `📺 BREAKING: Gigantica just unveiled \"Gigantica ${G.co.replace(/[^A-Za-z]/g, "") || "Clone"}\", an exact copy of your product, at a keynote with a gospel choir. Solomon Vane says it will \"heal humanity through ${thing}\".`,
+    choices: [
+      { t: "Sue them.", fn: () => applyOutcome(RIVAL, pickOutcome({ o: [O(.35, 2, 0, 10, "You WON. The judge was a fan of your hoodie. Gigantica pays up. ×2"), O(.65, .6, 0, -10, "Their lawyers outnumbered your employees 40 to 1. Some of them were the same lawyer, twice.")] }), "Sue Gigantica", nextEvent) },
+      { t: "Out-keynote them. Bigger choir. Smoke machine.", fn: () => applyOutcome(RIVAL, pickOutcome({ o: [O(.5, 1.8, 0, 5, "Your choir had 400 people and a goat. Gigantica's copy is forgotten. ×1.8"), O(.5, .65, 0, -8, "The smoke machine set off the sprinklers. The choir sang \"why\" in harmony.")] }), "Out-keynote Gigantica", nextEvent) },
+      { t: "Ignore them.", fn: () => applyOutcome(RIVAL, pickOutcome({ o: [O(.5, .7, 0, -5, "They took a third of your customers with a slightly shinier button."), O(.5, 1.6, 0, 5, "Their copy launched with a bug that deleted everyone's photos. Every customer comes back to you. ×1.6")] }), "Ignore Gigantica", nextEvent) },
+    ] });
+}
+function rexCall() {
+  SFX.select();
+  const intro = "📞 RING RING. It's Rex. ";
+  if (G.trust < 35) {
+    showDialog({ who: REX, text: intro + "Kid, you look like you're drowning. I'll put in $60M and calm the board down. One tiny favour: I make the rules for the next 4 months. No boring answers. Deal?",
+      choices: [
+        { t: "Take Rex's deal.", fn: () => { G.whim = { k: "noboring", label: "NO BORING ANSWERS", left: 4 }; applyOutcome(REX, O(1, 1, 60, 20, "Rex wires the money from his jet ski. The board calms down. The sensible options are now locked."), null, nextEvent); } },
+        { t: "No thanks, I've got this.", fn: () => applyOutcome(REX, pickOutcome({ o: [O(.5, 1, 0, 8, "Rex respects it. He tells everyone you're \"a lone wolf\". The board likes that."), O(.5, .8, 0, -5, "Rex tells everyone you're \"a lone wolf\". He means it as an insult.")] }), null, nextEvent) },
+      ] });
+    return;
+  }
+  const whims = [
+    () => { G.whim = { k: "noboring", label: "NO BORING ANSWERS", left: 3 };
+      showDialog({ who: REX, text: intro + "My net worth dipped below a billion this morning and I've been thinking about sharks. Sharks never do the boring thing. For 3 months: NO BORING ANSWERS. I'll know.", choices: OK(nextEvent, "Yes, Rex") }); },
+    () => { G.whim = { k: "hype", label: "PRE-REVENUE MODE (every result swings harder)", left: 3 };
+      showDialog({ who: REX, text: intro + "Revenue is for cowards. Once you make money, people can value you on real numbers. For 3 months we're PRE-REVENUE. Every win is bigger, every loss is bigger. Vibes only.", choices: OK(nextEvent, "Vibes only, Rex") }); },
+    () => { const old = G.co; G.co = pick(RENAMES)(old.replace(/ X$|GPT$|!!$|™.*$/g, ""));
+      applyOutcome(REX, pickOutcome({ o: [O(.5, 1.5, 0, 0, `Rex renamed the company to \"${G.co}\" without asking. Nobody knows what you do anymore. Investors love it. ×1.5`), O(.5, .7, 0, -5, `Rex renamed the company to \"${G.co}\". Customers think you went out of business.`)] }), null, nextEvent); },
+    () => applyOutcome(REX, pickOutcome({ o: [O(.5, 2, 0, 5, "Rex launched a $900 luxury candle with your logo on it. It smells like your server room. Sold out in 4 minutes. ×2"), O(.5, .5, 0, -10, "Rex launched a $900 luxury candle with your logo on it. It exploded at a celebrity birthday party. Your logo was on the news.")] }), null, nextEvent),
+  ];
+  pick(whims)();
+}
 function checkEnd() {
+  if (G.over) return true;
   if (G.val >= 1000) { win(); return true; }
   if (G.trust <= 0) { fired("trust"); return true; }
   if (G.val < .5) { fired("broke"); return true; }
@@ -659,7 +802,8 @@ function statsHTML() {
   return `<div class="statgrid">
     <div>📅 Months: ${G.month}</div><div>🏔️ Peak: ${fmt(G.peak)}</div>
     <div>🚀 Best call:<br><small>${G.best ? esc(G.best.t) + " (×" + G.best.r.toFixed(1) + ")" : "—"}</small></div>
-    <div>💀 Worst call:<br><small>${G.worst ? esc(G.worst.t) + " (×" + G.worst.r.toFixed(2) + ")" : "—"}</small></div></div>`;
+    <div>💀 Worst call:<br><small>${G.worst ? esc(G.worst.t) + " (×" + G.worst.r.toFixed(2) + ")" : "—"}</small></div>
+    <div style="grid-column: span 2">🛋️ Kevin's final title: ${esc(kevinTitle())}</div></div>`;
 }
 function showCard(html) { $("card").innerHTML = html; $("ov").classList.remove("hidden"); }
 function hideCard() { $("ov").classList.add("hidden"); }
@@ -669,12 +813,13 @@ function titleScreen() {
   showCard(`
     <div class="big">💼</div>
     <h1>FOUNDER'S <em>LIFE</em></h1>
-    <p class="pitch">Your startup: <b>${esc(G.co)}</b><br>${esc(G.tag)}</p>
+    <p class="pitch">Your startup: <b>${esc(G.co)}</b><br>${esc(G.tag)}<br><small>${esc(G.mission)}</small></p>
     <div class="rules">
       <div>🦄 <b>Win:</b> hit a <b>$1 billion</b> valuation.</div>
       <div>🔥 <b>Lose:</b> board trust hits 0, or the company goes broke.</div>
       <div>🚶 Walk to the rooms with a <b>❗</b> and make a call. Every call = 1 month.</div>
-      <div>📋 Every 4 months, the board judges you.</div>
+      <div>📋 Every 4 months, the board judges you. Buzzwords may help. Or not.</div>
+      <div>📞 Rex, your billionaire investor, will call with "ideas".</div>
     </div>
     <button class="btn" id="go" type="button">START THE COMPANY 🚀</button>
     <div class="small">${r.runs ? `Companies founded: ${r.runs} · Unicorns: ${r.unicorns}${r.fastest ? ` · Fastest unicorn: ${r.fastest} months` : ""}` : "Arrow keys / WASD to walk · tap to walk on mobile"}</div>`);
@@ -695,6 +840,7 @@ function fired(kind) {
       <h1>YOU'RE <em>FIRED</em></h1>
       <p>${esc(pick(FIRED[kind]))}</p>
       <p class="small">${kind === "trust" ? "Board trust hit zero." : "The money ran out."} You leave carrying a box with a cactus and a branded water bottle.</p>
+      <p><b>Your replacement:</b> Kevin, ${esc(kevinTitle())}. He has never made a decision. The stock goes up 12%.</p>
       ${statsHTML()}
       <button class="btn" id="again" type="button">FOUND ANOTHER STARTUP 🔁</button>`);
     $("again").addEventListener("click", () => { titleScreen(); });
@@ -713,7 +859,7 @@ function win() {
       <p><b>${esc(G.co)}</b> is worth <b>${fmt(G.val)}</b> after ${G.month} months.${record ? " 🏆 <b>Fastest unicorn ever!</b>" : ""}</p>
       <p>Now, how do you cash out?</p>
       <button class="btn" id="ipo" type="button">🔔 Ring the IPO bell</button>
-      <button class="btn alt" id="sell" type="button">🤝 Sell to MegaCorp</button>`);
+      <button class="btn alt" id="sell" type="button">🤝 Sell to Gigantica</button>`);
     const end = kind => {
       SFX.bigwin(); rain("🎉", 40);
       showCard(`
@@ -902,12 +1048,14 @@ function draw(t) {
   props.forEach(p => drawProp(p, t));
   // entities sorted by y
   const ents = [];
-  Object.values(NPCS).forEach(n => ents.push({ y: n.y, draw: () => {
+  ALL_NPCS().forEach(n => ents.push({ y: n.y, draw: () => {
     const X = n.x * T, Y = n.y * T, bob = Math.floor(t / 600 + n.x) % 2;
     shadow(X + 8, Y + 15, 6);
     const face = Math.abs(player.x - n.x) + Math.abs(player.y - n.y) <= 2 ? dirFromTo(n, player) : "down";
     ctx.drawImage(personSprite(n.look, face, 0), X, Y - 3 - bob * .5 + .5);
-    if (active.includes(n.zone) && !G.over) {
+    if (n === HALL.kevin) emo("💤", X + 13, Y - 6 + Math.sin(t / 500) * 2, 7);
+    if (n === HALL.gideon && gideonReady()) emo("🎤", X + 8, Y - 10 + Math.sin(t / 180) * 2, 9);
+    if (!n.hall && active.includes(n.zone) && !G.over) {
       const by = Y - 15 + Math.sin(t / 180) * 2;
       R(X + 3, by - 1, 10, 11, "#1d1d2b"); R(X + 4, by, 8, 9, "#ffe27a"); R(X + 7, by + 10, 2, 2, "#1d1d2b");
       R(X + 7, by + 1, 2, 5, "#e0384b"); R(X + 7, by + 7, 2, 1, "#e0384b");
@@ -963,8 +1111,8 @@ addEventListener("keydown", e => {
   if (dialog) {
     e.preventDefault();
     if (dialog.typing && (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z")) { finishTyping(); return; }
-    if (d === "up") setSel((dialog.sel + dialog.choices.length - 1) % dialog.choices.length);
-    else if (d === "down") setSel((dialog.sel + 1) % dialog.choices.length);
+    if (d === "up") moveSel(-1);
+    else if (d === "down") moveSel(1);
     else if (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z") choose(dialog.sel);
     else if (/^[1-9]$/.test(e.key) && !dialog.typing) choose(+e.key - 1);
     return;
