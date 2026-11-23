@@ -24,7 +24,11 @@
   <button class="btn btn-small" id="fullscreen" type="button" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg> Full screen</button>
 </div>
 <main id="main" class="player-main"></main>
-<script src="config.js"></script>
+<script>
+  // Always load the latest settings, so edits to config.js show up as soon as GitHub publishes them
+  // (browsers would otherwise keep using a saved copy for up to 10 minutes).
+  document.write('<script src="config.js?v=' + Date.now() + '"><\/script>');
+</script>
 <script src="assets/site.js"></script>
 </body>
 </html>

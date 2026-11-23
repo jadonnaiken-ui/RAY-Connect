@@ -85,7 +85,11 @@
 </main>
 
 <div id="site-footer"></div>
-<script src="config.js"></script>
+<script>
+  // Always load the latest settings, so edits to config.js show up as soon as GitHub publishes them
+  // (browsers would otherwise keep using a saved copy for up to 10 minutes).
+  document.write('<script src="config.js?v=' + Date.now() + '"><\/script>');
+</script>
 <script src="assets/site.js"></script>
 </body>
 </html>
