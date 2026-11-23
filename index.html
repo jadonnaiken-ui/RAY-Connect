@@ -21,54 +21,18 @@
     <div class="wrap hero-grid">
       <div>
         <span class="eyebrow">The RAY Connect silly game jam</span>
-        <h1 data-config-name>RAY Connect Bonanza 2027</h1>
+        <h1 data-config-name>RAY Connect Bonanza</h1>
         <p class="lead" data-config-tagline></p>
+        <p class="muted read" data-config-welcome></p>
         <div class="status" data-slot="status"></div>
         <div class="btn-row">
           <a class="btn btn-primary" href="guide.html">Read the guide <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           <a class="btn" href="submit.html">Submit your game</a>
-          <a class="btn" href="gallery.html">Browse the gallery</a>
           <a class="btn" href="gallery.html" data-api-only hidden>Rate the games</a>
         </div>
       </div>
       <div class="hero-art" aria-hidden="true">
         <span>🍞</span><span>🦆</span><span>🛋️</span><span>🐸</span><span>🚀</span><span>🧦</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap grid grid-2" style="align-items:start">
-      <div>
-        <span class="eyebrow">Welcome</span>
-        <h2>Build something gloriously silly</h2>
-      </div>
-      <div>
-        <p class="lead" data-config-welcome></p>
-        <p>You don't need to know how to code. You need a ridiculous idea, an AI assistant, and about an hour. Everything you need is in the <a href="guide.html">guide</a>, and there's a <a href="sample.html">sample game</a> showing the whole journey from first prompt to upload.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="section-head"><div><span class="eyebrow">The brief</span><h2>What you're building</h2></div></div>
-      <div class="grid grid-3">
-        <article class="card">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M10 13l-2 2 2 2M14 13l2 2-2 2"/></svg>
-          <h3 style="margin-top:1rem">One HTML file</h3>
-          <p class="muted">Your whole game lives in a single file that opens in any browser. No installs, no servers, no extra files.</p>
-        </article>
-        <article class="card">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
-          <h3 style="margin-top:1rem">Built with basic AI</h3>
-          <p class="muted">Use the free or standard version of Claude, ChatGPT, Gemini or Copilot. The challenge is what you can do with the little you have.</p>
-        </article>
-        <article class="card">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2 2 3.5 2 3.5-2 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>
-          <h3 style="margin-top:1rem">Silly, but playable</h3>
-          <p class="muted">The sillier the better, as long as it works. It needs a goal, a score or a win/lose moment, and a restart button.</p>
-        </article>
       </div>
     </div>
   </section>
@@ -80,16 +44,9 @@
     </div>
   </section>
 
-  <section class="section" data-show="judges">
-    <div class="wrap">
-      <div class="section-head"><div><span class="eyebrow">The judges</span><h2>Meet the panel</h2></div><a class="btn" href="judging.html">How judging works</a></div>
-      <ul class="judges judges-lg" data-slot="judge-list"></ul>
-    </div>
-  </section>
-
   <section class="section">
     <div class="wrap">
-      <div class="section-head"><div><span class="eyebrow">Rules</span><h2>Eight rules, all short</h2></div></div>
+      <div class="section-head"><div><span class="eyebrow">Rules</span><h2>Eight rules</h2></div></div>
       <ol class="rules" data-slot="rules"></ol>
     </div>
   </section>
@@ -99,15 +56,21 @@
       <div>
         <span class="eyebrow">Judging</span>
         <h2>How games are scored</h2>
-        <p class="muted">Each judge scores every game from 1 to 5 on five criteria. Scores are weighted to a total out of 100, so being funny counts most.</p>
         <div class="criteria" data-slot="criteria"></div>
-        <p style="margin-top:1.5rem"><a href="judging.html">Read the full judging guide</a></p>
+        <p style="margin-top:1.25rem"><a href="judging.html">How winners are picked</a></p>
       </div>
       <div data-show="timeline">
         <span class="eyebrow">Key dates</span>
         <h2>Timeline</h2>
         <ol class="timeline" data-slot="timeline"></ol>
       </div>
+    </div>
+  </section>
+
+  <section class="section" data-show="judges">
+    <div class="wrap">
+      <div class="section-head"><div><span class="eyebrow">The judges</span><h2>Meet the panel</h2></div></div>
+      <ul class="judges judges-lg" data-slot="judge-list"></ul>
     </div>
   </section>
 

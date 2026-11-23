@@ -22,9 +22,7 @@
       <span class="eyebrow">Sample game</span>
       <h1 data-slot="sc-title">The sample game</h1>
       <p class="lead" data-slot="sc-blurb"></p>
-      <div class="panel" data-show="placeholder-note" style="margin-top:1rem">
-        <strong>Heads up:</strong> this is a stand-in sample made by the organisers. The organiser's own game, and its real build story, will replace it soon.
-      </div>
+      <p class="muted" data-show="placeholder-note">A stand-in made by the organisers.</p>
     </div>
   </section>
 
@@ -32,12 +30,11 @@
     <div class="wrap grid" style="grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:2rem;align-items:start" id="sample-top">
       <div data-slot="sc-game"><p class="muted">Loading the game…</p></div>
       <aside class="card">
-        <h3>At a glance</h3>
         <dl style="margin:0;display:grid;gap:.9rem">
           <div><dt class="muted" style="font-size:.85rem">Built by</dt><dd style="margin:0" data-slot="sc-builder"></dd></div>
-          <div><dt class="muted" style="font-size:.85rem">Main AI used</dt><dd style="margin:0" data-slot="sc-llm"></dd></div>
-          <div><dt class="muted" style="font-size:.85rem">Time from idea to upload</dt><dd style="margin:0" data-slot="sc-time"></dd></div>
-          <div><dt class="muted" style="font-size:.85rem">Coding experience needed</dt><dd style="margin:0">None</dd></div>
+          <div><dt class="muted" style="font-size:.85rem">AI used</dt><dd style="margin:0" data-slot="sc-llm"></dd></div>
+          <div><dt class="muted" style="font-size:.85rem">Time taken</dt><dd style="margin:0" data-slot="sc-time"></dd></div>
+          <div><dt class="muted" style="font-size:.85rem">Coding needed</dt><dd style="margin:0">None</dd></div>
         </dl>
       </aside>
     </div>
@@ -45,8 +42,7 @@
 
   <section class="section">
     <div class="wrap">
-      <div class="section-head"><div><span class="eyebrow">Part 1</span><h2>How it was built: every prompt</h2></div></div>
-      <p class="read muted">These are the actual messages sent to the AI, in order. After each one, the game was played, then the next change was asked for. Notice how short and plain they are.</p>
+      <div class="section-head"><div><h2>Every prompt, in order</h2></div></div>
       <div class="chat" data-slot="sc-chat"></div>
       <div class="panel" style="margin-top:1.5rem">
         <h3>What we learned</h3>
@@ -57,29 +53,12 @@
 
   <section class="section" id="upload">
     <div class="wrap">
-      <div class="section-head"><div><span class="eyebrow">Part 2</span><h2>How it was submitted</h2></div></div>
-      <p class="read muted">From a file on a laptop to the gallery in about three minutes, without touching GitHub.</p>
+      <div class="section-head"><div><h2>How it was submitted</h2></div></div>
       <ol class="steps">
-        <li><strong>Save the game as one file</strong><p>In Claude, the download button on the game panel saves the <code>.html</code> file. In other assistants, copy all the code into a text file and save it ending in <code>.html</code>.</p></li>
-        <li><strong>Open the Submit page and sign in</strong><p>Click <a href="submit.html">Submit</a> in the menu, then <kbd>Sign in with Google</kbd> using a work account.</p></li>
-        <li><strong>Fill in four details</strong><p>Name, title ("Toaster Panic"), main AI ("Claude"), and a one-liner: "Your toaster has become self-aware and is firing breakfast at the ceiling. Catch it." Plus an emoji: 🍞.</p></li>
-        <li><strong>Choose the file and check the preview</strong><p>After picking the file, a preview appears right on the page. A quick play confirms it works in the gallery's sandbox.</p></li>
-        <li><strong>Submit, then wait about two minutes</strong><p>The website publishes the game automatically. A couple of minutes later it's in the <a href="gallery.html">gallery</a>, ready to play and rate.</p></li>
-        <li><strong>Two updates, then it's final</strong><p>Asked the AI for a fix? Back on the Submit page, choose the new file, tick "Yes, use an update", and submit. Everyone gets two updates, so it pays to test properly first.</p></li>
+        <li><strong>Saved it as one file</strong><p>Claude's download button saves the <code>.html</code> file.</p></li>
+        <li><strong>Signed in on the Submit page</strong><p>With a work Google account, then filled in the details and chose the file.</p></li>
+        <li><strong>Checked the preview, then submitted</strong><p>It was in the <a href="gallery.html">gallery</a> two minutes later.</p></li>
       </ol>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap card" style="display:flex;justify-content:space-between;align-items:center;gap:1.5rem;flex-wrap:wrap">
-      <div>
-        <h2 style="margin-bottom:.25rem">Your turn</h2>
-        <p class="muted" style="margin:0">Grab the starter prompt and make something even sillier.</p>
-      </div>
-      <div class="btn-row">
-        <a class="btn btn-primary" href="guide.html#prompt">Get the starter prompt</a>
-        <a class="btn" href="resources.html">Browse resources</a>
-      </div>
     </div>
   </section>
 </main>

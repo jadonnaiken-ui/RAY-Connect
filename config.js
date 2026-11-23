@@ -27,10 +27,7 @@ window.JAM_CONFIG = {
   tagline: "Two weeks. One HTML file. Supreme silliness.",
 
   // A friendly paragraph on the home page.
-  welcome:
-    "Welcome, brave builders! For two weeks, everyone at RAY gets to make the silliest " +
-    "browser game they can, with an AI assistant doing the heavy lifting. No coding experience " +
-    "needed. The real skill being tested: what can you make with the little you have?",
+  welcome: "Build the silliest browser game you can with an AI assistant. No coding needed. The skill being tested: what you can make with the little you have.",
 
   /* ---------- Dates ---------- */
 

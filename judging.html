@@ -20,67 +20,36 @@
   <section class="hero" style="padding-bottom:0">
     <div class="wrap">
       <span class="eyebrow">Judging</span>
-      <h1>How the winners are picked</h1>
-      <p class="lead">Two prizes are chosen by the judges. One is chosen by everyone.</p>
+      <h1>How winners are picked</h1>
+      <p class="lead">The judges pick the Grand champion and Runner-up. Everyone's star ratings pick People's choice.</p>
     </div>
   </section>
 
-  <section class="section" style="padding-top:2.5rem">
-    <div class="wrap grid grid-2">
-      <article class="card">
-        <span class="eyebrow">Grand champion &amp; Runner-up</span>
-        <h2>Chosen by the judges</h2>
-        <ul class="judges" data-slot="judge-list"></ul>
-        <p>Each judge plays every game and scores it on five criteria. The highest average score wins, and second place is Runner-up.</p>
-        <a href="#rubric">See the scoring rubric</a>
-      </article>
-      <article class="card">
-        <span class="eyebrow">People's choice</span>
-        <h2>Chosen by everyone</h2>
-        <p>Everyone can rate every game from 1 to 5 stars. The highest average rating wins.</p>
-        <a href="#peoples-choice">How star ratings work</a>
-      </article>
-    </div>
-  </section>
-
-  <section class="section" id="peoples-choice">
-    <div class="wrap grid grid-2" style="gap:3rem;align-items:start">
-      <div>
-        <span class="eyebrow">People's choice</span>
-        <h2>Rate every game you play</h2>
-        <p class="muted">Ratings are open now, and the averages are live in the gallery.</p>
-        <div class="panel" style="margin:1.25rem 0">
-          <strong>Entrants: you need at least <span data-min-ratings>5</span> ratings to qualify.</strong>
-          <p style="margin:.4rem 0 0">A game with fewer ratings can't win People's choice, however high its average. Submit early so people have time to play it, and share your game's link so colleagues can find it and rate it.</p>
-        </div>
-        <a class="btn btn-primary" href="gallery.html">Go rate some games</a>
-      </div>
-      <ol class="steps">
-        <li><strong>Sign in</strong><p>Use your <span data-work-domain>work</span> Google account (top right of any page).</p></li>
-        <li><strong>Play, then rate</strong><p>Open a game from the gallery and tap 1 to 5 stars at the top. Change your mind any time until the winners are announced.</p></li>
-        <li><strong>One rating per game</strong><p>You get one rating per game, and you can't rate your own.</p></li>
-        <li><strong>Enough votes to qualify</strong><p>A game needs at least <span data-min-ratings>5</span> ratings to win, so one lucky 5-star can't decide it. If two games tie, the one with more ratings wins.</p></li>
-      </ol>
-    </div>
-  </section>
-
-  <section class="section" id="rubric">
+  <section class="section" id="rubric" style="padding-top:2.5rem">
     <div class="wrap">
-      <div class="section-head"><div><span class="eyebrow">For the judges</span><h2>The scoring rubric</h2></div></div>
-      <p class="read">Each judge scores each game from 1 to 5 per criterion. Each score is multiplied, so a perfect game scores 100.</p>
+      <div class="section-head"><div><span class="eyebrow">Grand champion &amp; Runner-up</span><h2>The judges' rubric</h2></div></div>
+      <ul class="judges" data-slot="judge-list"></ul>
       <div class="table-wrap">
         <table>
           <thead><tr><th scope="col">Criterion</th><th scope="col">Weight</th><th scope="col">Multiplier</th><th scope="col">What judges look for</th></tr></thead>
           <tbody data-slot="rubric"></tbody>
         </table>
       </div>
-      <div class="grid grid-3" style="margin-top:1.25rem">
-        <div class="panel"><strong>1: Didn't land.</strong> <span class="muted">Broken, confusing, or the joke fell flat.</span></div>
-        <div class="panel"><strong>3: Solid, got a smile.</strong> <span class="muted">Works well and raised a grin.</span></div>
-        <div class="panel"><strong>5: Still talking about it.</strong> <span class="muted">Quoted at lunch the next day.</span></div>
-      </div>
-      <p class="muted" style="margin-top:1.25rem">The final score is the average of the judges' totals. Ties go to the higher Silliness average; if it's still tied, the judges discuss. Judges don't score their own game. Games by "The organisers" are examples and aren't judged.</p>
+      <p class="muted" style="margin-top:1rem">Each criterion is scored 1 (didn't land) to 5 (still talking about it), for a total out of 100. A game's score is the judges' average. Ties go to the higher Silliness score. Judges don't score their own game.</p>
     </div>
+  </section>
+
+  <section class="section" id="peoples-choice">
+    <div class="wrap"><div class="read">
+      <span class="eyebrow">People's choice</span>
+      <h2>Rate every game you play</h2>
+      <ul>
+        <li>Sign in, open a game, and give it 1 to 5 stars. You can change your rating until the winners are announced.</li>
+        <li>One rating per game, and not your own.</li>
+        <li>A game needs at least <strong><span data-min-ratings>5</span> ratings</strong> to win. Highest average wins; ties go to the game with more ratings.</li>
+      </ul>
+      <a class="btn btn-primary" href="gallery.html">Rate some games</a>
+    </div></div>
   </section>
 
   <section class="section" id="score">

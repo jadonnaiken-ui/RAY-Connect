@@ -21,7 +21,7 @@
     <div class="wrap">
       <span class="eyebrow">Submit</span>
       <h1>Send in your game</h1>
-      <p class="lead">Sign in, fill in four details, choose your file, and it's in the gallery about two minutes later. You get one game and up to two updates, so make your first version count. Submissions close <span data-slot="deadline-text">at the deadline</span>.</p>
+      <p class="lead">Sign in, add your details and your file. It's live in the gallery about two minutes later. Submissions close <span data-slot="deadline-text">at the deadline</span>.</p>
     </div>
   </section>
 
@@ -29,22 +29,20 @@
     <div class="wrap"><div style="max-width:860px">
 
       <div data-state="off" hidden class="empty">
-        <span class="big" aria-hidden="true">🛠️</span>
         <h3>Online submissions open soon</h3>
-        <p>The organisers are still connecting this page. In the meantime, message <strong data-contact>the organisers</strong> with your <code>.html</code> file.</p>
+        <p>Until then, message <strong data-contact>the organisers</strong> with your <code>.html</code> file.</p>
       </div>
 
       <div data-state="closed" hidden class="empty">
-        <span class="big" aria-hidden="true">🔒</span>
         <h3>Submissions are closed</h3>
-        <p>The deadline has passed. Thanks to everyone who entered! Go <a href="gallery.html">rate the games</a>.</p>
+        <p>Thanks to everyone who entered. Go <a href="gallery.html">rate the games</a>.</p>
       </div>
 
       <div data-state="loading" hidden class="empty"><p class="muted">Signing you in…</p></div>
 
       <div data-state="signin" hidden class="card" style="text-align:center;padding:2.5rem 1.5rem">
         <h2>Sign in to submit</h2>
-        <p class="muted">Use your <span data-work-domain>work</span> Google account. This makes sure only you can update your game.</p>
+        <p class="muted">Use your <span data-work-domain>work</span> Google account.</p>
         <div class="auth-slot" data-auth="large" style="justify-content:center"></div>
       </div>
 
@@ -72,38 +70,34 @@
               <p class="hint" id="sf-count" aria-live="polite">0 / 100</p>
             </div>
             <div class="field">
-              <label for="sf-emoji">One emoji for your game</label>
+              <label for="sf-emoji">Emoji for your game card</label>
               <input id="sf-emoji" maxlength="12" placeholder="🛋️">
-              <p class="hint">Shown on your gallery card. On a laptop: Windows key + . (Windows), Ctrl + Cmd + Space (Mac), or Search + Shift + Space (Chromebook).</p>
             </div>
             <div class="field">
               <label for="sf-thumb">Screenshot <span class="muted">(optional)</span></label>
               <input id="sf-thumb" type="file" accept="image/png,image/jpeg">
-              <p class="hint">Replaces the emoji on your card.</p>
               <div data-slot="thumb-preview"></div>
             </div>
             <div class="field">
               <label for="sf-photo">Your RAY profile picture</label>
               <input id="sf-photo" type="file" accept="image/png,image/jpeg" required>
-              <p class="hint" id="sf-photo-hint">Required. Use your RAY profile picture. It's shown as a small round picture next to your name.</p>
+              <p class="hint" id="sf-photo-hint">Required.</p>
               <div data-slot="photo-preview"></div>
             </div>
             <div class="field field-wide">
-              <label for="sf-file">Your game file (.html)</label>
+              <label for="sf-file">Your game file (.html, max 3 MB)</label>
               <input id="sf-file" type="file" accept=".html,.htm,text/html" required>
-              <p class="hint">The file you saved from your AI assistant. Max 3 MB.</p>
               <div data-slot="file-notes"></div>
             </div>
           </div>
           <div data-slot="preview" style="margin-top:1.25rem"></div>
           <div data-slot="update-confirm"></div>
-          <p class="muted" style="margin:1.25rem 0">Your game's address will be <code>play.html?game=<span id="sf-slug"></span></code></p>
-          <button class="btn btn-primary" id="sf-submit" type="submit">Submit my game</button>
+          <p hidden><span id="sf-slug"></span></p>
+          <button class="btn btn-primary" id="sf-submit" type="submit" style="margin-top:1.25rem">Submit my game</button>
         </form>
         <div data-slot="submit-result" style="margin-top:1.25rem" aria-live="polite"></div>
+        <p class="muted" style="margin-top:1.25rem;font-size:.92rem"><strong>One game, <span data-max-updates>2</span> updates.</strong> Your AI chat is your canvas: experiment there as much as you like. This page is the stage: submit your finished game once, then you can send up to <span data-max-updates>2</span> updates to polish it. You can't swap it for a different game.</p>
       </div>
-
-      <p class="muted" style="margin-top:2rem">Not built yet? Start with the <a href="guide.html">guide</a>. Stuck? Message <span data-contact>the organisers</span>.</p>
     </div></div>
   </section>
 </main>

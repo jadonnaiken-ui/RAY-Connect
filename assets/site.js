@@ -34,14 +34,14 @@
   ];
 
   var RULES = [
-    ["One HTML file", "Everything in a single .html file that opens in a browser. No extra files, no internet needed."],
+    ["One HTML file", "Everything in a single .html file that works without the internet."],
     ["Understandable in 30 seconds", "Put a one-line \"how to play\" on screen."],
-    ["Must be playable", "A goal, a score or a win/lose moment, and a way to restart."],
-    ["No company data", "No logos, customer data or anything confidential. The site may be public."],
-    ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo entries, one game each."],
-    ["Keep it kind", "Silly, not mean. No games about a colleague without their blessing."],
-    ["The deadline is firm", "Get your game in before submissions close. Late entries can't be accepted."],
-    ["Get people playing", "To qualify for People's choice, your game needs at least {min} star ratings. Submit early and share your link so colleagues can play and rate it."]
+    ["Must be playable", "A goal or a score, and a way to restart."],
+    ["No company data", "No logos or confidential info. The site is public."],
+    ["Any tool goes", "Any AI assistant, or code it yourself. Solo, one game each."],
+    ["Keep it kind", "Silly, not mean."],
+    ["The deadline is firm", "Late entries can't be accepted."],
+    ["Get people playing", "People's choice needs at least {min} star ratings. Submit early and share your link."]
   ];
 
   var AWARD_LABEL = { "winner": "Winner", "runner-up": "Runner-up", "peoples-choice": "People's choice" };
@@ -864,9 +864,7 @@
     function setPhotoNeeded(needed) {
       state.hasPhoto = !needed;
       $("#sf-photo").required = needed;
-      $("#sf-photo-hint").textContent = needed
-        ? "Required. Use your RAY profile picture. It's shown as a small round picture next to your name."
-        : "Optional for this update: your current picture is kept unless you choose a new one.";
+      $("#sf-photo-hint").textContent = needed ? "Required." : "Optional: your current picture is kept.";
     }
     var llmSelect = $("#sf-llm");
     llmSelect.innerHTML = (CFG.llms || ["Claude", "ChatGPT", "Other"]).map(function (l) { return "<option>" + esc(l) + "</option>"; }).join("");
@@ -888,8 +886,7 @@
       var g = mine[0];
       state.mine = g || null;
       if (!g) {
-        fill("my-games", '<div class="panel" style="margin-bottom:1.25rem"><strong>You get one game, so make it count.</strong>' +
-          '<p style="margin:.4rem 0 0">After you submit, you can send up to ' + plural(max, "update") + " to fix or improve it, but you can't swap it for a different game.</p></div>");
+        fill("my-games", "");
         $("#submit-form").hidden = false;
         $("#sf-title").readOnly = false;
         fill("update-confirm", "");
@@ -1059,13 +1056,13 @@
         fill("submit-result",
           '<div class="card success-box"><h3>' + (res.updated ? "Updated! " + esc(title) + " is now v" + res.version + " 🎉" : "You're in! " + esc(title) + " has been submitted 🎉") + "</h3>" +
 
-          "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. " +
+          "<p>It'll be in the gallery in about 2 minutes. " +
           (res.updatesLeft ? "You have " + plural(res.updatesLeft, "update") + " left if you want to improve it before the deadline." : "That was your last update, so this version is final.") + "</p>" +
           '<p><strong>Now get people playing.</strong> You need at least ' + (CFG.minRatingsForPeoplesChoice || 5) + " star ratings to qualify for People's choice. Share your link in the " + withChatLink(CFG.chatName || "RAY Connect chat") + ":</p>" +
           '<p><code id="share-link">' + esc(new URL("play.html?game=" + encodeURIComponent(res.slug), location.href).href) + '</code></p>' +
           '<p><button class="btn btn-small copy-btn" type="button" data-copy="#share-link">' + icon("copy") + " Copy link</button></p>" +
           '<div class="btn-row"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(res.slug) + '">' + icon("play") + ' Play it</a><a class="btn" href="gallery.html">Go to the gallery</a></div>' +
-          '<p class="muted" style="margin:1rem 0 0">If it says "file missing" at first, wait a minute and refresh.</p></div>');
+          "</div>");
         bindCopyButtons(slot("submit-result"));
         slot("submit-result").scrollIntoView({ behavior: "smooth", block: "center" });
         return refreshMe().then(render);
@@ -1103,7 +1100,7 @@
         var html = "";
         if (u.isJudge) {
           var done = list.filter(function (g) { return scores[g.slug]; }).length;
-          html += "<p><strong>Hi " + esc(u.givenName) + ".</strong> You've scored " + done + " of " + plural(list.length, "game") + ". Play each one, score it 1–5 on each criterion, and save. You can change scores any time. Skip your own game.</p>";
+          html += "<p><strong>Hi " + esc(u.givenName) + ".</strong> You've scored " + done + " of " + plural(list.length, "game") + ". Scores can be changed any time.</p>";
           html += list.length ? list.map(function (g) {
             var s = scores[g.slug] || [];
             return '<form class="card judge-row" data-judge="' + esc(g.slug) + '">' +
