@@ -76,7 +76,13 @@ window.JAM_CONFIG = {
 
   // Leave as [] to show "Judges will be announced at kick-off".
   // (Their email addresses go in the backend's JUDGE_EMAILS setting, so they can score on the site.)
-  judges: ["Jadon", "Ronald", "Joshua"], // e.g. ["Thandi", "Sam", "Priya"]
+  // Photos: upload square pictures into the assets/judges folder, then put the path here.
+  // If a photo is missing, the judge's initials are shown instead.
+  judges: [
+    { name: "Jadon", photo: "assets/judges/jadon.jpg" },
+    { name: "Ronald", photo: "assets/judges/ronald.jpg" },
+    { name: "Joshua", photo: "assets/judges/joshua.jpg" }
+  ],
 
   // Prizes. Edit the amounts and wording. Remove a block to remove a prize.
   prizes: [ // >>> PLACEHOLDER amounts <<<

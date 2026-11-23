@@ -40,7 +40,7 @@ try {
 }
 
 /* ---------- games.json ---------- */
-const ALLOWED = new Set(["slug", "title", "authors", "llm", "file", "blurb", "emoji", "thumbnail", "added", "award", "excludeFromJudging"]);
+const ALLOWED = new Set(["slug", "title", "authors", "llm", "file", "blurb", "emoji", "thumbnail", "photo", "added", "updated", "version", "award", "excludeFromJudging"]);
 const AWARDS = [null, "winner", "runner-up", "peoples-choice"];
 
 let text = "";
@@ -131,6 +131,15 @@ if (Array.isArray(games)) {
       if (typeof g.thumbnail !== "string" || !existsSync(join(root, g.thumbnail))) {
         error(`${label}: can't find the thumbnail "${g.thumbnail}". Upload it, or delete the "thumbnail" line.`);
       }
+    }
+    if (g.photo != null && g.photo !== "" && (typeof g.photo !== "string" || !existsSync(join(root, g.photo)))) {
+      error(`${label}: can't find the photo "${g.photo}". Upload it, or delete the "photo" line.`);
+    }
+    if (g.version !== undefined && !(Number.isInteger(g.version) && g.version >= 1)) {
+      error(`${label}: "version" must be a whole number like 2, without quotes.`);
+    }
+    if (g.updated != null && !(typeof g.updated === "string" && /^\d{4}-\d{2}-\d{2}$/.test(g.updated))) {
+      error(`${label}: "updated" must be a date like "2026-12-01".`);
     }
     if (g.added != null && !(typeof g.added === "string" && /^\d{4}-\d{2}-\d{2}$/.test(g.added) && !isNaN(Date.parse(g.added)))) {
       error(`${label}: "added" must be a date like "2027-01-15".`);

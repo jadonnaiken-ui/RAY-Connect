@@ -13,12 +13,14 @@
 
 const TABS = {
   submissions: ["Timestamp", "Email", "Name", "Slug", "Title", "Authors", "AI used", "Blurb", "Emoji", "Version"],
-  ratings: ["Updated", "Email", "Slug", "Stars"],
-  judging: ["Updated", "Email", "Slug", "Silliness", "Playability", "Originality", "Presentation", "Wildcard", "Weighted total"]
+  ratings: ["Updated", "Email", "Slug", "Stars", "Version rated"],
+  judging: ["Updated", "Email", "Slug", "Silliness", "Playability", "Originality", "Presentation", "Wildcard", "Weighted total"],
+  removed: ["Removed at", "Removed by", "From tab", "Row"]
 };
 const RUBRIC_MULTIPLIERS = [8, 4, 4, 2, 2];
 const MAX_GAME_BYTES = 3 * 1024 * 1024;
 const MAX_THUMB_BYTES = 1024 * 1024;
+const MAX_PHOTO_BYTES = 512 * 1024;
 const SESSION_SECONDS = 6 * 60 * 60; // how long people stay signed in (6 hours is the maximum)
 
 class UserError extends Error {
@@ -47,6 +49,7 @@ function doPost(e) {
       case "submit": return submit(user, data);
       case "judge": return judge(user, data);
       case "results": return results(user);
+      case "delete": return deleteGame(user, data);
       default: throw new UserError("Unknown action.");
     }
   });
@@ -155,13 +158,17 @@ function endSession(token) {
 /* =========================== Actions =========================== */
 
 function me(user, token) {
-  const myRatings = {};
-  rows("ratings").forEach(r => { if (r.Email === user.email) myRatings[r.Slug] = Number(r.Stars); });
+  const myRatings = {}, myRatedVersions = {};
+  rows("ratings").forEach(r => {
+    if (r.Email !== user.email) return;
+    myRatings[r.Slug] = Number(r.Stars);
+    myRatedVersions[r.Slug] = Number(r["Version rated"]) || 1;
+  });
   const mine = {};
   rows("submissions").forEach(r => {
     if (r.Email === user.email) mine[r.Slug] = { slug: r.Slug, title: r.Title, authors: String(r.Authors).split(" & "), llm: r["AI used"], blurb: r.Blurb, emoji: r.Emoji };
   });
-  const out = { ok: true, user: user, myRatings: myRatings, mySubmissions: Object.keys(mine).map(k => mine[k]) };
+  const out = { ok: true, user: user, myRatings: myRatings, myRatedVersions: myRatedVersions, mySubmissions: Object.keys(mine).map(k => mine[k]) };
   if (!isSession(token)) out.session = startSession(user);
   if (user.isJudge) {
     out.myScores = {};
@@ -179,9 +186,10 @@ function rate(user, data) {
   const game = findGame(data.slug);
   if (game.excludeFromJudging) throw new UserError("This is an example game, so it can't be rated.");
   if (isOwner(user, game)) throw new UserError("Nice try! You can't rate your own game.");
-  withLock(() => upsert("ratings", user.email, game.slug, [new Date(), user.email, game.slug, stars]));
+  const version = Number(game.version) || 1;
+  withLock(() => upsert("ratings", user.email, game.slug, [new Date(), user.email, game.slug, stars, version]));
   CacheService.getScriptCache().remove("stats");
-  return { ok: true, stars: stars, stats: ratingStats()[game.slug] };
+  return { ok: true, stars: stars, version: version, stats: ratingStats()[game.slug] };
 }
 
 function judge(user, data) {
@@ -236,41 +244,94 @@ function submit(user, d) {
     thumb = { bytes: bytes, ext: m[1] === "png" ? "png" : "jpg" };
   }
 
+  let photo = null;
+  if (d.photo) {
+    const m = String(d.photo).match(/^data:image\/jpeg;base64,(.+)$/);
+    if (!m) throw new UserError("Your photo must be a JPG image.");
+    photo = Utilities.base64Decode(m[1]);
+    if (photo.length > MAX_PHOTO_BYTES) throw new UserError("Your photo is too large. Try a smaller one.");
+  }
+
   const slug = (slugify(authors[0].split(" ")[0]) + "-" + slugify(title)).slice(0, 60).replace(/-+$/, "");
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) throw new UserError("Please use letters or numbers in your name and title.");
 
   return withLock(() => {
-    const manifest = githubGet("games.json");
-    const games = JSON.parse(manifest.text);
-    const index = games.findIndex(g => g.slug === slug);
-    const existing = index === -1 ? null : games[index];
-    if (existing && !isOwner(user, existing) && !user.isAdmin) {
-      throw new UserError("There's already a game called \"" + existing.title + "\" by " + existing.authors.join(" & ") + ". Please pick a different title.");
-    }
-
-    const file = "games/" + slug + ".html";
-    githubPut(file, htmlBytes, (existing ? "Update " : "Add ") + title + " by " + authors.join(" & "));
-    let thumbnail = existing && existing.thumbnail;
-    if (thumb) {
-      thumbnail = "games/thumbs/" + slug + "." + thumb.ext;
-      githubPut(thumbnail, thumb.bytes, "Thumbnail for " + title);
-    }
-
-    const entry = {
-      slug: slug, title: title, authors: authors, llm: llm, file: file, blurb: blurb, emoji: emoji,
-      added: existing && existing.added || Utilities.formatDate(new Date(), "Etc/GMT", "yyyy-MM-dd"),
-      award: existing ? existing.award || null : null
-    };
-    if (thumbnail) entry.thumbnail = thumbnail;
-    if (existing) games[index] = entry; else games.push(entry);
-    githubPut("games.json", Utilities.newBlob(JSON.stringify(games, null, 2) + "\n").getBytes(),
-      (existing ? "Update " : "List ") + title + " in the gallery", manifest.sha);
-    CacheService.getScriptCache().remove("games");
-
-    const version = rows("submissions").filter(r => r.Slug === slug).length + 1;
-    sheet("submissions").appendRow([new Date(), user.email, user.name, slug, title, authors.join(" & "), llm, blurb, emoji, version]);
-    return { ok: true, slug: slug, updated: !!existing };
+    const today = Utilities.formatDate(new Date(), "Etc/GMT", "yyyy-MM-dd");
+    const result = commitGames(games => {
+      const index = games.findIndex(g => g.slug === slug);
+      const existing = index === -1 ? null : games[index];
+      if (existing && !isOwner(user, existing) && !user.isAdmin) {
+        throw new UserError("There's already a game called \"" + existing.title + "\" by " + existing.authors.join(" & ") + ". Please pick a different title.");
+      }
+      const file = "games/" + slug + ".html";
+      const files = [{ path: file, bytes: htmlBytes }];
+      let thumbnail = existing && existing.thumbnail;
+      if (thumb) {
+        thumbnail = "games/thumbs/" + slug + "." + thumb.ext;
+        files.push({ path: thumbnail, bytes: thumb.bytes });
+      }
+      let photoPath = existing && existing.photo;
+      if (photo) {
+        photoPath = "games/photos/" + slug + ".jpg";
+        files.push({ path: photoPath, bytes: photo });
+      }
+      const version = existing ? (Number(existing.version) || 1) + 1 : 1;
+      const entry = {
+        slug: slug, title: title, authors: authors, llm: llm, file: file, blurb: blurb, emoji: emoji,
+        added: existing && existing.added || today, version: version,
+        award: existing ? existing.award || null : null
+      };
+      if (existing) entry.updated = today;
+      if (thumbnail) entry.thumbnail = thumbnail;
+      if (photoPath) entry.photo = photoPath;
+      if (existing) games[index] = entry; else games.push(entry);
+      return {
+        files: files,
+        message: (existing ? "Update " + title + " to v" + version : "Add " + title) + " by " + authors.join(" & "),
+        result: { slug: slug, updated: !!existing, version: version }
+      };
+    });
+    sheet("submissions").appendRow([new Date(), user.email, user.name, slug, title, authors.join(" & "), llm, blurb, emoji, result.version]);
+    return Object.assign({ ok: true }, result);
   });
+}
+
+/* =========================== Removing a game (admins) =========================== */
+
+function deleteGame(user, data) {
+  if (!user.isAdmin) throw new UserError("Only organisers can remove games.");
+  const slug = String(data.slug || "");
+  return withLock(() => {
+    const result = commitGames(games => {
+      const index = games.findIndex(g => g.slug === slug);
+      if (index === -1) throw new UserError("That game has already been removed.");
+      const g = games.splice(index, 1)[0];
+      const files = [g.file, g.thumbnail, g.photo]
+        .filter(p => p && String(p).indexOf("games/") === 0)
+        .map(p => ({ path: p, remove: true }));
+      return { files: files, message: "Remove " + g.title + " from the gallery", result: { title: g.title } };
+    });
+    // Move its ratings, judges' scores and submission history to the "Removed" tab,
+    // so standings stay clean and a future game with the same name starts fresh.
+    const moved = ["ratings", "judging", "submissions"].reduce((n, tab) => n + archiveRows(tab, slug, user.email), 0);
+    CacheService.getScriptCache().remove("stats");
+    return { ok: true, title: result.title, archived: moved };
+  });
+}
+
+function archiveRows(name, slug, by) {
+  const sh = sheet(name);
+  const values = sh.getDataRange().getValues();
+  const col = values[0].indexOf("Slug");
+  const removed = sheet("removed");
+  let count = 0;
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (values[i][col] !== slug) continue;
+    removed.appendRow([new Date(), by, name, JSON.stringify(values[i])]);
+    sh.deleteRow(i + 1);
+    count++;
+  }
+  return count;
 }
 
 /* =========================== Rankings =========================== */
@@ -410,9 +471,16 @@ function sheet(name) {
     sh.appendRow(TABS[name]);
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, TABS[name].length).setFontWeight("bold");
+  } else if (!headersChecked[name]) {
+    // Older sheets: add any new column headings without touching existing data.
+    const want = TABS[name];
+    const have = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].filter(String);
+    if (have.length < want.length) sh.getRange(1, 1, 1, want.length).setValues([want]).setFontWeight("bold");
   }
+  headersChecked[name] = true;
   return sh;
 }
+const headersChecked = {};
 
 function rows(name) {
   const values = sheet(name).getDataRange().getValues();
@@ -452,25 +520,57 @@ function github(method, path, body) {
   return { code: code, data: text ? JSON.parse(text) : {} };
 }
 
-function githubGet(path) {
+function githubGet(path, ref) {
   const s = settings();
-  const r = github("get", "/contents/" + encodeURI(path) + "?ref=" + encodeURIComponent(s.branch));
+  const r = github("get", "/contents/" + encodeURI(path) + "?ref=" + encodeURIComponent(ref || s.branch));
   if (r.code === 404) throw new Error("Couldn't find " + path + " in " + s.repo + ". Check GITHUB_REPO, and that the token can access that repository.");
   if (r.code !== 200) throw new Error("GitHub error " + r.code + " reading " + path + ".");
   const text = r.data.content ? Utilities.newBlob(Utilities.base64Decode(r.data.content.replace(/\n/g, ""))).getDataAsString("UTF-8") : "";
   return { sha: r.data.sha, text: text };
 }
 
-function githubPut(path, bytes, message, sha) {
+// Publishes all changes for one action as a SINGLE commit, so GitHub Pages rebuilds once
+// (Pages allows about 10 rebuilds an hour). `change(games)` edits the games list in place
+// and returns { files: [{ path, bytes } | { path, remove: true }], message, result }.
+function commitGames(change) {
   const s = settings();
-  if (sha === undefined) {
-    const head = github("get", "/contents/" + encodeURI(path) + "?ref=" + encodeURIComponent(s.branch));
-    sha = head.code === 200 ? head.data.sha : null;
+  const ok = (r, what) => { if (r.code < 200 || r.code > 299) throw new Error("GitHub error " + r.code + " " + what + ": " + (r.data.message || "")); return r.data; };
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const headSha = ok(github("get", "/git/ref/heads/" + s.branch), "reading the branch").object.sha;
+    const baseTree = ok(github("get", "/git/commits/" + headSha), "reading the latest commit").tree.sha;
+    const games = JSON.parse(githubGet("games.json", headSha).text);
+    const plan = change(games);
+
+    let existing = null;
+    const tree = [];
+    plan.files.forEach(f => {
+      if (f.remove) {
+        existing = existing || treePaths(baseTree);
+        if (existing[f.path]) tree.push({ path: f.path, mode: "100644", type: "blob", sha: null });
+        return;
+      }
+      const blob = ok(github("post", "/git/blobs", { content: Utilities.base64Encode(f.bytes), encoding: "base64" }), "uploading " + f.path);
+      tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
+    });
+    const manifest = ok(github("post", "/git/blobs", { content: Utilities.base64Encode(Utilities.newBlob(JSON.stringify(games, null, 2) + "\n").getBytes()), encoding: "base64" }), "uploading games.json");
+    tree.push({ path: "games.json", mode: "100644", type: "blob", sha: manifest.sha });
+
+    const newTree = ok(github("post", "/git/trees", { base_tree: baseTree, tree: tree }), "building the change");
+    const commit = ok(github("post", "/git/commits", { message: plan.message, tree: newTree.sha, parents: [headSha] }), "saving the change");
+    const update = github("patch", "/git/refs/heads/" + s.branch, { sha: commit.sha, force: false });
+    if (update.code === 200) {
+      CacheService.getScriptCache().remove("games");
+      return plan.result;
+    }
+    if (update.code !== 409 && update.code !== 422) ok(update, "publishing");
+    Utilities.sleep(800 * attempt); // someone else published at the same moment: start again on top of theirs
   }
-  const body = { message: message, content: Utilities.base64Encode(bytes), branch: s.branch };
-  if (sha) body.sha = sha;
-  const r = github("put", "/contents/" + encodeURI(path), body);
-  if (r.code === 409 || r.code === 422) throw new UserError("Someone else was submitting at the same moment. Please press Submit again.");
-  if (r.code !== 200 && r.code !== 201) throw new Error("GitHub error " + r.code + " saving " + path + ": " + (r.data.message || ""));
-  return r.data;
+  throw new UserError("Lots of people are publishing right now. Please press the button again.");
+}
+
+function treePaths(treeSha) {
+  const r = github("get", "/git/trees/" + treeSha + "?recursive=1");
+  const out = {};
+  (r.data.tree || []).forEach(t => { out[t.path] = true; });
+  return out;
 }

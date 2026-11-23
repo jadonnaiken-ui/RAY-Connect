@@ -406,6 +406,8 @@
         $$("[data-stars]", root).forEach(function (b) { b.disabled = true; });
         api("rate", { slug: g.slug, stars: stars }).then(function (res) {
           Auth.me.myRatings[g.slug] = stars;
+          Auth.me.myRatedVersions = Auth.me.myRatedVersions || {};
+          Auth.me.myRatedVersions[g.slug] = res.version || 1;
           if (res.stats) Stats[g.slug] = res.stats;
           toast("You gave " + g.title + " " + plural(stars, "star") + ". You can change it any time.", "good");
           if (onDone) onDone();
@@ -523,6 +525,20 @@
     $$("[data-api-only]").forEach(function (el) { el.hidden = !apiOn(); });
   }
 
+  function judgeList() {
+    return (CFG.judges || []).map(function (j) { return typeof j === "string" ? { name: j } : j; }).filter(function (j) { return j && j.name; });
+  }
+
+  function renderJudges() {
+    var judges = judgeList();
+    fill("judges", judges.length ? esc(joinNames(judges.map(function (j) { return j.name; }))) : "The judges will be announced at kick-off.");
+    var el = fill("judge-list", judges.map(function (j) {
+      return '<li>' + avatar(j.photo, j.name, "lg") + '<strong>' + esc(j.name) + "</strong>" + (j.role ? '<span class="muted">' + esc(j.role) + "</span>" : "") + "</li>";
+    }).join(""));
+    if (el) bindAvatarFallbacks(el);
+    if (!judges.length) hide("judges");
+  }
+
   /* ---------------- Games ---------------- */
 
   function loadGames() {
@@ -555,6 +571,36 @@
     return '<div class="error-box"><h3>The game list didn\'t load</h3>' + body + "</div>";
   }
 
+  function recent(date) {
+    if (!date) return false;
+    var t = Date.parse(date + "T00:00:00");
+    return !isNaN(t) && Date.now() >= t && Date.now() - t < 36 * 3600 * 1000;
+  }
+
+  function initials(name) {
+    return String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join("").toUpperCase();
+  }
+
+  // A round photo, or initials when there's no photo (or it fails to load).
+  function avatar(src, name, size) {
+    var cls = "avatar" + (size ? " avatar-" + size : "");
+    var fallback = '<span class="' + cls + '" aria-hidden="true">' + esc(initials(name)) + "</span>";
+    if (!src) return fallback;
+    return '<img class="' + cls + '" src="' + esc(src) + '" alt="" loading="lazy" data-initials="' + esc(initials(name)) + '">';
+  }
+
+  function bindAvatarFallbacks(root) {
+    $$("img.avatar[data-initials]", root).forEach(function (img) {
+      img.addEventListener("error", function () {
+        var span = document.createElement("span");
+        span.className = img.className;
+        span.setAttribute("aria-hidden", "true");
+        span.textContent = img.getAttribute("data-initials");
+        img.replaceWith(span);
+      });
+    });
+  }
+
   function isNew(g) {
     if (!g.added) return false;
     var added = Date.parse(g.added + "T00:00:00");
@@ -569,6 +615,8 @@
       : visual;
     var badges = [];
     if (isNew(g)) badges.push('<span class="sticker mint">New</span>');
+    else if (recent(g.updated)) badges.push('<span class="sticker mint">Updated</span>');
+    if (Number(g.version) > 1) badges.push('<span class="sticker">v' + Number(g.version) + "</span>");
     if (g.excludeFromJudging) badges.push('<span class="sticker">Example, not judged</span>');
     var meta = [];
     if (g.llm) meta.push('<span class="sticker">Made with ' + esc(g.llm) + "</span>");
@@ -582,13 +630,14 @@
       (badges.length ? '<div class="badges">' + badges.join("") + "</div>" : "") +
       (opts.award ? '<span class="award-tag">' + esc(AWARD_LABEL[g.award] || g.award) + "</span>" : "") +
       '<div class="game-body"><h3>' + esc(g.title) + "</h3>" +
-      '<p class="game-by">by ' + esc(joinNames(g.authors || [])) + "</p>" +
+      '<p class="game-by">' + avatar(g.photo, (g.authors || [])[0]) + "<span>by " + esc(joinNames(g.authors || [])) + "</span></p>" +
       '<p class="game-blurb">' + esc(g.blurb || "") + "</p>" +
       '<div class="game-meta">' + meta.join("") + "</div>" +
       "</div></a>";
   }
 
   function bindThumbFallbacks(root) {
+    bindAvatarFallbacks(root);
     $$("img[data-fallback]", root).forEach(function (img) {
       img.addEventListener("error", function () {
         var span = document.createElement("span");
@@ -630,7 +679,7 @@
   var pages = {};
 
   pages.home = function () {
-    renderStatus(); renderPrizes(); renderRules(); renderCriteria(); renderTimeline();
+    renderStatus(); renderPrizes(); renderRules(); renderCriteria(); renderTimeline(); renderJudges();
     var el = slot("latest");
     if (!el) return;
     Promise.all([loadGames(), loadStats()]).then(function (res) {
@@ -731,7 +780,7 @@
 
   pages.submit = function () {
     var form = $("#submit-form");
-    var state = { html: "", fileName: "", thumb: "" };
+    var state = { html: "", fileName: "", thumb: "", photo: "" };
     var llmSelect = $("#sf-llm");
     llmSelect.innerHTML = (CFG.llms || ["Claude", "ChatGPT", "Other"]).map(function (l) { return "<option>" + esc(l) + "</option>"; }).join("");
     fill("deadline-text", esc(isNaN(deadlineMs()) ? "the deadline" : formatDeadline()));
@@ -832,6 +881,26 @@
       img.src = URL.createObjectURL(file);
     });
 
+    $("#sf-photo").addEventListener("change", function (e) {
+      var file = e.target.files[0];
+      state.photo = ""; fill("photo-preview", "");
+      if (!file) return;
+      if (!/^image\//.test(file.type)) { fill("photo-preview", '<p class="field-error">Please choose a photo (PNG or JPG).</p>'); return; }
+      // Crop to a centred square and shrink to 256px so it uploads quickly.
+      var img = new Image();
+      img.onload = function () {
+        var side = Math.min(img.width, img.height), size = 256;
+        var c = document.createElement("canvas");
+        c.width = size; c.height = size;
+        c.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+        state.photo = c.toDataURL("image/jpeg", 0.85);
+        fill("photo-preview", '<img src="' + state.photo + '" alt="Your photo" class="avatar avatar-lg">');
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = function () { fill("photo-preview", '<p class="field-error">That photo couldn\'t be read. Try a PNG or JPG.</p>'); };
+      img.src = URL.createObjectURL(file);
+    });
+
     form.addEventListener("input", update);
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -843,12 +912,12 @@
       btn.disabled = true; btn.textContent = "Publishing… (about 10 seconds)";
       api("submit", {
         title: title, authors: authors(), llm: llmSelect.value, blurb: blurb,
-        emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null
+        emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null, photo: state.photo || null
       }).then(function (res) {
-        form.reset(); state = { html: "", fileName: "", thumb: "" };
-        fill("preview", ""); fill("file-notes", ""); fill("thumb-preview", "");
+        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "" };
+        fill("preview", ""); fill("file-notes", ""); fill("thumb-preview", ""); fill("photo-preview", "");
         fill("submit-result",
-          '<div class="card success-box"><h3>' + (res.updated ? "Updated! " : "You're in! ") + esc(title) + " has been submitted 🎉</h3>" +
+          '<div class="card success-box"><h3>' + (res.updated ? "Updated! " + esc(title) + " is now v" + res.version + " 🎉" : "You're in! " + esc(title) + " has been submitted 🎉") + "</h3>" +
           "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. You can re-submit as often as you like before the deadline.</p>" +
           '<div class="btn-row"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(res.slug) + '">' + icon("play") + ' Play it</a><a class="btn" href="gallery.html">Go to the gallery</a></div>' +
           '<p class="muted" style="margin:1rem 0 0">If it says "file missing" at first, wait a minute and refresh.</p></div>');
@@ -869,8 +938,7 @@
     fill("rubric", RUBRIC.map(function (c) {
       return "<tr><td><strong>" + c.name + "</strong></td><td>" + c.weight + "%</td><td>×" + c.mult + "</td><td>" + esc(c.look) + "</td></tr>";
     }).join(""));
-    var judges = CFG.judges || [];
-    fill("judges", judges.length ? esc(joinNames(judges)) : "The judges will be announced at kick-off.");
+    renderJudges();
 
     var gamesP = loadGames();
     function render() {
@@ -959,16 +1027,41 @@
       var g = res[0].filter(function (x) { return x.slug === slug; })[0];
       if (!g) { message("We couldn't find that game", "<p>There's no game called <code>" + esc(slug) + "</code>. If it was just submitted, wait a minute and refresh.</p>"); return; }
       document.title = g.title + " · " + CFG.name;
-      $("#player-title").innerHTML = "<strong>" + esc(g.title) + "</strong><span>by " + esc(joinNames(g.authors || [])) + (g.llm ? " · made with " + esc(g.llm) : "") + "</span>";
+      var version = Number(g.version) || 1;
+      $("#player-title").innerHTML = "<strong>" + esc(g.title) + (version > 1 ? ' <span class="sticker">v' + version + "</span>" : "") + "</strong><span>by " + esc(joinNames(g.authors || [])) + (g.llm ? " · made with " + esc(g.llm) : "") + "</span>";
 
       function drawRating() {
         var el = $("#player-rating");
         if (!ratable(g)) { el.innerHTML = g.excludeFromJudging && apiOn() ? '<span class="muted">Example game, not rated</span>' : ""; return; }
-        el.innerHTML = '<span class="rate-summary">' + esc(starSummary(g.slug)) + "</span>" + starsWidget(g);
+        var rated = signedIn() && Auth.me.myRatedVersions ? Auth.me.myRatedVersions[g.slug] : 0;
+        var stale = myRating(g.slug) && rated && rated < version;
+        el.innerHTML = '<span class="rate-summary">' + esc(starSummary(g.slug)) + "</span>" + starsWidget(g) +
+          (stale ? '<span class="rate-note">Updated to v' + version + " since you rated it. Change your stars if you like.</span>" : "");
         bindStars(el, g, drawRating);
       }
       drawRating();
       onAuth(drawRating);
+
+      function drawAdmin() {
+        var el = $("#player-admin");
+        if (!el) return;
+        if (!signedIn() || !Auth.me.user.isAdmin) { el.innerHTML = ""; return; }
+        el.innerHTML = '<button class="btn btn-small btn-danger" type="button">Remove game</button>';
+        $("button", el).addEventListener("click", function () {
+          if (!window.confirm("Remove \"" + g.title + "\" from the gallery?\n\nIts file is deleted from GitHub, and its ratings and judges' scores move to the \"Removed\" tab in the Google Sheet. This can't be undone from the website.")) return;
+          var btn = this;
+          btn.disabled = true; btn.textContent = "Removing…";
+          api("delete", { slug: g.slug }).then(function (res) {
+            toast("Removed " + res.title + ". It disappears from the gallery in about 2 minutes.", "good");
+            setTimeout(function () { location.href = "gallery.html"; }, 2500);
+          }, function (err) {
+            toast(err.message, "bad");
+            btn.disabled = false; btn.textContent = "Remove game";
+          });
+        });
+      }
+      drawAdmin();
+      onAuth(drawAdmin);
 
       fetch(g.file, { method: "HEAD", cache: "no-cache" }).then(function (r) {
         if (!r.ok) throw new Error();

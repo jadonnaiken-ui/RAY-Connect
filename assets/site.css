@@ -404,3 +404,20 @@ body.player { height: 100vh; height: 100dvh; overflow: hidden; }
 .judge-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; }
 .judge-scores .field span { display: block; font-size: .88rem; font-weight: 500; margin-bottom: .3rem; }
 .judge-foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; }
+
+/* ---------- Photos ---------- */
+.avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex: none; display: inline-grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: .72rem; font-weight: 500; border: var(--hair); }
+.avatar-lg { width: 96px; height: 96px; font-size: 1.6rem; font-family: var(--font-display); font-weight: 300; }
+.game-by { display: flex; align-items: center; gap: .5rem; }
+.judges { list-style: none; margin: 1rem 0; padding: 0; display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.judges li { display: flex; flex-direction: column; align-items: center; gap: .4rem; text-align: center; min-width: 96px; }
+.judges li strong { font-weight: 500; }
+.judges li .muted { font-size: .85rem; }
+.judges-lg { gap: 2rem; }
+.judges-lg .avatar-lg { width: 132px; height: 132px; font-size: 2.2rem; }
+
+/* ---------- Admin + versions ---------- */
+.btn-danger { color: var(--negative); border-color: var(--negative); }
+.btn-danger:hover { background: var(--negative); color: #fff; border-color: var(--negative); }
+.rate-note { font-size: .82rem; color: var(--muted); flex-basis: 100%; }
+.player-title .sticker { font-family: var(--font-body); vertical-align: middle; }

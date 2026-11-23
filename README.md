@@ -55,9 +55,11 @@ Open `config.js` on GitHub → **pencil icon** → change the text between the q
 
 ## Games
 
-**Entrants submit on the website.** Once a game is published, it's live in about two minutes. Entrants can update their own game any time before the deadline.
+**Entrants submit on the website.** Once a game is published, it's live in about two minutes. Entrants can update their own game any time before the deadline. Each update raises its version (v2, v3…), and the gallery shows an "Updated" badge for a day.
 
-**Removing a game** (e.g. something inappropriate): on GitHub, delete its file in `games/`, then edit `games.json` and remove its `{ … }` block, including the comma that separated it from its neighbour.
+**Ratings and updates:** each person has one rating per game. It carries over when the game is updated, and people can change it whenever they like. Anyone who rated an older version sees a nudge: "Updated to v2 since you rated it."
+
+**Removing a game:** sign in as an admin (your email must be in `ADMIN_EMAILS`), open the game, and click **Remove game**. This deletes its files from GitHub and moves its ratings, judges' scores and submission history to the **Removed** tab of the Google Sheet. Standings stay clean, and nothing is lost for good.
 
 **Adding a game by hand** (if someone can't use the Submit page):
 1. Open the `games` folder → **Add file → Upload files** → drag in the `.html` → **Commit changes**.
@@ -85,9 +87,16 @@ A game added by hand has no owner, so nobody can update it through the Submit pa
 | `title`, `blurb`, `llm` | ✅ | Blurb is 100 characters max |
 | `authors` | ✅ | Always in square brackets: `["Jadon"]` or `["Jadon", "Sam"]` |
 | `file` | ✅ | Must match the uploaded file exactly, capitals included |
-| `emoji`, `thumbnail`, `added` | | Optional |
+| `emoji`, `thumbnail`, `photo`, `added` | | Optional |
+| `version`, `updated` | | Set automatically when a game is re-submitted |
 | `award` | | `null`, `"winner"`, `"runner-up"` or `"peoples-choice"` |
 | `excludeFromJudging` | | `true` for example games: not judged, not rated |
+
+## Photos
+
+- **Entrants** can add an optional photo on the Submit page. It's cropped to a square and shown as a small round picture next to their name.
+- **Judges:** upload a square photo for each judge into `assets/judges/` (e.g. `jadon.jpg`) and make sure the `photo` paths in `config.js` match. Until a photo exists, initials are shown.
+- The site is public, so only use photos people are happy to share.
 
 ## Judging and ratings
 
