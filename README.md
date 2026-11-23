@@ -57,7 +57,7 @@ Open `config.js` on GitHub → **pencil icon** → change the text between the q
 
 **Entrants submit on the website.** Once a game is published, it's live in about two minutes. Entrants can update their own game any time before the deadline. Each update raises its version (v2, v3…), and the gallery shows an "Updated" badge for a day.
 
-**One game per person:** re-submitting the *same* title is an update (v2, v3…) and keeps all its ratings and scores. Submitting a *different* title permanently deletes the person's old game: its files, ratings, judges' scores and submission records. If it's submitted again later, it starts as a brand-new entry. The Submit page warns entrants and asks them to confirm first.
+**One game per person, up to two updates:** each person enters one game and can't swap it for a different one. After the first submission they can send `maxUpdates` updates (2 by default, set in `config.js`), each of which becomes a new version (v2, v3) and keeps all its ratings and scores. After that the game is final. Admins are exempt. To let someone start over, use **Remove game** on their game: that frees them to enter a new one.
 
 **Ratings and updates:** each person has one rating per game. It carries over when the game is updated, and people can change it whenever they like. Anyone who rated an older version sees a nudge: "Updated to v2 since you rated it."
 
@@ -90,7 +90,7 @@ A game added by hand has no owner, so nobody can update it through the Submit pa
 | `authors` | ✅ | One name in square brackets: `["Jadon"]` (entries are solo) |
 | `file` | ✅ | Must match the uploaded file exactly, capitals included |
 | `emoji`, `thumbnail`, `photo`, `added` | | Optional |
-| `version`, `updated` | | Set automatically when a game is re-submitted |
+| `version`, `updated` | | Set automatically when a game is updated |
 | `award` | | `null`, `"winner"`, `"runner-up"` or `"peoples-choice"` |
 | `excludeFromJudging` | | `true` for example games: not judged, not rated |
 

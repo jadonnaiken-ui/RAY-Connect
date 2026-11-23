@@ -92,7 +92,8 @@ function siteConfig() {
   const cfg = {
     deadline: Date.parse(pick(/deadline:\s*"([^"]+)"/) || ""),
     winnersAnnounced: pick(/winnersAnnounced:\s*(true|false)/) === "true",
-    minRatings: Number(pick(/minRatingsForPeoplesChoice:\s*(\d+)/) || 5)
+    minRatings: Number(pick(/minRatingsForPeoplesChoice:\s*(\d+)/) || 5),
+    maxUpdates: Number(pick(/maxUpdates:\s*(\d+)/) || 2)
   };
   cache.put("siteConfig", JSON.stringify(cfg), 120);
   return cfg;
@@ -169,9 +170,9 @@ function me(user, token) {
     if (r.Email === user.email) mine[r.Slug] = { slug: r.Slug, title: r.Title, authors: String(r.Authors).split(" & "), llm: r["AI used"], blurb: r.Blurb, emoji: r.Emoji };
   });
   const listed = {};
-  games().forEach(g => { listed[g.slug] = true; });
+  games().forEach(g => { listed[g.slug] = g; });
   const out = { ok: true, user: user, myRatings: myRatings, myRatedVersions: myRatedVersions,
-    mySubmissions: Object.keys(mine).filter(k => listed[k]).map(k => mine[k]) };
+    mySubmissions: Object.keys(mine).filter(k => listed[k]).map(k => Object.assign(mine[k], { version: Number(listed[k].version) || 1, photo: listed[k].photo || "" })) };
   if (!isSession(token)) out.session = startSession(user);
   if (user.isJudge) {
     out.myScores = {};
@@ -269,11 +270,22 @@ function submit(user, d) {
     const today = Utilities.formatDate(new Date(), "Etc/GMT", "yyyy-MM-dd");
     const owned = {};
     rows("submissions").forEach(r => { if (r.Email === user.email) owned[r.Slug] = true; });
+    const maxUpdates = cfg.maxUpdates;
     const result = commitGames(games => {
       const index = games.findIndex(g => g.slug === slug);
       const existing = index === -1 ? null : games[index];
       if (existing && !isOwner(user, existing) && !user.isAdmin) {
         throw new UserError("There's already a game called \"" + existing.title + "\" by " + existing.authors.join(" & ") + ". Please pick a different title.");
+      }
+      // One game per person, committed for good: no swapping to a different game.
+      const mine = games.filter(g => owned[g.slug] && g.slug !== slug)[0];
+      if (mine && !user.isAdmin) {
+        throw new UserError("You've already entered \"" + mine.title + "\". Everyone gets one game: you can send updates to it, but not swap it for a different one. To update it, keep the title exactly the same.");
+      }
+      // ...and a limited number of updates.
+      const used = existing ? (Number(existing.version) || 1) - 1 : 0;
+      if (existing && used >= maxUpdates && !user.isAdmin) {
+        throw new UserError("You've used all " + maxUpdates + " updates for \"" + existing.title + "\", so version " + (used + 1) + " is final.");
       }
       const file = "games/" + slug + ".html";
       const files = [{ path: file, bytes: htmlBytes }];
@@ -298,30 +310,14 @@ function submit(user, d) {
       if (thumbnail) entry.thumbnail = thumbnail;
       if (photoPath) entry.photo = photoPath;
       if (existing) games[index] = entry; else games.push(entry);
-      // One game per person. Submitting a different game deletes their old one completely:
-      // its files go in this same publish, and its records are wiped below.
-      const replaced = [];
-      for (let i = games.length - 1; i >= 0; i--) {
-        const g = games[i];
-        if (g.slug === slug || !owned[g.slug]) continue;
-        [g.file, g.thumbnail, g.photo].filter(p => p && String(p).indexOf("games/") === 0 && p !== file)
-          .forEach(p => files.push({ path: p, remove: true }));
-        replaced.push({ slug: g.slug, title: g.title });
-        games.splice(i, 1);
-      }
       return {
         files: files,
         message: (existing ? "Update " + title + " to v" + version : "Add " + title) + " by " + authors.join(" & "),
-        result: { slug: slug, updated: !!existing, version: version, replaced: replaced }
+        result: { slug: slug, updated: !!existing, version: version, updatesLeft: Math.max(0, maxUpdates - (version - 1)) }
       };
     });
-    if (result.replaced.length) {
-      // The old game's history is gone for good: ratings, judges' scores and submission records.
-      withLock("sheet", () => result.replaced.forEach(r => ["ratings", "judging", "submissions"].forEach(tab => purgeRows(tab, r.slug))));
-      CacheService.getScriptCache().remove("stats");
-    }
     sheet("submissions").appendRow([new Date(), user.email, user.name, slug, title, authors.join(" & "), llm, blurb, emoji, result.version]);
-    return Object.assign({ ok: true }, result, { replaced: result.replaced.map(r => r.title) });
+    return Object.assign({ ok: true }, result);
   });
 }
 
@@ -346,14 +342,6 @@ function deleteGame(user, data) {
     CacheService.getScriptCache().remove("stats");
     return { ok: true, title: result.title, archived: moved };
   });
-}
-
-// Deletes every row for a game (used when its creator replaces it with a new game).
-function purgeRows(name, slug) {
-  const sh = sheet(name);
-  const values = sh.getDataRange().getValues();
-  const col = values[0].indexOf("Slug");
-  for (let i = values.length - 1; i >= 1; i--) if (values[i][col] === slug) sh.deleteRow(i + 1);
 }
 
 function archiveRows(name, slug, by) {

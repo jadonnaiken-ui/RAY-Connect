@@ -38,9 +38,9 @@
     ["Understandable in 30 seconds", "Put a one-line \"how to play\" on screen."],
     ["Must be playable", "A goal, a score or a win/lose moment, and a way to restart."],
     ["No company data", "No logos, customer data or anything confidential. The site may be public."],
-    ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo entries, one game each. Submitting a different game deletes your old one."],
+    ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo entries, one game each."],
     ["Keep it kind", "Silly, not mean. No games about a colleague without their blessing."],
-    ["The deadline is firm", "Re-submit as often as you like until the deadline."],
+    ["The deadline is firm", "Get your game in before submissions close. Late entries can't be accepted."],
     ["Get people playing", "To qualify for People's choice, your game needs at least {min} star ratings. Submit early and share your link so colleagues can play and rate it."]
   ];
 
@@ -883,27 +883,41 @@
       var names = $("#sf-name");
       if (!names.value) names.value = Auth.me.user.name;
       var mine = Auth.me.mySubmissions || [];
-      fill("my-games", mine.length
-        ? "<h3>Your game</h3><p class=\"muted\">To improve it, click Update, choose the new file and submit, keeping the same title. Its ratings and scores carry over to the new version.</p><ul class=\"my-games\">" +
-          mine.map(function (g, i) {
-            return "<li><span>" + esc(g.emoji || "🎮") + " <strong>" + esc(g.title) + '</strong></span><span class="btn-row"><a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">Play</a><button class="btn btn-small" type="button" data-update="' + i + '">Update</button></span></li>';
-          }).join("") + "</ul>"
-        : "");
-      $$("[data-update]").forEach(function (b) {
-        b.addEventListener("click", function () {
-          var g = mine[Number(b.getAttribute("data-update"))];
-          $("#sf-title").value = g.title;
-          $("#sf-name").value = g.authors[0] || "";
-          var live = published.filter(function (x) { return x.slug === g.slug; })[0];
-          setPhotoNeeded(!(live && live.photo));
-          $("#sf-blurb").value = g.blurb || "";
-          $("#sf-emoji").value = g.emoji || "";
-          if (g.llm) llmSelect.value = g.llm;
-          update();
-          $("#sf-file").focus();
-          toast("Details filled in. Now choose your updated .html file.");
-        });
-      });
+      var max = CFG.maxUpdates == null ? 2 : Number(CFG.maxUpdates);
+      var g = mine[0];
+      state.mine = g || null;
+      if (!g) {
+        fill("my-games", '<div class="panel" style="margin-bottom:1.25rem"><strong>You get one game, so make it count.</strong>' +
+          '<p style="margin:.4rem 0 0">After you submit, you can send up to ' + plural(max, "update") + " to fix or improve it, but you can't swap it for a different game.</p></div>");
+        $("#submit-form").hidden = false;
+        $("#sf-title").readOnly = false;
+        fill("update-confirm", "");
+        $("#sf-submit").textContent = "Submit my game";
+        update();
+        return;
+      }
+      var left = Math.max(0, max - ((g.version || 1) - 1));
+      fill("my-games",
+        '<div class="card" style="margin-bottom:1.25rem"><h3 style="margin-bottom:.25rem">Your game: ' + esc(g.emoji || "🎮") + " " + esc(g.title) + ' <span class="sticker">v' + (g.version || 1) + "</span></h3>" +
+        '<p class="muted" style="margin:0 0 .75rem">' + (left ? plural(left, "update") + " left out of " + max + "." : "That was your last update, so this version is final. Good luck!") + "</p>" +
+        '<a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">' + icon("play") + " Play it</a></div>");
+      if (!left) { $("#submit-form").hidden = true; return; }
+      // Update mode: same game, same title; the form is filled in for them.
+      $("#submit-form").hidden = false;
+      $("#sf-title").value = g.title;
+      $("#sf-title").readOnly = true;
+      if (!$("#sf-name").value || $("#sf-name").value === Auth.me.user.name) $("#sf-name").value = g.authors[0] || Auth.me.user.name;
+      if (!$("#sf-blurb").value) $("#sf-blurb").value = g.blurb || "";
+      if (!$("#sf-emoji").value) $("#sf-emoji").value = g.emoji || "";
+      if (g.llm) llmSelect.value = g.llm;
+      var live = published.filter(function (x) { return x.slug === g.slug; })[0];
+      setPhotoNeeded(!(g.photo || (live && live.photo)));
+      fill("update-confirm", '<div class="panel" style="margin-top:1rem"><strong>' +
+        (left === 1 ? "This uses your last update, so this version will be final." : "This uses 1 of your " + left + " remaining updates.") + "</strong>" +
+        ' Play the preview first to check it works.<label style="display:flex;gap:.5rem;align-items:center;margin-top:.6rem"><input type="checkbox" id="sf-use-update"> Yes, use an update</label></div>');
+      $("#sf-use-update").addEventListener("change", function (ev) { state.useUpdate = ev.target.checked; });
+      state.useUpdate = false;
+      $("#sf-submit").textContent = "Submit update";
       update();
     }
 
@@ -917,20 +931,6 @@
       var a = authors();
       var slug = (slugify((a[0] || "you").split(" ")[0]) + "-" + (slugify($("#sf-title").value) || "your-game")).slice(0, 60);
       $("#sf-slug").textContent = slug;
-      // Warn before a different game permanently replaces the one they already have.
-      var current = signedIn() ? (Auth.me.mySubmissions || []).filter(function (g) { return g.slug !== slug; })[0] : null;
-      state.replacing = $("#sf-title").value.trim() ? current || null : null;
-      var box = slot("replace-warning");
-      if (!box) return;
-      if (!state.replacing) { box.innerHTML = ""; box.removeAttribute("data-for"); state.replaceOk = false; return; }
-      if (box.getAttribute("data-for") === current.slug + "|" + slug) return;
-      box.setAttribute("data-for", current.slug + "|" + slug);
-      state.replaceOk = false;
-      box.innerHTML = '<div class="error-box" style="margin-top:1rem"><strong>This permanently deletes ' + esc(current.title) + ".</strong>" +
-        '<p style="margin:.4rem 0">You can only have one game. A new title counts as a different game, so <em>' + esc(current.title) + "</em> will be deleted along with all its ratings, judges' scores and history. This can't be undone. If it comes back later, it starts again from zero.</p>" +
-        "<p style=\"margin:.4rem 0\">Just improving " + esc(current.title) + "? Click <strong>Update</strong> next to it above instead.</p>" +
-        '<label style="display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="sf-replace-ok"> Yes, delete ' + esc(current.title) + " and enter this game instead</label></div>";
-      $("#sf-replace-ok").addEventListener("change", function (ev) { state.replaceOk = ev.target.checked; });
     }
 
     function checkHtml(html) {
@@ -1043,7 +1043,7 @@
       fill("submit-result", "");
       var title = $("#sf-title").value.trim(), blurb = $("#sf-blurb").value.trim();
       var problem = !authors().length ? "Please add your name." : !title ? "Please give your game a title." : !blurb ? "Please add a one-line description." : !state.photo && !state.hasPhoto ? "Please add your RAY profile picture." : !state.html ? "Please choose your game's .html file." : "";
-      if (!problem && state.replacing && !state.replaceOk) problem = "Tick the box to confirm you want to delete " + state.replacing.title + ", or click Update next to it to improve it instead.";
+      if (!problem && state.mine && !state.useUpdate) problem = "Tick \"Yes, use an update\" to confirm. You have a limited number of updates.";
       if (!problem && state.errors && state.errors.length && !state.override) problem = "Your game hit an error in the preview. Fix it with your AI, or tick \"it works anyway\" under the preview.";
       if (problem) { fill("submit-result", '<div class="error-box"><p style="margin:0">' + esc(problem) + "</p></div>"); return; }
       var btn = $("#sf-submit");
@@ -1052,14 +1052,14 @@
         title: title, authors: authors(), llm: llmSelect.value, blurb: blurb,
         emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null, photo: state.photo || null
       }).then(function (res) {
-        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false, errors: [], override: false, frame: null, replacing: null, replaceOk: false };
-        fill("replace-warning", ""); slot("replace-warning").removeAttribute("data-for");
+        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false, errors: [], override: false, frame: null, mine: null, useUpdate: false };
         setPhotoNeeded(true);
         fill("preview", ""); fill("file-notes", ""); fill("thumb-preview", ""); fill("photo-preview", "");
         fill("submit-result",
           '<div class="card success-box"><h3>' + (res.updated ? "Updated! " + esc(title) + " is now v" + res.version + " 🎉" : "You're in! " + esc(title) + " has been submitted 🎉") + "</h3>" +
-          (res.replaced && res.replaced.length ? "<p>" + esc(res.replaced.join(" and ")) + " has been deleted, as you confirmed.</p>" : "") +
-          "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. You can re-submit as often as you like before the deadline.</p>" +
+
+          "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. " +
+          (res.updatesLeft ? "You have " + plural(res.updatesLeft, "update") + " left if you want to improve it before the deadline." : "That was your last update, so this version is final.") + "</p>" +
           '<p><strong>Now get people playing.</strong> You need at least ' + (CFG.minRatingsForPeoplesChoice || 5) + " star ratings to qualify for People's choice. Share your link in the " + withChatLink(CFG.chatName || "RAY Connect chat") + ":</p>" +
           '<p><code id="share-link">' + esc(new URL("play.html?game=" + encodeURIComponent(res.slug), location.href).href) + '</code></p>' +
           '<p><button class="btn btn-small copy-btn" type="button" data-copy="#share-link">' + icon("copy") + " Copy link</button></p>" +
@@ -1070,7 +1070,7 @@
         return refreshMe().then(render);
       }, function (err) {
         fill("submit-result", '<div class="error-box"><h3>That didn\'t work</h3><p style="margin:0">' + esc(err.message) + "</p></div>");
-      }).then(function () { btn.disabled = false; btn.textContent = "Submit my game"; });
+      }).then(function () { btn.disabled = false; btn.textContent = state.mine ? "Submit update" : "Submit my game"; });
     });
 
     render();

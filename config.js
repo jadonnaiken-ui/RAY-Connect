@@ -64,6 +64,10 @@ window.JAM_CONFIG = {
   // with at least this many ratings, so one lucky 5-star can't win it.
   minRatingsForPeoplesChoice: 5,
 
+  // Each person enters ONE game. After the first submission they can send this many
+  // updates (2 = up to version 3), then the game is final. They can't swap to a different game.
+  maxUpdates: 2,
+
   // Your Loom walkthrough. From a link like https://www.loom.com/share/abc123def456
   // copy only the last part: "abc123def456". Leave as "" to hide the video.
   // Remember to set the Loom to "Anyone with the link can view".
