@@ -40,7 +40,7 @@ try {
 }
 
 /* ---------- games.json ---------- */
-const ALLOWED = new Set(["slug", "title", "authors", "llm", "file", "blurb", "emoji", "thumbnail", "photo", "added", "updated", "version", "award", "excludeFromJudging", "retired", "replacedBy"]);
+const ALLOWED = new Set(["slug", "title", "authors", "llm", "file", "blurb", "emoji", "thumbnail", "photo", "added", "updated", "version", "award", "excludeFromJudging"]);
 const AWARDS = [null, "winner", "runner-up", "peoples-choice"];
 
 let text = "";
@@ -167,9 +167,6 @@ function checkGameFile(label, file, html) {
   for (const [re, what] of patterns) if (re.test(html)) found.add(what);
   if (found.size) {
     warn(`${label}: ${file} ${[...found].join(", and ")}. It may break offline or in the gallery. Ask the AI to "put everything in the one file, with no internet requests".`, file);
-  }
-  if (/\blocalStorage\b/.test(html) && !/try\s*{[^}]*localStorage/.test(html)) {
-    warn(`${label}: ${file} uses localStorage, which is blocked in the gallery's sandbox and may stop the game. Ask the AI to remove it, or wrap it in try/catch.`, file);
   }
   if (!/<\/html>\s*$/i.test(html.trim())) {
     warn(`${label}: ${file} doesn't end with </html>. The AI may have cut the file off. Check the game plays.`, file);

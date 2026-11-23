@@ -169,14 +169,9 @@ function me(user, token) {
     if (r.Email === user.email) mine[r.Slug] = { slug: r.Slug, title: r.Title, authors: String(r.Authors).split(" & "), llm: r["AI used"], blurb: r.Blurb, emoji: r.Emoji };
   });
   const listed = {};
-  games().forEach(g => { listed[g.slug] = g; });
-  Object.keys(mine).forEach(k => {
-    const g = listed[k];
-    mine[k].status = !g ? "removed" : g.retired ? "retired" : "live";
-    if (g && g.retired) mine[k].replacedBy = g.replacedBy || "";
-  });
+  games().forEach(g => { listed[g.slug] = true; });
   const out = { ok: true, user: user, myRatings: myRatings, myRatedVersions: myRatedVersions,
-    mySubmissions: Object.keys(mine).map(k => mine[k]).filter(g => g.status !== "removed") };
+    mySubmissions: Object.keys(mine).filter(k => listed[k]).map(k => mine[k]) };
   if (!isSession(token)) out.session = startSession(user);
   if (user.isJudge) {
     out.myScores = {};
@@ -193,7 +188,6 @@ function rate(user, data) {
   if (siteConfig().winnersAnnounced) throw new UserError("Voting has closed: the winners have been announced.");
   const game = findGame(data.slug);
   if (game.excludeFromJudging) throw new UserError("This is an example game, so it can't be rated.");
-  if (game.retired) throw new UserError("This game has been replaced by its creator, so it can't be rated any more.");
   if (isOwner(user, game)) throw new UserError("Nice try! You can't rate your own game.");
   const version = Number(game.version) || 1;
   withLock("sheet", () => upsert("ratings", {
@@ -304,23 +298,30 @@ function submit(user, d) {
       if (thumbnail) entry.thumbnail = thumbnail;
       if (photoPath) entry.photo = photoPath;
       if (existing) games[index] = entry; else games.push(entry);
-      // One live game per person: retire their other games. They leave the gallery and can't be
-      // rated, but stay in games.json (and on the leaderboards) so the judges can still consider them.
-      const retired = [];
-      games.forEach(g => {
-        if (g.slug === slug || !owned[g.slug] || g.retired) return;
-        g.retired = today;
-        g.replacedBy = slug;
-        retired.push(g.title);
-      });
+      // One game per person. Submitting a different game deletes their old one completely:
+      // its files go in this same publish, and its records are wiped below.
+      const replaced = [];
+      for (let i = games.length - 1; i >= 0; i--) {
+        const g = games[i];
+        if (g.slug === slug || !owned[g.slug]) continue;
+        [g.file, g.thumbnail, g.photo].filter(p => p && String(p).indexOf("games/") === 0 && p !== file)
+          .forEach(p => files.push({ path: p, remove: true }));
+        replaced.push({ slug: g.slug, title: g.title });
+        games.splice(i, 1);
+      }
       return {
         files: files,
         message: (existing ? "Update " + title + " to v" + version : "Add " + title) + " by " + authors.join(" & "),
-        result: { slug: slug, updated: !!existing, version: version, retired: retired }
+        result: { slug: slug, updated: !!existing, version: version, replaced: replaced }
       };
     });
+    if (result.replaced.length) {
+      // The old game's history is gone for good: ratings, judges' scores and submission records.
+      withLock("sheet", () => result.replaced.forEach(r => ["ratings", "judging", "submissions"].forEach(tab => purgeRows(tab, r.slug))));
+      CacheService.getScriptCache().remove("stats");
+    }
     sheet("submissions").appendRow([new Date(), user.email, user.name, slug, title, authors.join(" & "), llm, blurb, emoji, result.version]);
-    return Object.assign({ ok: true }, result);
+    return Object.assign({ ok: true }, result, { replaced: result.replaced.map(r => r.title) });
   });
 }
 
@@ -345,6 +346,14 @@ function deleteGame(user, data) {
     CacheService.getScriptCache().remove("stats");
     return { ok: true, title: result.title, archived: moved };
   });
+}
+
+// Deletes every row for a game (used when its creator replaces it with a new game).
+function purgeRows(name, slug) {
+  const sh = sheet(name);
+  const values = sh.getDataRange().getValues();
+  const col = values[0].indexOf("Slug");
+  for (let i = values.length - 1; i >= 1; i--) if (values[i][col] === slug) sh.deleteRow(i + 1);
 }
 
 function archiveRows(name, slug, by) {
@@ -384,15 +393,8 @@ function starRanking() {
   const min = siteConfig().minRatings;
   return games().filter(g => !g.excludeFromJudging).map(g => {
     const s = stats[g.slug] || { avg: 0, count: 0 };
-    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: s.avg, count: s.count, qualifies: s.count >= min, short: Math.max(0, min - s.count), status: statusOf(g) };
+    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: s.avg, count: s.count, qualifies: s.count >= min, short: Math.max(0, min - s.count) };
   }).sort((a, b) => (b.qualifies - a.qualifies) || (b.avg - a.avg) || (b.count - a.count));
-}
-
-// "Live", or "Retired: replaced by <new title>" for games their creator has since replaced.
-function statusOf(g) {
-  if (!g.retired) return "Live";
-  const next = games().filter(x => x.slug === g.replacedBy)[0];
-  return "Retired: replaced by " + (next ? next.title : "a newer game");
 }
 
 function judgeRanking() {
@@ -405,7 +407,7 @@ function judgeRanking() {
   const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
   const list = games().filter(g => !g.excludeFromJudging).map(g => {
     const p = per[g.slug] || { totals: [], silly: [], judges: [], byJudge: {} };
-    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: Math.round(avg(p.totals) * 10) / 10, sillyAvg: Math.round(avg(p.silly) * 100) / 100, judged: p.judges.length, byJudge: p.byJudge, status: statusOf(g) };
+    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: Math.round(avg(p.totals) * 10) / 10, sillyAvg: Math.round(avg(p.silly) * 100) / 100, judged: p.judges.length, byJudge: p.byJudge };
   }).sort((a, b) => (b.avg - a.avg) || (b.sillyAvg - a.sillyAvg));
   list.forEach((e, i) => {
     const same = o => o && o.avg === e.avg && o.sillyAvg === e.sillyAvg && e.judged > 0;
@@ -437,17 +439,17 @@ function refreshLeaderboards() {
   rows("judging").forEach(r => { if (r.Judge) judgeNames[r.Email] = r.Judge; });
   const nameOf = e => judgeNames[e] || nameFromEmail(e);
   const j = judgeRanking();
-  const jHead = ["Rank", "Game", "Status", "Average total /100", "Average silliness /5"].concat(judgeEmails.map(e => nameOf(e) + " /100"), ["Note"]);
-  const jRows = j.map((e, i) => [i + 1, e.title, e.status, e.judged ? e.avg : "", e.judged ? e.sillyAvg : ""]
+  const jHead = ["Rank", "Game", "Average total /100", "Average silliness /5"].concat(judgeEmails.map(e => nameOf(e) + " /100"), ["Note"]);
+  const jRows = j.map((e, i) => [i + 1, e.title, e.judged ? e.avg : "", e.judged ? e.sillyAvg : ""]
     .concat(judgeEmails.map(em => e.byJudge[em] !== undefined ? e.byJudge[em] : ""),
       [e.tied ? "Tied: judges discuss" : (e.judged ? "" : "Not scored yet")]));
-  writeBoard(ss, "Judges' leaderboard", jHead, jRows, stamp, { 4: "0.0", 5: "0.00" });
+  writeBoard(ss, "Judges' leaderboard", jHead, jRows, stamp, { 3: "0.0", 4: "0.00" });
 
   // People's choice: star ratings.
   const min = siteConfig().minRatings;
-  const pHead = ["Rank", "Game", "Creator", "Status", "Average stars /5", "Ratings", "Qualifies (" + min + "+ ratings)"];
-  const pRows = starRanking().map((e, i) => [i + 1, e.title, e.creator, e.status, e.count ? e.avg : "", e.count, e.qualifies ? "Yes" : "No: needs " + e.short + " more"]);
-  writeBoard(ss, "People's choice", pHead, pRows, stamp, { 5: "0.00" });
+  const pHead = ["Rank", "Game", "Creator", "Average stars /5", "Ratings", "Qualifies (" + min + "+ ratings)"];
+  const pRows = starRanking().map((e, i) => [i + 1, e.title, e.creator, e.count ? e.avg : "", e.count, e.qualifies ? "Yes" : "No: needs " + e.short + " more"]);
+  writeBoard(ss, "People's choice", pHead, pRows, stamp, { 4: "0.00" });
 }
 
 function writeBoard(ss, title, head, data, stamp, formats) {

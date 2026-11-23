@@ -28,22 +28,5 @@
     "award": null,
     "updated": "2026-11-23",
     "photo": "games/photos/jadon-founder-s-life.jpg"
-  },
-  {
-    "slug": "jadon-test-hungry-noodle",
-    "title": "Test - Hungry Noodle",
-    "authors": [
-      "Jadon Naiken"
-    ],
-    "llm": "Claude",
-    "file": "games/jadon-test-hungry-noodle.html",
-    "blurb": "Just a hungry noodle :)",
-    "emoji": "🍜",
-    "added": "2026-11-23",
-    "version": 1,
-    "award": null,
-    "photo": "games/photos/jadon-test-hungry-noodle.jpg",
-    "retired": "2026-11-23",
-    "replacedBy": "jadon-founder-s-life"
   }
 ]
