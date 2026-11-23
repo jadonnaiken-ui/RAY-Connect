@@ -53,12 +53,12 @@ window.JAM_CONFIG = {
   /* ---------- Sign-in, submissions and star ratings ---------- */
   // These two values come from the backend setup (see backend/SETUP.md).
   // While they're "", the Submit page says "opening soon" and star ratings are hidden.
-  apiUrl: "",          // the Apps Script "Web app URL", ending in /exec
-  googleClientId: "",  // ends in .apps.googleusercontent.com
+  apiUrl: "https://script.google.com/a/macros/getray.ai/s/AKfycby9v8l_h7Gg5P71uW0psgD-c5MfIj0ug-1gYyQMpqpQPstw3clLrXa2q4OHQKBBW_CA/exec",          // the Apps Script "Web app URL", ending in /exec
+  googleClientId: "1007260821596-482d169tslbeqj30a3v90pfmr9h6oij7.apps.googleusercontent.com",  // ends in .apps.googleusercontent.com
 
   // Your work email domain, e.g. "getray.ai". Used for the sign-in hint and messages.
   // (The real check happens in the backend's ALLOWED_DOMAINS setting.)
-  workDomain: "",
+  workDomain: "getray.ai",
 
   // People's choice goes to the highest average star rating among games
   // with at least this many ratings, so one lucky 5-star can't win it.
