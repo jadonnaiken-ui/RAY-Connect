@@ -164,6 +164,16 @@
 
   /* ---------------- Config ---------------- */
 
+  // Escapes text, then turns the chat's name into a link to the group chat.
+  function withChatLink(text) {
+    var html = esc(text);
+    if (!CFG || !CFG.chatUrl || !CFG.chatName) return html;
+    var name = esc(CFG.chatName);
+    var link = '<a href="' + esc(CFG.chatUrl) + '" target="_blank" rel="noopener">' + name + "</a>";
+    return html.indexOf(name) !== -1 ? html.replace(name, link) : html;
+  }
+  function contactHtml() { return withChatLink(CFG.contact || "the organisers"); }
+
   var CFG = window.JAM_CONFIG;
   var page = document.body.getAttribute("data-page");
 
@@ -197,7 +207,7 @@
       footer.outerHTML =
         '<footer class="site-footer"><div class="wrap">' +
         "<span>" + esc(name) + "</span>" +
-        "<span>" + (CFG && CFG.contact ? "Questions? Message " + esc(CFG.contact) + "." : "") + "</span>" +
+        "<span>" + (CFG && CFG.contact ? "Questions? Message " + contactHtml() + "." : "") + "</span>" +
         "</div></footer>";
     }
     var live = document.createElement("div");
@@ -517,13 +527,17 @@
   }
 
   function renderConfigText() {
-    $$("[data-contact]").forEach(function (el) { el.textContent = CFG.contact || "the organisers"; });
+    $$("[data-contact]").forEach(function (el) { el.innerHTML = contactHtml(); });
     $$("[data-config-name]").forEach(function (el) { el.textContent = CFG.name; });
     $$("[data-config-tagline]").forEach(function (el) { el.textContent = CFG.tagline || ""; });
     $$("[data-config-welcome]").forEach(function (el) { el.textContent = CFG.welcome || ""; });
     $$("[data-min-ratings]").forEach(function (el) { el.textContent = CFG.minRatingsForPeoplesChoice || 5; });
     $$("[data-work-domain]").forEach(function (el) { el.textContent = CFG.workDomain ? "@" + CFG.workDomain : "work"; });
     $$("[data-api-only]").forEach(function (el) { el.hidden = !apiOn(); });
+    $$("[data-chat-link]").forEach(function (a) {
+      if (CFG.chatUrl) { a.href = CFG.chatUrl; a.target = "_blank"; a.rel = "noopener"; if (CFG.chatName) a.textContent = CFG.chatName; }
+      else a.replaceWith(document.createTextNode(a.textContent));
+    });
   }
 
   function judgeList() {
@@ -567,7 +581,7 @@
         "<p>The <strong>Actions</strong> tab on GitHub names the exact line.</p>" +
         (err.detail ? "<pre>" + esc(err.detail) + "</pre>" : "");
     } else {
-      body = "<p>The list of games didn't load" + (err && err.status ? " (error " + esc(err.status) + ")" : "") + ". Check your connection and refresh. If it keeps happening, message " + esc(CFG.contact || "the organisers") + ".</p>";
+      body = "<p>The list of games didn't load" + (err && err.status ? " (error " + esc(err.status) + ")" : "") + ". Check your connection and refresh. If it keeps happening, message " + contactHtml() + ".</p>";
     }
     return '<div class="error-box"><h3>The game list didn\'t load</h3>' + body + "</div>";
   }
@@ -920,7 +934,7 @@
         fill("submit-result",
           '<div class="card success-box"><h3>' + (res.updated ? "Updated! " + esc(title) + " is now v" + res.version + " 🎉" : "You're in! " + esc(title) + " has been submitted 🎉") + "</h3>" +
           "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. You can re-submit as often as you like before the deadline.</p>" +
-          '<p><strong>Now get people playing.</strong> You need at least ' + (CFG.minRatingsForPeoplesChoice || 5) + " star ratings to qualify for People's choice. Share your link in the RAY Connect chat:</p>" +
+          '<p><strong>Now get people playing.</strong> You need at least ' + (CFG.minRatingsForPeoplesChoice || 5) + " star ratings to qualify for People's choice. Share your link in the " + withChatLink(CFG.chatName || "RAY Connect chat") + ":</p>" +
           '<p><code id="share-link">' + esc(new URL("play.html?game=" + encodeURIComponent(res.slug), location.href).href) + '</code></p>' +
           '<p><button class="btn btn-small copy-btn" type="button" data-copy="#share-link">' + icon("copy") + " Copy link</button></p>" +
           '<div class="btn-row"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(res.slug) + '">' + icon("play") + ' Play it</a><a class="btn" href="gallery.html">Go to the gallery</a></div>' +

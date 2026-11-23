@@ -72,6 +72,10 @@ window.JAM_CONFIG = {
   // Who people should ask for help.
   contact: "Jadon in the RAY Connect chat",
 
+  // The group chat. Wherever the site mentions the chat, it links here.
+  chatName: "RAY Connect chat",
+  chatUrl: "https://chat.google.com/room/AAQAVCX-zz0?cls=7",
+
   /* ---------- People and prizes ---------- */
 
   // Leave as [] to show "Judges will be announced at kick-off".
