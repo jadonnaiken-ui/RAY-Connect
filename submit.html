@@ -59,10 +59,6 @@
               <input id="sf-name" autocomplete="name" maxlength="40" required>
             </div>
             <div class="field">
-              <label for="sf-partner">Teammate's name <span class="muted">(optional)</span></label>
-              <input id="sf-partner" maxlength="40" placeholder="Leave empty if solo">
-            </div>
-            <div class="field">
               <label for="sf-title">Game title</label>
               <input id="sf-title" maxlength="60" required placeholder="e.g. Sofa Racer">
             </div>
@@ -87,9 +83,9 @@
               <div data-slot="thumb-preview"></div>
             </div>
             <div class="field">
-              <label for="sf-photo">Your photo <span class="muted">(optional)</span></label>
-              <input id="sf-photo" type="file" accept="image/png,image/jpeg">
-              <p class="hint">Shown as a small round picture next to your name. Teams can use a photo of both of you. The site is public, so only add one you're happy to share.</p>
+              <label for="sf-photo">Your RAY profile picture</label>
+              <input id="sf-photo" type="file" accept="image/png,image/jpeg" required>
+              <p class="hint" id="sf-photo-hint">Required. Use your RAY profile picture. It's shown as a small round picture next to your name.</p>
               <div data-slot="photo-preview"></div>
             </div>
             <div class="field field-wide">

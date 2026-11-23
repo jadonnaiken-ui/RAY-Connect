@@ -98,7 +98,7 @@ if (Array.isArray(games)) {
       if (typeof g[field] !== "string" || !g[field].trim()) error(`${label} is missing "${field}".`);
     }
     if (!Array.isArray(g.authors) || !g.authors.length || g.authors.some(a => typeof a !== "string" || !a.trim())) {
-      error(`${label}: "authors" must be a list of names in square brackets, like ["Jadon"] or ["Jadon", "Sam"].`);
+      error(`${label}: "authors" must be a list of names in square brackets, like ["Jadon"]. Entries are solo, so just one name.`);
     }
     for (const key of Object.keys(g)) {
       if (!ALLOWED.has(key)) warn(`${label} has an unknown field "${key}". Check the spelling (it will be ignored).`, "games.json");

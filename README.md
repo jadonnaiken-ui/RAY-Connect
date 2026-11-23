@@ -85,7 +85,7 @@ A game added by hand has no owner, so nobody can update it through the Submit pa
 |---|---|---|
 | `slug` | ✅ | Unique. Lowercase letters, numbers, dashes. Used in the web address |
 | `title`, `blurb`, `llm` | ✅ | Blurb is 100 characters max |
-| `authors` | ✅ | Always in square brackets: `["Jadon"]` or `["Jadon", "Sam"]` |
+| `authors` | ✅ | One name in square brackets: `["Jadon"]` (entries are solo) |
 | `file` | ✅ | Must match the uploaded file exactly, capitals included |
 | `emoji`, `thumbnail`, `photo`, `added` | | Optional |
 | `version`, `updated` | | Set automatically when a game is re-submitted |
@@ -94,7 +94,7 @@ A game added by hand has no owner, so nobody can update it through the Submit pa
 
 ## Photos
 
-- **Entrants** can add an optional photo on the Submit page. It's cropped to a square and shown as a small round picture next to their name.
+- **Entrants** must add their RAY profile picture on the Submit page (updates keep the existing one). It's cropped to a square and shown as a small round picture next to their name.
 - **Judges:** upload a square photo for each judge into `assets/judges/` (e.g. `jadon.jpg`) and make sure the `photo` paths in `config.js` match. Until a photo exists, initials are shown.
 - The site is public, so only use photos people are happy to share.
 

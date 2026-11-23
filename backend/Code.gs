@@ -234,7 +234,7 @@ function submit(user, d) {
   const emoji = clean(d.emoji, 12, "emoji", false) || "🎮";
   const authors = (Array.isArray(d.authors) ? d.authors : []).map(a => clean(a, 40, "name", false)).filter(Boolean);
   if (!authors.length) throw new UserError("Please add your name.");
-  if (authors.length > 2) throw new UserError("Teams can have at most two people.");
+  if (authors.length > 1) throw new UserError("Entries are solo: please enter just your own name.");
 
   const html = String(d.html || "");
   const htmlBytes = Utilities.newBlob(html).getBytes();
@@ -278,6 +278,7 @@ function submit(user, d) {
         files.push({ path: thumbnail, bytes: thumb.bytes });
       }
       let photoPath = existing && existing.photo;
+      if (!photo && !photoPath && !user.isAdmin) throw new UserError("Please add your RAY profile picture.");
       if (photo) {
         photoPath = "games/photos/" + slug + ".jpg";
         files.push({ path: photoPath, bytes: photo });

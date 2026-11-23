@@ -38,7 +38,7 @@
     ["Understandable in 30 seconds", "Put a one-line \"how to play\" on screen."],
     ["Must be playable", "A goal, a score or a win/lose moment, and a way to restart."],
     ["No company data", "No logos, customer data or anything confidential. The site may be public."],
-    ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo or teams of two."],
+    ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo entries only."],
     ["Keep it kind", "Silly, not mean. No games about a colleague without their blessing."],
     ["The deadline is firm", "Re-submit as often as you like until the deadline."],
     ["Get people playing", "To qualify for People's choice, your game needs at least {min} star ratings. Submit early and share your link so colleagues can play and rate it."]
@@ -795,7 +795,18 @@
 
   pages.submit = function () {
     var form = $("#submit-form");
-    var state = { html: "", fileName: "", thumb: "", photo: "" };
+    var state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false };
+    // Games already in the gallery, so an update can reuse the photo it already has.
+    var published = [];
+    loadGames().then(function (list) { published = list; }, function () { /* not essential */ });
+
+    function setPhotoNeeded(needed) {
+      state.hasPhoto = !needed;
+      $("#sf-photo").required = needed;
+      $("#sf-photo-hint").textContent = needed
+        ? "Required. Use your RAY profile picture. It's shown as a small round picture next to your name."
+        : "Optional for this update: your current picture is kept unless you choose a new one.";
+    }
     var llmSelect = $("#sf-llm");
     llmSelect.innerHTML = (CFG.llms || ["Claude", "ChatGPT", "Other"]).map(function (l) { return "<option>" + esc(l) + "</option>"; }).join("");
     fill("deadline-text", esc(isNaN(deadlineMs()) ? "the deadline" : formatDeadline()));
@@ -823,7 +834,8 @@
           var g = mine[Number(b.getAttribute("data-update"))];
           $("#sf-title").value = g.title;
           $("#sf-name").value = g.authors[0] || "";
-          $("#sf-partner").value = g.authors[1] || "";
+          var live = published.filter(function (x) { return x.slug === g.slug; })[0];
+          setPhotoNeeded(!(live && live.photo));
           $("#sf-blurb").value = g.blurb || "";
           $("#sf-emoji").value = g.emoji || "";
           if (g.llm) llmSelect.value = g.llm;
@@ -836,7 +848,7 @@
     }
 
     function authors() {
-      return [$("#sf-name").value.trim(), $("#sf-partner").value.trim()].filter(Boolean);
+      return [$("#sf-name").value.trim()].filter(Boolean);
     }
 
     function update() {
@@ -921,7 +933,7 @@
       e.preventDefault();
       fill("submit-result", "");
       var title = $("#sf-title").value.trim(), blurb = $("#sf-blurb").value.trim();
-      var problem = !authors().length ? "Please add your name." : !title ? "Please give your game a title." : !blurb ? "Please add a one-line description." : !state.html ? "Please choose your game's .html file." : "";
+      var problem = !authors().length ? "Please add your name." : !title ? "Please give your game a title." : !blurb ? "Please add a one-line description." : !state.photo && !state.hasPhoto ? "Please add your RAY profile picture." : !state.html ? "Please choose your game's .html file." : "";
       if (problem) { fill("submit-result", '<div class="error-box"><p style="margin:0">' + esc(problem) + "</p></div>"); return; }
       var btn = $("#sf-submit");
       btn.disabled = true; btn.textContent = "Publishing… (about 10 seconds)";
@@ -929,7 +941,8 @@
         title: title, authors: authors(), llm: llmSelect.value, blurb: blurb,
         emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null, photo: state.photo || null
       }).then(function (res) {
-        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "" };
+        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false };
+        setPhotoNeeded(true);
         fill("preview", ""); fill("file-notes", ""); fill("thumb-preview", ""); fill("photo-preview", "");
         fill("submit-result",
           '<div class="card success-box"><h3>' + (res.updated ? "Updated! " + esc(title) + " is now v" + res.version + " 🎉" : "You're in! " + esc(title) + " has been submitted 🎉") + "</h3>" +
