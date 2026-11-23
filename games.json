@@ -12,18 +12,5 @@
     "added": "2026-11-23",
     "award": null,
     "excludeFromJudging": true
-  },
-  {
-    "slug": "jadon-silly-snake",
-    "title": "Silly Snake",
-    "authors": [
-      "Jadon Naiken"
-    ],
-    "llm": "Claude",
-    "file": "games/jadon-silly-snake.html",
-    "blurb": "(Test) Your Classic Snake game with a RAY twist",
-    "emoji": "🐍",
-    "added": "2026-11-23",
-    "award": null
   }
 ]
