@@ -24,7 +24,7 @@ window.JAM_CONFIG = {
   name: "RAY Connect Bonanza 2027",
 
   // One short line under the name.
-  tagline: "Two weeka. One HTML file. Supreme silliness.",
+  tagline: "Two weeks. One HTML file. Supreme silliness.",
 
   // A friendly paragraph on the home page.
   welcome:
