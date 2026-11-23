@@ -680,6 +680,41 @@
     return a;
   }
 
+  // Games run in a sandbox where browser storage is blocked. Many AI-made games read saved
+  // scores or settings the moment they start, and that error stops the whole game. This small
+  // script runs first and gives each game a stand-in storage that lasts until the page closes.
+  var SANDBOX_SHIM = "(function(){function m(){var d={};return{getItem:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[String(k)]=String(v)},removeItem:function(k){delete d[String(k)]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}[\"localStorage\",\"sessionStorage\"].forEach(function(n){var ok=false;try{var s=window[n];s.setItem(\"__t\",\"1\");s.removeItem(\"__t\");ok=true}catch(e){}if(!ok){try{Object.defineProperty(window,n,{value:m(),configurable:true})}catch(e){}}});try{document.cookie}catch(e){var c=\"\";try{Object.defineProperty(document,\"cookie\",{get:function(){return c},set:function(v){c=String(v).split(\";\")[0]},configurable:true})}catch(e2){}}})();";
+  // Used in the Submit preview: reports errors back to this page so entrants can fix them.
+  var ERROR_REPORTER = "(function(){var n=0;function send(m,l){if(n++<5)parent.postMessage({bonanza:\"error\",message:String(m||\"Unknown error\"),line:l||0},\"*\")}addEventListener(\"error\",function(e){if(e.message)send(e.message,e.lineno)});addEventListener(\"unhandledrejection\",function(e){send(e.reason&&e.reason.message||e.reason,0)});addEventListener(\"load\",function(){setTimeout(function(){parent.postMessage({bonanza:\"loaded\"},\"*\")},1500)})})();";
+
+  // Inserts our scripts at the very start of the game, without changing its line numbers.
+  function gameDoc(html, report) {
+    var tag = "<script>" + SANDBOX_SHIM + (report ? ERROR_REPORTER : "") + "<\/script>";
+    if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, function (m) { return m + tag; });
+    if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, function (m) { return m + tag; });
+    if (/<!doctype[^>]*>/i.test(html)) return html.replace(/<!doctype[^>]*>/i, function (m) { return m + tag; });
+    return tag + html;
+  }
+
+  // Loads a game file and shows it in a sandboxed frame. Calls onMissing if the file isn't there.
+  function loadGameFrame(file, attrs, onMissing) {
+    var frame = sandboxedFrame(attrs);
+    fetch(file, { cache: "no-cache" }).then(function (r) {
+      if (!r.ok) throw new Error("missing");
+      return r.text();
+    }).then(function (html) { frame.srcdoc = gameDoc(html, false); }, function () { if (onMissing) onMissing(); });
+    return frame;
+  }
+
+  // Plain-English explanation of a game error, for the Submit page health check.
+  function explainError(msg) {
+    if (/ends in the middle|Unexpected end of input|Unterminated|Invalid or unexpected token|Unexpected token|missing \)|expected expression/i.test(msg)) return "The code looks cut off or has a typo. This often happens when the AI's reply was too long to send in one go.";
+    if (/is not defined|is not a function/i.test(msg)) return "The code uses something that doesn't exist, often a piece of code that went missing, or a library it tried to load from the internet.";
+    if (/Cannot read propert|Cannot set propert|of null|of undefined/i.test(msg)) return "The code looks for part of the page that isn't there.";
+    if (/SecurityError|localStorage|sessionStorage|cookie|indexedDB/i.test(msg)) return "It uses browser storage that's blocked in the gallery.";
+    return "The game hit an error while starting, so parts of it may not work.";
+  }
+
   function sandboxedFrame(attrs) {
     var f = document.createElement("iframe");
     // Sandboxed: the game can run scripts but can't touch this site, read sign-ins, or navigate away.
@@ -862,10 +897,39 @@
     function checkHtml(html) {
       var notes = [];
       if (/<(script|link|img)[^>]+(src|href)\s*=\s*["']?\s*(https?:)?\/\//i.test(html) || /url\(\s*["']?https?:/i.test(html)) notes.push("It loads something from the internet, which may not work in the gallery. Ask your AI to put everything in the one file.");
-      if (/\blocalStorage\b/.test(html)) notes.push("It uses localStorage (saving high scores), which is blocked in the gallery. If the preview below looks broken, ask your AI to remove it.");
+      if (/\bindexedDB\b/.test(html)) notes.push("It uses indexedDB to save data, which is blocked in the gallery. Ask your AI to remove it.");
       if (!/<\/html>\s*$/i.test(html.trim())) notes.push("It doesn't end with </html>, so the code might be cut off. Check the preview works.");
       return notes;
     }
+
+    function drawHealth(done) {
+      var el = slot("health");
+      if (!el) return;
+      if (!state.errors.length) {
+        el.innerHTML = done ? '<p class="field-ok">' + icon("check") + " Your game started without any errors. Give it a quick play below.</p>" : '<p class="muted">Checking your game starts properly…</p>';
+        return;
+      }
+      var first = state.errors[0];
+      var prompt = first.cut
+        ? "The HTML game file you gave me is cut off: it ends in the middle of the code. Please send me the complete file again, from <!DOCTYPE html> to </html>. If it's too long for one reply, make the code shorter."
+        : "My HTML game shows this error when it starts: \"" + first.message + "\"" + (first.line ? " (around line " + first.line + ")" : "") +
+          ". Please fix it and send me the complete updated file, from <!DOCTYPE html> to </html>.";
+      el.innerHTML = '<div class="error-box" style="margin:.5rem 0 1rem"><h3>' + (first.cut ? "Your game file is cut off" : "Your game hit an error while starting") + "</h3>" +
+        "<p>" + esc(explainError(first.message)) + "</p>" +
+        "<ul>" + state.errors.map(function (er) { return "<li><code>" + esc(er.message) + "</code>" + (er.line ? " (line " + er.line + ")" : "") + "</li>"; }).join("") + "</ul>" +
+        "<p><strong>How to fix it:</strong> copy this message, paste it into the AI you used, then upload the new file it gives you.</p>" +
+        '<pre id="fix-prompt">' + esc(prompt) + "</pre>" +
+        '<p><button class="btn btn-small copy-btn" type="button" data-copy="#fix-prompt">' + icon("copy") + " Copy message for your AI</button></p>" +
+        '<label style="display:flex;gap:.5rem;align-items:center;margin-top:.75rem"><input type="checkbox" id="sf-override"' + (state.override ? " checked" : "") + "> I've played the preview and it works anyway. Submit it as it is.</label></div>";
+      bindCopyButtons(el);
+      $("#sf-override").addEventListener("change", function (ev) { state.override = ev.target.checked; });
+    }
+
+    addEventListener("message", function (e) {
+      if (!state.frame || e.source !== state.frame.contentWindow || !e.data || !e.data.bonanza) return;
+      if (e.data.bonanza === "error") state.errors.push({ message: String(e.data.message).slice(0, 300), line: Number(e.data.line) || 0 });
+      drawHealth(e.data.bonanza === "loaded");
+    });
 
     $("#sf-file").addEventListener("change", function (e) {
       var file = e.target.files[0];
@@ -881,10 +945,16 @@
         var notes = checkHtml(text);
         fill("file-notes", notes.length ? '<div class="panel"><strong>Worth checking</strong><ul>' + notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul></div>" : '<p class="field-ok">' + icon("check") + " Looks good. Try it in the preview below.</p>");
         var holder = slot("preview");
-        holder.innerHTML = '<p class="muted">Preview. This is exactly how it will run in the gallery:</p>';
+        holder.innerHTML = '<p class="muted">Preview. This is exactly how it will run in the gallery:</p><div data-slot="health" aria-live="polite"><p class="muted">Checking your game starts properly…</p></div>';
         var f = sandboxedFrame({ "class": "embed-frame", title: "Preview of your game" });
-        f.srcdoc = text;
+        state.errors = []; state.override = false; state.frame = f;
+        // A cut-off file never runs its unfinished script, and the browser reports no error,
+        // so the game just sits there. Catch it by checking every <script> is closed.
+        var opened = (text.match(/<script\b/gi) || []).length, closed = (text.match(/<\/script>/gi) || []).length;
+        if (opened > closed) state.errors.push({ message: "The file ends in the middle of the game's code (a <script> section is never closed).", line: 0, cut: true });
+        f.srcdoc = gameDoc(text, true);
         holder.appendChild(f);
+        drawHealth(false);
       });
     });
 
@@ -934,6 +1004,7 @@
       fill("submit-result", "");
       var title = $("#sf-title").value.trim(), blurb = $("#sf-blurb").value.trim();
       var problem = !authors().length ? "Please add your name." : !title ? "Please give your game a title." : !blurb ? "Please add a one-line description." : !state.photo && !state.hasPhoto ? "Please add your RAY profile picture." : !state.html ? "Please choose your game's .html file." : "";
+      if (!problem && state.errors && state.errors.length && !state.override) problem = "Your game hit an error in the preview. Fix it with your AI, or tick \"it works anyway\" under the preview.";
       if (problem) { fill("submit-result", '<div class="error-box"><p style="margin:0">' + esc(problem) + "</p></div>"); return; }
       var btn = $("#sf-submit");
       btn.disabled = true; btn.textContent = "Publishing… (about 10 seconds)";
@@ -941,7 +1012,7 @@
         title: title, authors: authors(), llm: llmSelect.value, blurb: blurb,
         emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null, photo: state.photo || null
       }).then(function (res) {
-        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false };
+        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false, errors: [], override: false, frame: null };
         setPhotoNeeded(true);
         fill("preview", ""); fill("file-notes", ""); fill("thumb-preview", ""); fill("photo-preview", "");
         fill("submit-result",
@@ -1097,21 +1168,18 @@
       drawAdmin();
       onAuth(drawAdmin);
 
-      fetch(g.file, { method: "HEAD", cache: "no-cache" }).then(function (r) {
-        if (!r.ok) throw new Error();
-        var frame = sandboxedFrame({ "class": "player-frame", title: g.title, src: g.file });
-        main.innerHTML = "";
-        main.appendChild(frame);
-        frame.addEventListener("load", function () { try { frame.focus(); } catch (e) { /* ignore */ } });
-        var fs = $("#fullscreen");
-        var req = frame.requestFullscreen || frame.webkitRequestFullscreen;
-        if (req) {
-          fs.hidden = false;
-          fs.addEventListener("click", function () { req.call(frame); });
-        }
-      }).catch(function () {
+      var frame = loadGameFrame(g.file, { "class": "player-frame", title: g.title }, function () {
         message("The game file is missing", "<p>The gallery lists this game, but its file isn't published yet. If it was just submitted, wait a minute and refresh.</p>");
       });
+      main.innerHTML = "";
+      main.appendChild(frame);
+      frame.addEventListener("load", function () { try { frame.focus(); } catch (e) { /* ignore */ } });
+      var fs = $("#fullscreen");
+      var req = frame.requestFullscreen || frame.webkitRequestFullscreen;
+      if (req) {
+        fs.hidden = false;
+        fs.addEventListener("click", function () { req.call(frame); });
+      }
     }, function (err) { main.innerHTML = '<div class="player-msg">' + gamesErrorHtml(err) + "</div>"; });
   };
 
@@ -1137,7 +1205,7 @@
       fill("sc-title", esc(g.title));
       fill("sc-blurb", esc(g.blurb));
       frameSlot.innerHTML = "";
-      frameSlot.appendChild(sandboxedFrame({ "class": "embed-frame", title: g.title, src: g.file, loading: "lazy" }));
+      frameSlot.appendChild(loadGameFrame(g.file, { "class": "embed-frame", title: g.title }));
       frameSlot.insertAdjacentHTML("beforeend", '<div class="btn-row" style="margin-top:1rem"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(g.slug) + '">' + icon("play") + " Play full screen</a></div>");
     }, function (err) { frameSlot.innerHTML = gamesErrorHtml(err); });
   };
