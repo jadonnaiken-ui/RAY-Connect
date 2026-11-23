@@ -557,6 +557,7 @@
     $$("[data-config-tagline]").forEach(function (el) { el.textContent = CFG.tagline || ""; });
     $$("[data-config-welcome]").forEach(function (el) { el.textContent = CFG.welcome || ""; });
     $$("[data-min-ratings]").forEach(function (el) { el.textContent = CFG.minRatingsForPeoplesChoice || 5; });
+    $$("[data-max-updates]").forEach(function (el) { el.textContent = CFG.maxUpdates == null ? 2 : CFG.maxUpdates; });
     $$("[data-work-domain]").forEach(function (el) { el.textContent = CFG.workDomain ? "@" + CFG.workDomain : "work"; });
     $$("[data-api-only]").forEach(function (el) { el.hidden = !apiOn(); });
     $$("[data-chat-link]").forEach(function (a) {
