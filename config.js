@@ -38,7 +38,7 @@ window.JAM_CONFIG = {
 
   // Shown on the home page and in the guide. Add or remove rows freely.
   timeline: [ // >>> PLACEHOLDER dates <<<
-    { when: "Tues 24 Nov", what: "Kick-off: the guide and Loom video go out" },
+    { when: "Tues 24 Nov", what: "Kick-off: the guide goes out" },
     { when: "Fri 8 Dec, 18:00", what: "Submissions close. Hands off keyboards!" },
     { when: "Tues 15 Dec", what: "Winners announced" }
   ],
@@ -64,11 +64,6 @@ window.JAM_CONFIG = {
   // Each person enters ONE game. After the first submission they can send this many
   // updates (2 = up to version 3), then the game is final. They can't swap to a different game.
   maxUpdates: 2,
-
-  // Your Loom walkthrough. From a link like https://www.loom.com/share/abc123def456
-  // copy only the last part: "abc123def456". Leave as "" to hide the video.
-  // Remember to set the Loom to "Anyone with the link can view".
-  loomId: "",
 
   // Who people should ask for help.
   contact: "Jadon in the RAY Connect chat",

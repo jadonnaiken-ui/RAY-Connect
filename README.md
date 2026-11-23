@@ -46,8 +46,7 @@ It runs free on **GitHub Pages**, with a small free backend in Google Apps Scrip
 2. ✅ GitHub Pages switched on. Use **Settings → Pages → Source → GitHub Actions**: it has no hourly publish limit, and it won't publish a broken `config.js` or `games.json` (the last working version stays live)
 3. ⬜ Fill in the placeholders in `config.js` (search for `PLACEHOLDER`)
 4. ⬜ **Connect the backend:** follow [backend/SETUP.md](backend/SETUP.md) (about 30 minutes). Until then, the Submit page says "opening soon" and star ratings are hidden.
-5. ⬜ Record the Loom and add its ID to `config.js` (see below)
-6. ⬜ Replace the sample game with your own (see below)
+5. ⬜ Replace the sample game with your own (see below)
 
 ## Editing settings
 
@@ -112,9 +111,6 @@ A game added by hand has no owner, so nobody can update it through the Submit pa
 2. In `config.js`, set `winnersAnnounced: true`. This also closes star voting.
 3. Commit. Winners appear at the top of the home page and gallery.
 
-## Loom walkthrough
-
-Record it, set sharing to **Anyone with the link can view**, and copy the share link, e.g. `https://www.loom.com/share/abc123def456`. Put only the last part in `config.js`: `loomId: "abc123def456",`. It appears at the top of the guide.
 
 ## Making the sample game your own
 

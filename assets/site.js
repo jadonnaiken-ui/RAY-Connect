@@ -843,11 +843,6 @@
 
   pages.guide = function () {
     renderRules(); renderCriteria(); renderTimeline();
-    if (CFG.loomId) {
-      fill("loom", '<div class="video"><iframe src="https://www.loom.com/embed/' + encodeURIComponent(CFG.loomId) + '" title="Walkthrough video" allowfullscreen loading="lazy"></iframe></div>');
-    } else {
-      hide("loom");
-    }
     fill("starter-prompt", esc(STARTER_PROMPT));
     fill("deadline-text", esc(isNaN(deadlineMs()) ? "the deadline" : formatDeadline()));
   };
