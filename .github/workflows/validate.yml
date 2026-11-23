@@ -1,0 +1,23 @@
+# Checks games.json and config.js on every change.
+# A green tick on GitHub means everything is fine. A red cross means something
+# needs fixing: click it, then "validate", to read a plain-English explanation.
+name: Check games
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check games.json and config.js
+        run: node scripts/validate.mjs
