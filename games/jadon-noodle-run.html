@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>NOODLE · a snake game, but deeply unwell</title>
+<style>
+  :root {
+    --ink: #2b1d3a; --pink: #ff8fc7; --mint: #7ee8c4; --sun: #ffd25e; --sky: #8fd3ff; --lilac: #c9a7ff; --cream: #fff8ec;
+    --stage: min(92vw, calc(100vh - 330px), 540px);
+  }
+  @media (hover: hover) and (pointer: fine) { :root { --stage: min(92vw, calc(100vh - 210px), 560px); } .pad { display: none !important; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", "Arial Rounded MT Bold", system-ui, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(120deg, #ffd6ec, #d9f0ff, #e3ffe9, #fff1c9, #ecd9ff);
+    background-size: 400% 400%;
+    animation: bgshift 18s ease-in-out infinite;
+  }
+  @keyframes bgshift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  #bg { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  #bg span { position: absolute; font-size: 34px; opacity: .22; animation: drift linear infinite; }
+  @keyframes drift { from { transform: translateY(110vh) rotate(0deg); } to { transform: translateY(-20vh) rotate(360deg); } }
+
+  main { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px; }
+  header { text-align: center; line-height: 1; }
+  h1 { margin: 0; font-size: clamp(38px, 9vw, 60px); font-weight: 900; letter-spacing: 2px; }
+  h1 span { display: inline-block; -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); animation: wave 1.6s ease-in-out infinite; }
+  @keyframes wave { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-7px) rotate(3deg); } }
+  .sub { font-weight: 800; font-size: 14px; opacity: .75; margin-top: 6px; letter-spacing: .5px; }
+
+  .hud { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .pill { background: #fff; border: 3px solid var(--ink); border-radius: 999px; padding: 4px 12px; font-weight: 900; font-size: 16px; box-shadow: 0 4px 0 var(--ink); display: flex; align-items: center; gap: 6px; font-family: inherit; color: var(--ink); }
+  .pill b { display: inline-block; min-width: 1.2em; text-align: center; }
+  .pill b.bump { animation: bump .35s; }
+  @keyframes bump { 40% { transform: scale(1.7) rotate(-8deg); color: #e0377f; } }
+  button.pill { cursor: pointer; padding: 4px 10px; }
+  button.pill:active, .btn:active, .pad button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+
+  .stage { position: relative; width: var(--stage); height: var(--stage); min-width: 240px; min-height: 240px; }
+  canvas { width: 100%; height: 100%; display: block; border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 8px 0 var(--ink); background: var(--cream); }
+
+  .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 22px; background: rgba(43,29,58,.38); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 5; }
+  .overlay.hidden { display: none; }
+  .card { background: var(--cream); border: 4px solid var(--ink); border-radius: 20px; box-shadow: 0 7px 0 var(--ink); padding: 14px 16px; width: 88%; max-height: 92%; overflow: auto; text-align: center; animation: popin .45s cubic-bezier(.2,1.6,.4,1); touch-action: pan-y; }
+  @keyframes popin { from { transform: scale(.4) rotate(-8deg); opacity: 0; } }
+  .card h2 { margin: 2px 0; font-size: 15px; font-weight: 800; opacity: .7; }
+  .big { font-size: 46px; line-height: 1.1; animation: wave 1.2s ease-in-out infinite; display: inline-block; }
+  .name { font-size: clamp(18px, 4.6vw, 24px); font-weight: 900; margin: 2px 0 10px; color: #d6337a; }
+  .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 6px 0 12px; }
+  .legend div { background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 2px; font-size: 11px; font-weight: 800; line-height: 1.15; }
+  .legend div span { display: block; font-size: 20px; }
+  .btn { font: 900 18px/1 inherit; font-family: inherit; color: var(--ink); background: var(--pink); border: 3px solid var(--ink); border-radius: 14px; padding: 11px 20px; box-shadow: 0 5px 0 var(--ink); cursor: pointer; }
+  .btn:hover { filter: brightness(1.06); }
+  .small { font-size: 12px; font-weight: 700; opacity: .6; margin-top: 8px; }
+  .grave { font-size: 44px; line-height: 1; }
+  .rip { font-size: 13px; font-weight: 800; opacity: .6; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+  .obit { font-size: 14px; font-weight: 700; margin: 6px 0; line-height: 1.35; }
+  .eats { font-size: 16px; margin: 6px 0; word-break: break-word; }
+  .epitaph { font-style: italic; font-size: 13px; opacity: .8; margin: 6px 0 10px; }
+  .scores { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .record { display: inline-block; background: var(--sun); border: 3px solid var(--ink); border-radius: 999px; padding: 3px 12px; font-weight: 900; font-size: 13px; transform: rotate(-4deg); animation: wave 1s infinite; margin-bottom: 8px; }
+
+  #fx { position: absolute; left: 12px; top: 12px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; z-index: 3; }
+  .fxpill { position: relative; overflow: hidden; background: #fff; border: 2.5px solid var(--ink); border-radius: 999px; padding: 2px 10px; font-weight: 900; font-size: 12px; animation: popin .35s cubic-bezier(.2,1.6,.4,1); }
+  .fxpill i { position: absolute; left: 0; bottom: 0; height: 3px; background: #e0377f; }
+  #toasts { position: absolute; left: 0; right: 0; top: -14px; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 6; }
+  .toast { background: var(--sun); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); padding: 6px 12px; font-weight: 900; font-size: 14px; animation: toast 2.8s cubic-bezier(.2,1.4,.4,1) forwards; }
+  @keyframes toast { 0% { transform: translateY(-30px) scale(.5); opacity: 0; } 12% { transform: none; opacity: 1; } 85% { transform: none; opacity: 1; } 100% { transform: translateY(-20px); opacity: 0; } }
+
+  .hint { font-size: 12px; font-weight: 800; opacity: .55; }
+  @media (hover: none), (pointer: coarse) { .hint { display: none; } }
+  .pad { display: grid; grid-template-columns: repeat(3, 62px); gap: 7px; }
+  .pad button { height: 52px; font-size: 22px; background: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); color: var(--ink); padding: 0; touch-action: none; }
+  .pad .blank { visibility: hidden; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<main>
+  <header>
+    <h1 id="logo"></h1>
+    <div class="sub">a snake game, but deeply unwell</div>
+  </header>
+  <div class="hud">
+    <div class="pill" title="Score">🍽️ <b id="score">0</b></div>
+    <div class="pill" title="Best">🏆 <b id="best">0</b></div>
+    <div class="pill" title="Length">📏 <b id="len">4</b></div>
+    <button class="pill" id="pauseBtn" type="button" aria-label="Pause">⏸️</button>
+    <button class="pill" id="muteBtn" type="button" aria-label="Mute">🔊</button>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div id="fx"></div>
+    <div id="toasts"></div>
+    <div class="overlay" id="titleOv">
+      <div class="card">
+        <div class="big">🍝</div>
+        <h2>Today, your noodle is</h2>
+        <div class="name" id="titleName"></div>
+        <div class="legend" id="legend"></div>
+        <button class="btn" id="startBtn" type="button">LET'S NOODLE 🐍</button>
+        <div class="small">or press any arrow key · swipe · tap</div>
+      </div>
+    </div>
+    <div class="overlay hidden" id="deadOv"><div class="card" id="deadCard"></div></div>
+  </div>
+  <div class="hint">arrows / WASD to steer · P to pause · M to mute</div>
+  <div class="pad">
+    <button class="blank" tabindex="-1" type="button"></button><button data-d="up" type="button" aria-label="Up">⬆️</button><button class="blank" tabindex="-1" type="button"></button>
+    <button data-d="left" type="button" aria-label="Left">⬅️</button><button data-d="down" type="button" aria-label="Down">⬇️</button><button data-d="right" type="button" aria-label="Right">➡️</button>
+  </div>
+</main>
+
+<script>
+"use strict";
+/* ================= constants ================= */
+const N = 20, S = 20, W = N * S;
+const INK = "#2b1d3a";
+const EF = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const OPP = { up: "down", down: "up", left: "right", right: "left" };
+const KEYS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right" };
+
+const GENERIC = ["nom", "delicious", "mmmyes", "*crunch*", "more.", "chomp chomp", "I am unstoppable", "snack acquired", "yummers", "10/10 would eat again"];
+const FOODS = [
+  { e: "🍕", w: 6, pts: 1, desc: "just pizza", lines: ["pizza is a vegetable", "I have consumed the triangle", "cheesy."] },
+  { e: "🍩", w: 5, pts: 1, desc: "just donut", lines: ["donut? do NOT stop me", "mmm, edible hole", "ring of destiny"] },
+  { e: "🧦", w: 3, pts: 2, fx: "reverse", dur: 5000, label: "SOCK BRAIN", desc: "controls go backwards", lines: ["why did I eat a sock", "tastes like Tuesday", "my brain is inside out"] },
+  { e: "🌶️", w: 3, pts: 2, fx: "fast", dur: 5000, label: "SPICY ZOOM", desc: "zoom zoom", lines: ["HOT HOT HOT", "my tongue is a volcano", "AAAAAAAAAA"] },
+  { e: "🍄", w: 2, pts: 3, fx: "trippy", dur: 6000, label: "WOBBLEVISION", desc: "reality wobbles", lines: ["I can taste colours", "the walls are breathing", "who am I. noodle."] },
+  { e: "🦆", w: 3, pts: 3, fx: "duck", dur: 6000, grow: 3, label: "DUCK MODE", desc: "runs away · +3 length", waddle: true, lines: ["QUACK", "I am the duck now", "he was my friend"] },
+  { e: "🥒", w: 3, pts: 2, fx: "tiny", dur: 6000, label: "PICKLED", desc: "you get smol", lines: ["I'm smol now", "pickle'd", "briny..."] },
+  { e: "🐌", w: 2, pts: 1, fx: "slow", dur: 5000, label: "SLOOOW MO", desc: "bullet time", lines: ["sloooooow", "eeeeaaaaaat", "time is fake"] },
+  { e: "🌟", w: 1, pts: 10, fx: "gold", dur: 5000, label: "GOLDEN NOODLE", desc: "rare! escapes fast", expires: 6500, lines: ["I AM ASCENDED", "shiny!!!", "worth it"] },
+];
+const HATS = [[8, "🧢", "Lil cap unlocked"], [15, "🎩", "Fancy hat unlocked"], [25, "👑", "You are royalty now"], [40, "🪩", "DISCO NOODLE?!"]];
+const TITLES = ["Sir", "Lady", "Professor", "Baron", "Little", "Big", "Captain", "Dame", "Lord", "DJ", "Grandma", "Detective", "Chef", "Saint"];
+const NAMES = ["Noodles", "Wigglebottom", "Spaghettina", "Slinky", "Linguini", "Hissbert", "Gerald", "Ramen", "Sssteve", "Udon", "Fusilli", "Doug", "Penne", "Squigglesworth"];
+const SUFFIX = ["the Unwashed", "III", "of the Floor", "Esq.", "the Moist", "the Hungry", "Jr.", "the Magnificent", "PhD", "the Long", "the Slightly Damp", "of Nowhere"];
+const CAUSES = {
+  wall: ["Bonked a wall at full speed.", "Tried to leave the box. The box said no.", "Wall: 1, Noodle: 0.", "Thought the wall was a door."],
+  self: ["Ate own tail. Mistook it for spaghetti.", "Became an ouroboros. Prematurely.", "Tied themself in a knot.", "Bit themself. Rude."],
+};
+const EPITAPHS = [
+  "They died as they lived: moving forward with total confidence.",
+  "Gone, but not forgotten. Well, mostly forgotten.",
+  "Should've turned left.",
+  "Now a noodle in the great colander in the sky.",
+  "Survived by one (1) half-eaten sock.",
+  "In lieu of flowers, please send garlic bread.",
+  "Their last words were \"hiss\".",
+  "Al dente to the very end.",
+];
+
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const now = () => performance.now();
+const easeOutBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const makeName = () => `${pick(TITLES)} ${pick(NAMES)} ${pick(SUFFIX)}`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ================= audio ================= */
+let AC = null, master, sfx, mus, muted = localStorage.getItem("noodle-muted") === "1";
+let nextNoteTime = 0, noteStep = 0;
+function initAudio() {
+  try {
+    if (!AC) {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.connect(AC.destination);
+      sfx = AC.createGain(); sfx.gain.value = 0.5; sfx.connect(master);
+      mus = AC.createGain(); mus.gain.value = 0.14; mus.connect(master);
+      applyMute();
+      setInterval(scheduler, 25);
+    }
+    if (AC.state === "suspended") AC.resume();
+  } catch (e) { /* no audio, no problem */ }
+}
+function applyMute() {
+  if (master) master.gain.value = muted ? 0 : 1;
+  $("muteBtn").textContent = muted ? "🔇" : "🔊";
+}
+function tone(f, d, o = {}) {
+  if (!AC) return;
+  const t0 = (o.at != null ? o.at : AC.currentTime) + (o.delay || 0);
+  const osc = AC.createOscillator(), g = AC.createGain();
+  osc.type = o.type || "square";
+  osc.frequency.setValueAtTime(f, t0);
+  if (o.slide) osc.frequency.exponentialRampToValueAtTime(o.slide, t0 + d);
+  const v = o.vol != null ? o.vol : 0.3;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(v, t0 + (o.atk || 0.008));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+  if (o.bp) {
+    const bq = AC.createBiquadFilter(); bq.type = "bandpass"; bq.frequency.value = o.bp; bq.Q.value = o.q || 3;
+    osc.connect(bq); bq.connect(g);
+  } else osc.connect(g);
+  g.connect(o.dest || sfx);
+  if (o.vib) {
+    const l = AC.createOscillator(), lg = AC.createGain();
+    l.frequency.value = o.vib; lg.gain.value = o.vibAmt || f * 0.03;
+    l.connect(lg); lg.connect(osc.frequency); l.start(t0); l.stop(t0 + d + 0.05);
+  }
+  osc.start(t0); osc.stop(t0 + d + 0.05);
+}
+function noise(d, vol, freq, o = {}) {
+  if (!AC) return;
+  const t0 = (o.at != null ? o.at : AC.currentTime) + (o.delay || 0);
+  const len = Math.max(1, Math.floor(AC.sampleRate * d));
+  const buf = AC.createBuffer(1, len, AC.sampleRate), data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const f = AC.createBiquadFilter(); f.type = o.type || "lowpass"; f.frequency.value = freq;
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+  src.connect(f); f.connect(g); g.connect(o.dest || sfx); src.start(t0); src.stop(t0 + d);
+}
+const SFX = {
+  eat(c) { const b = 330 * Math.pow(2, Math.min(c - 1, 14) / 12); tone(b, .08, { vol: .16 }); tone(b * 1.5, .14, { vol: .16, delay: .06, slide: b * 2.2 }); },
+  quack() { [0, .17].forEach(d => tone(560, .14, { type: "sawtooth", slide: 300, bp: 1100, q: 4, vol: .7, delay: d })); },
+  boing() { tone(140, .5, { type: "sine", slide: 620, vib: 18, vibAmt: 70, vol: .45 }); },
+  whistleUp() { tone(420, .5, { type: "sine", slide: 1700, vib: 7, vibAmt: 25, vol: .3 }); },
+  whistleDown() { tone(1500, .8, { type: "sine", slide: 260, vib: 6, vibAmt: 25, vol: .3 }); },
+  trippy() { tone(300, .9, { type: "triangle", vib: 3, vibAmt: 80, vol: .3 }); tone(452, .9, { type: "triangle", vib: 4.5, vibAmt: 90, vol: .2 }); },
+  fanfare() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i === 3 ? .45 : .12, { vol: .15, delay: i * .09 })); },
+  tiny() { [1400, 1800, 2200].forEach((f, i) => tone(f, .06, { type: "triangle", vol: .2, delay: i * .05 })); },
+  bonk() { noise(.18, .9, 500); tone(110, .25, { type: "sine", slide: 40, vol: .6 }); },
+  sad() { [392, 370, 349, 330].forEach((f, i) => tone(f, i === 3 ? 1.1 : .36, { type: "sawtooth", bp: 800, q: 1, vol: .5, delay: .35 + i * .38, vib: i === 3 ? 5.5 : 0, vibAmt: 9 })); },
+  pop(i) { tone(260 + i * 22, .06, { type: "triangle", vol: .14 }); },
+  ding() { tone(1320, .15, { type: "triangle", vol: .25 }); tone(1760, .3, { type: "triangle", vol: .25, delay: .08 }); },
+  escape() { tone(900, .3, { type: "square", slide: 2400, vol: .1 }); },
+};
+/* bouncy little loop: C - Am - F - G */
+const midi = m => 440 * Math.pow(2, (m - 69) / 12);
+const BASS = [48, 45, 41, 43];
+const CHORDS = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]];
+const MEL = [72, null, 76, 79, null, 76, 74, null, 72, null, 69, 72, null, null, null, null,
+             69, null, 72, 77, null, 76, 74, 72, 74, null, 71, 67, null, 71, 74, null];
+function scheduler() {
+  if (!AC || phase !== "play" || paused) { if (AC) nextNoteTime = AC.currentTime + 0.06; return; }
+  if (nextNoteTime < AC.currentTime) nextNoteTime = AC.currentTime + 0.03;
+  let bpm = 140, pitch = 1;
+  if (effects.fast) { bpm *= 1.45; pitch = 1.12; }
+  if (effects.slow) { bpm *= 0.55; pitch = 0.75; }
+  const stepLen = 60 / bpm / 2;
+  while (nextNoteTime < AC.currentTime + 0.12) {
+    const s = noteStep % 32, bar = Math.floor(s / 8), b = s % 8, at = nextNoteTime, o = { at, dest: mus };
+    if (b === 0 || b === 4) tone(midi(BASS[bar] + (b === 4 ? 7 : 0)) * pitch, stepLen * 1.6, { ...o, type: "triangle", vol: .9 });
+    if (b === 2 || b === 6) CHORDS[bar].forEach(n => tone(midi(n) * pitch, stepLen * .7, { ...o, type: "square", vol: .12 }));
+    if (b % 2 === 1) noise(.03, .25, 7000, { at, dest: mus, type: "highpass" });
+    if (MEL[s]) tone(midi(MEL[s]) * pitch, stepLen * 1.3, { ...o, type: "square", vol: .22, vib: effects.trippy ? 6 : 0, vibAmt: 30 });
+    nextNoteTime += stepLen; noteStep++;
+  }
+}
+
+/* ================= state ================= */
+const cv = $("c"), ctx = cv.getContext("2d");
+let dpr = 1;
+function resize() { dpr = Math.min(3, window.devicePixelRatio || 1) * 1.5; cv.width = W * dpr; cv.height = W * dpr; }
+resize(); addEventListener("resize", resize);
+
+let phase = "title", paused = false, pausedAt = 0;
+let snake = [], prev = [], dir = [1, 0], queue = [], food = null, grow = 0;
+let score = 0, best = +localStorage.getItem("noodle-best") || 0, combo = 0, lastEat = -1e9, totalEats = 0;
+let effects = {}, particles = [], floaters = [], bubble = null, shake = 0, eaten = {};
+let noodleName = makeName(), nextName = "", hatLevel = 0, startAt = 0, deathAt = 0, deathCause = "", deadShownAt = 0, popped = 0;
+let tickAcc = 0, lastT = now();
+const achieved = new Set();
+const eye = { x: 0, y: 0, vx: 0, vy: 0 };
+let nextBlink = 2000, nextTongue = 1500, chompAt = -1e9;
+
+function idleSnake() { snake = [[9, 10], [8, 10], [7, 10], [6, 10]]; prev = snake.map(p => p.slice()); dir = [1, 0]; }
+idleSnake();
+
+/* ================= game flow ================= */
+function start() {
+  initAudio();
+  if (nextName) noodleName = nextName;
+  idleSnake();
+  queue = []; score = 0; combo = 0; effects = {}; grow = 0; particles = []; floaters = []; eaten = {}; totalEats = 0; hatLevel = 0;
+  bubble = null; paused = false; tickAcc = 0; lastEat = -1e9; startAt = now();
+  placeFood();
+  phase = "play";
+  $("titleOv").classList.add("hidden"); $("deadOv").classList.add("hidden");
+  updateHUD();
+  say(pick(["let's noodle", "I'm hungry", "hello world (I will eat it)", "*hiss* (affectionate)", "I was born 1 second ago"]));
+}
+
+function placeFood() {
+  const free = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!snake.some(p => p[0] === x && p[1] === y)) free.push([x, y]);
+  if (!free.length) { food = null; return; }
+  const c = pick(free);
+  let kind;
+  if (totalEats < 2) kind = FOODS[Math.random() < .5 ? 0 : 1];
+  else {
+    const tot = FOODS.reduce((a, f) => a + f.w, 0); let r = Math.random() * tot;
+    kind = FOODS.find(f => (r -= f.w) < 0) || FOODS[0];
+  }
+  food = { x: c[0], y: c[1], fx: c[0], fy: c[1], kind, born: now(), hopAt: -1e9, nextHop: now() + 900 };
+}
+
+function stepMs() {
+  let m = Math.max(66, 135 - (snake.length - 4) * 2.2);
+  if (effects.fast) m *= 0.58;
+  if (effects.slow) m *= 1.9;
+  return m;
+}
+
+function turn(name) {
+  if (paused) togglePause();
+  if (effects.reverse) name = OPP[name];
+  if (queue.length < 3) queue.push(DIRS[name]);
+}
+
+function step(t) {
+  while (queue.length) {
+    const d = queue.shift();
+    const opposite = d[0] === -dir[0] && d[1] === -dir[1], same = d[0] === dir[0] && d[1] === dir[1];
+    if (!opposite && !same) { dir = d; break; }
+  }
+  const h = [snake[0][0] + dir[0], snake[0][1] + dir[1]];
+  const eating = food && h[0] === food.x && h[1] === food.y;
+  const body = (grow > 0 || eating) ? snake : snake.slice(0, -1);
+  if (h[0] < 0 || h[1] < 0 || h[0] >= N || h[1] >= N) return die("wall", t);
+  if (body.some(p => p[0] === h[0] && p[1] === h[1])) return die("self", t);
+  prev = snake.map(p => p.slice());
+  snake.unshift(h);
+  if (eating) eat(t);
+  if (grow > 0) grow--; else snake.pop();
+  checkHats();
+}
+
+function eat(t) {
+  const f = food.kind;
+  combo = t - lastEat < 2600 ? combo + 1 : 1;
+  lastEat = t; chompAt = t; totalEats++;
+  const pts = f.pts * combo * (effects.gold ? 2 : 1);
+  score += pts;
+  eaten[f.e] = (eaten[f.e] || 0) + 1;
+  grow += 1 + (f.grow || 0);
+  const px = food.x * S + S / 2, py = food.y * S + S / 2;
+  burst(px, py, 16, f.e);
+  floaters.push({ x: px, y: py - 6, text: "+" + pts, t0: t, color: "#fff", size: 16 });
+  if (combo >= 2) floaters.push({ x: px, y: py - 26, text: "COMBO x" + combo + "!", t0: t + 80, color: "#ffd25e", size: 13 + Math.min(combo, 8) * 1.5 });
+  shake = Math.min(18, 5 + combo * 1.5);
+
+  if (f.fx === "duck") SFX.quack(); else SFX.eat(combo);
+  if (f.fx) {
+    effects[f.fx] = { until: t + f.dur, dur: f.dur, label: f.label, e: f.e };
+    ({ reverse: SFX.boing, fast: SFX.whistleUp, slow: SFX.whistleDown, trippy: SFX.trippy, gold: SFX.fanfare, tiny: SFX.tiny }[f.fx] || (() => {}))();
+    if (f.fx === "gold") confetti(px, py, 50);
+  }
+  say(Math.random() < .7 ? pick(f.lines) : pick(GENERIC));
+
+  ach("first", "First bite! 🍽️");
+  if (f.e === "🧦") ach("sock", "Ate a sock. Why. 🧦");
+  if (f.e === "🦆") ach("duck", "Duck betrayal 🦆💔");
+  if (combo >= 5) ach("combo5", "COMBO GOBLIN 👹");
+  if (Object.keys(eaten).length === FOODS.length) ach("omni", "Tasted EVERYTHING. Omnivore supreme 🍴");
+  if (score >= 100) ach("s100", "Triple digits! 💯");
+  placeFood();
+  updateHUD(true);
+}
+
+function checkHats() {
+  let lvl = 0; HATS.forEach((h, i) => { if (snake.length >= h[0]) lvl = i + 1; });
+  if (lvl > hatLevel) {
+    hatLevel = lvl;
+    const h = HATS[lvl - 1];
+    toast(`${h[1]} ${h[2]}`); SFX.fanfare();
+    confetti(snake[0][0] * S + S / 2, snake[0][1] * S + S / 2, 30);
+    say(pick(["I look fabulous", "new hat who dis", "dressed to devour", "fancy."]));
+  }
+}
+
+function die(cause, t) {
+  phase = "dying"; deathAt = t; deathCause = cause; popped = 0; shake = 24;
+  SFX.bonk(); SFX.sad();
+  say(pick(["oh no", "bonk", "ow", "not like this", "tell my mum I—", "oof"]));
+  prev = snake.map(p => p.slice());
+}
+
+function dyingUpdate(t) {
+  const target = Math.floor((t - deathAt - 600) / 45);
+  while (popped < target && popped < snake.length) {
+    const p = snake[popped];
+    burst(p[0] * S + S / 2, p[1] * S + S / 2, 6, null, segColor(popped, t));
+    SFX.pop(popped);
+    popped++;
+  }
+  if (popped >= snake.length && t - deathAt > 600 + snake.length * 45 + 900) showObituary(t);
+}
+
+function showObituary(t) {
+  phase = "dead"; deadShownAt = t;
+  const record = score > best && score > 0;
+  if (record) { best = score; localStorage.setItem("noodle-best", best); confetti(W / 2, W / 3, 90); SFX.fanfare(); }
+  if (t - startAt < 4000) ach("speedrun", "Speedrun to the afterlife ⚰️");
+  nextName = makeName();
+  const cause = effects.reverse ? "Sock-induced confusion. It happens." : pick(CAUSES[deathCause]);
+  const list = Object.entries(eaten).map(([e, n]) => `${e}<small>×${n}</small>`).join(" ") || "absolutely nothing 😶";
+  $("deadCard").innerHTML = `
+    <div class="grave">🪦</div>
+    <div class="rip">rest in pasta</div>
+    <div class="name">${esc(noodleName)}</div>
+    ${record ? '<div class="record">✨ NEW RECORD ✨</div>' : ""}
+    <div class="obit">${snake.length} segments long. Cause of death: ${esc(cause)}</div>
+    <div class="eats">${list}</div>
+    <div class="epitaph">“${esc(pick(EPITAPHS))}”</div>
+    <div class="scores"><div class="pill">🍽️ ${score}</div><div class="pill">🏆 ${best}</div></div>
+    <button class="btn" id="reBtn" type="button">REINCARNATE 🔁</button>
+    <div class="small">as <b>${esc(nextName)}</b> · or press Space</div>`;
+  $("reBtn").addEventListener("click", start);
+  $("deadOv").classList.remove("hidden");
+  updateHUD();
+}
+
+function togglePause() {
+  if (phase !== "play") return;
+  paused = !paused;
+  const t = now();
+  if (paused) pausedAt = t;
+  else {
+    const d = t - pausedAt;
+    Object.values(effects).forEach(e => e.until += d);
+    lastEat += d; if (food) { food.born += d; food.nextHop += d; }
+  }
+  $("pauseBtn").textContent = paused ? "▶️" : "⏸️";
+}
+
+/* ================= juice ================= */
+function say(text) { bubble = { text, t0: now() }; }
+function toast(text) {
+  const el = document.createElement("div"); el.className = "toast"; el.textContent = text;
+  $("toasts").appendChild(el); setTimeout(() => el.remove(), 2900);
+}
+function ach(id, text) { if (achieved.has(id)) return; achieved.add(id); toast("🏆 " + text); SFX.ding(); }
+function burst(x, y, n, emoji, color) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, Math.PI * 2), v = rand(1, 4);
+    particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, life: 0, max: rand(400, 800), size: rand(3, 6),
+      color: color || pick(["#ff8fc7", "#ffd25e", "#7ee8c4", "#8fd3ff", "#c9a7ff"]), emoji: emoji && i < 4 ? emoji : null, rot: rand(0, 6), vr: rand(-.2, .2) });
+  }
+}
+function confetti(x, y, n) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(-Math.PI, 0), v = rand(3, 8);
+    particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: rand(900, 1600), size: rand(4, 8), rect: true,
+      color: pick(["#ff8fc7", "#ffd25e", "#7ee8c4", "#8fd3ff", "#c9a7ff", "#ff6b6b"]), rot: rand(0, 6), vr: rand(-.3, .3) });
+  }
+}
+let bumpTimer;
+function updateHUD(bump) {
+  $("score").textContent = score; $("best").textContent = Math.max(best, score); $("len").textContent = snake.length + grow;
+  if (bump) { const el = $("score"); el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+}
+let fxKeys = "";
+function updateFx(t) {
+  const keys = Object.keys(effects).join();
+  if (keys !== fxKeys) {
+    fxKeys = keys;
+    $("fx").innerHTML = Object.keys(effects).map(k => `<div class="fxpill" data-k="${k}">${effects[k].e} ${effects[k].label}<i></i></div>`).join("");
+  }
+  $("fx").querySelectorAll(".fxpill").forEach(p => {
+    const e = effects[p.dataset.k]; if (e) p.querySelector("i").style.width = clamp((e.until - (paused ? pausedAt : t)) / e.dur * 100, 0, 100) + "%";
+  });
+}
+
+/* ================= drawing ================= */
+function segColor(i, t) {
+  if (effects.gold) return `hsl(${45 + Math.sin(t / 120 + i) * 6}, 95%, ${58 + Math.sin(t / 90 + i * .7) * 8}%)`;
+  const h = (330 + i * 13 - t * 0.04) % 360;
+  return `hsl(${(h + 360) % 360}, 85%, ${i % 2 ? 72 : 78}%)`;
+}
+function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, Math.max(0.1, r), 0, Math.PI * 2); ctx.fill(); }
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function emoji(e, x, y, size, rot = 0, flip = false) {
+  ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); if (flip) ctx.scale(-1, 1);
+  ctx.fillStyle = "#000"; ctx.font = `${size}px ${EF}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(e, 0, size * 0.06);
+  ctx.restore();
+}
+
+let lastFilter = "";
+function draw(t, alpha) {
+  // canvas-level filter for mushrooms
+  const filter = effects.trippy ? `hue-rotate(${(t / 6) % 360}deg) saturate(1.5)` : "";
+  if (filter !== lastFilter) { cv.style.filter = filter; lastFilter = filter; }
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#fff8ec"; ctx.fillRect(0, 0, W, W);
+  ctx.save();
+  if (shake > 0.3) ctx.translate(rand(-shake, shake), rand(-shake, shake));
+  shake *= 0.86;
+  if (effects.trippy) {
+    const k = Math.sin(t / 280) * 0.05;
+    ctx.translate(W / 2, W / 2); ctx.rotate(Math.sin(t / 450) * 0.035); ctx.transform(1, k, -k, 1, 0, 0); ctx.translate(-W / 2, -W / 2);
+  }
+  // board
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    ctx.fillStyle = (x + y) % 2 ? "#ffefd9" : "#fff8ee";
+    ctx.fillRect(x * S, y * S, S, S);
+  }
+  ctx.fillStyle = "rgba(255,143,199,.10)";
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if ((x + y) % 2) circle(x * S + S / 2, y * S + S / 2, 1.6);
+
+  drawFood(t);
+  drawSnake(t, alpha);
+
+  // particles
+  particles.forEach(p => {
+    const k = 1 - p.life / p.max;
+    ctx.globalAlpha = clamp(k * 1.5, 0, 1);
+    if (p.emoji) emoji(p.emoji, p.x, p.y, 12 * k + 4, p.rot);
+    else {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color;
+      if (p.rect) ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      else { ctx.beginPath(); ctx.arc(0, 0, p.size * k, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
+  });
+  ctx.globalAlpha = 1;
+
+  // floaters
+  floaters.forEach(f => {
+    const a = t - f.t0; if (a < 0) return;
+    const k = a / 900;
+    ctx.globalAlpha = clamp(1.4 - k * 1.4, 0, 1);
+    const sc = a < 150 ? easeOutBack(a / 150) : 1;
+    ctx.save(); ctx.translate(f.x, f.y - k * 34); ctx.scale(sc, sc);
+    ctx.font = `900 ${f.size}px ui-rounded, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.lineJoin = "round"; ctx.strokeText(f.text, 0, 0);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, 0, 0);
+    ctx.restore();
+  });
+  ctx.globalAlpha = 1;
+
+  drawBubble(t, alpha);
+
+  if (effects.slow) { ctx.fillStyle = "rgba(120,160,255,.12)"; ctx.fillRect(0, 0, W, W); }
+  ctx.restore();
+
+  if (paused) {
+    ctx.fillStyle = "rgba(43,29,58,.45)"; ctx.fillRect(0, 0, W, W);
+    ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.lineJoin = "round";
+    ctx.font = "900 40px ui-rounded, system-ui, sans-serif"; ctx.strokeText("PAUSED", W / 2, W / 2 - 8); ctx.fillText("PAUSED", W / 2, W / 2 - 8);
+    ctx.font = "800 15px ui-rounded, system-ui, sans-serif"; ctx.lineWidth = 4;
+    ctx.strokeText("the noodle is contemplating existence", W / 2, W / 2 + 24); ctx.fillText("the noodle is contemplating existence", W / 2, W / 2 + 24);
+  }
+}
+
+function drawFood(t) {
+  if (!food || phase === "title") return;
+  const f = food.kind, age = t - food.born;
+  const pop = age < 350 ? easeOutBack(age / 350) : 1;
+  let x = food.x * S + S / 2, y = food.y * S + S / 2, hop = 0;
+  const ha = (t - food.hopAt) / 220;
+  if (ha < 1) { x = (food.fx + (food.x - food.fx) * ha) * S + S / 2; y = (food.fy + (food.y - food.fy) * ha) * S + S / 2; hop = Math.sin(ha * Math.PI) * 8; }
+  const near = snake.length && Math.abs(snake[0][0] - food.x) + Math.abs(snake[0][1] - food.y) <= 3 && phase === "play";
+  const jx = near ? rand(-1.3, 1.3) : 0;
+  const bob = Math.sin(t / 260) * 1.8;
+  // shadow
+  ctx.fillStyle = "rgba(43,29,58,.14)"; ctx.beginPath(); ctx.ellipse(x, y + 8, Math.max(.1, 7 * pop - hop * .2), Math.max(.1, 2.5 * pop), 0, 0, 7); ctx.fill();
+  if (f.e === "🌟") {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(t / 600); ctx.fillStyle = "rgba(255,210,94,.35)";
+    for (let i = 0; i < 8; i++) { ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-3, 20); ctx.lineTo(3, 20); ctx.fill(); }
+    ctx.restore();
+    if (f.expires && age > f.expires - 2000 && Math.floor(t / 100) % 2) return; // blinking: about to escape
+  }
+  emoji(f.e, x + jx, y + bob * .5 - hop, 17 * pop * (1 + .07 * Math.sin(t / 170)), Math.sin(t / 300) * .15, f.e === "🦆" && food.x > food.fx);
+  if (near) emoji("💦", x + 9, y - 10 + bob * .3, 9);
+}
+
+function drawSnake(t, alpha) {
+  if (!snake.length) return;
+  const len = snake.length;
+  const pts = [];
+  for (let i = 0; i < len; i++) {
+    const c = snake[i], p = prev[i] || prev[prev.length - 1] || c;
+    pts.push([(p[0] + (c[0] - p[0]) * alpha) * S + S / 2, (p[1] + (c[1] - p[1]) * alpha) * S + S / 2]);
+  }
+  // noodly wobble perpendicular to travel
+  const amp = effects.trippy ? 4.5 : 1.6;
+  const wob = pts.map((q, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(len - 1, i + 1)];
+    let dx = a[0] - b[0], dy = a[1] - b[1]; const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
+    const o = Math.sin(t / 110 - i * .9) * amp * (i === 0 ? .3 : 1) * (phase === "title" ? .6 : 1);
+    return [q[0] - dy * o, q[1] + dx * o];
+  });
+  const tiny = effects.tiny ? .55 : 1;
+  const base = S * .46 * tiny;
+  const chomp = Math.max(0, 1 - (t - chompAt) / 250);
+  const rad = i => i === 0 ? base * (1.15 + chomp * .3) : base * (1 - .4 * Math.pow(i / Math.max(1, len - 1), 1.4));
+  const start = phase === "dying" ? popped : 0;
+  const duck = !!effects.duck;
+
+  // fire trail
+  if (effects.fast && phase === "play" && Math.random() < .6) {
+    const tl = wob[len - 1];
+    particles.push({ x: tl[0], y: tl[1], vx: rand(-.5, .5), vy: rand(-1.5, -.5), life: 0, max: 450, size: rand(3, 6), color: pick(["#ff6b35", "#ffd25e", "#ff3d3d"]), rot: 0, vr: 0 });
+  }
+  if (effects.gold && Math.random() < .3) {
+    const q = wob[Math.floor(Math.random() * len)];
+    particles.push({ x: q[0] + rand(-6, 6), y: q[1] + rand(-6, 6), vx: 0, vy: -.4, life: 0, max: 600, size: 3, color: "#fff6b0", rot: 0, vr: 0 });
+  }
+
+  // tongue (under the head)
+  const h = wob[0];
+  let fx = dir[0], fy = dir[1];
+  if (len > 1) { const dx = wob[0][0] - wob[1][0], dy = wob[0][1] - wob[1][1], m = Math.hypot(dx, dy); if (m > 0.5) { fx = dx / m; fy = dy / m; } }
+  const sx = -fy, sy = fx;
+  const r0 = rad(0);
+  if (start === 0 && t > nextTongue) {
+    if (t > nextTongue + 220) nextTongue = t + rand(1200, 3200);
+    else {
+      const k = Math.sin((t - nextTongue) / 220 * Math.PI), L = r0 + 9 * k;
+      const tx = h[0] + fx * L, ty = h[1] + fy * L, w = Math.sin(t / 25) * 1.5;
+      ctx.strokeStyle = "#ff3d6e"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(h[0], h[1]); ctx.lineTo(tx + sx * w, ty + sy * w);
+      ctx.lineTo(tx + fx * 4 + sx * (3 + w), ty + fy * 4 + sy * (3 + w)); ctx.moveTo(tx + sx * w, ty + sy * w);
+      ctx.lineTo(tx + fx * 4 - sx * (3 - w), ty + fy * 4 - sy * (3 - w)); ctx.stroke();
+    }
+  }
+
+  // shadow, outline, fill passes
+  ctx.fillStyle = "rgba(43,29,58,.15)";
+  for (let i = len - 1; i >= start; i--) if (!duck || i === 0) circle(wob[i][0], wob[i][1] + 4, rad(i) + 2);
+  ctx.fillStyle = INK;
+  for (let i = len - 1; i >= start; i--) if (!duck || i === 0) circle(wob[i][0], wob[i][1], rad(i) + 2.4);
+  for (let i = len - 1; i >= start; i--) {
+    const q = wob[i], r = rad(i);
+    if (duck && i > 0) {
+      const a = wob[i - 1];
+      emoji("🦆", q[0], q[1] + Math.sin(t / 90 + i) * 1.5, r * 2.4, 0, a[0] > q[0]);
+      continue;
+    }
+    ctx.fillStyle = segColor(i, t); circle(q[0], q[1], r);
+    ctx.fillStyle = "rgba(255,255,255,.55)"; circle(q[0] - r * .3, q[1] - r * .35, r * .28);
+  }
+  if (start > 0) return;
+
+  // face
+  const dead = phase === "dying" || phase === "dead";
+  ctx.fillStyle = "rgba(255,120,170,.55)";
+  circle(h[0] - fx * r0 * .1 + sx * r0 * .72, h[1] - fy * r0 * .1 + sy * r0 * .72, r0 * .22);
+  circle(h[0] - fx * r0 * .1 - sx * r0 * .72, h[1] - fy * r0 * .1 - sy * r0 * .72, r0 * .22);
+  const eR = r0 * .46;
+  // pupils look at food (springy googly physics)
+  let tx = 0, ty = 0;
+  if (effects.reverse) { tx = Math.cos(t / 70) * eR * .5; ty = Math.sin(t / 70) * eR * .5; }
+  else if (food) { const dx = food.x * S + S / 2 - h[0], dy = food.y * S + S / 2 - h[1], m = Math.hypot(dx, dy) || 1; tx = dx / m * eR * .45; ty = dy / m * eR * .45; }
+  eye.vx = (eye.vx + (tx - eye.x) * .22) * .72; eye.vy = (eye.vy + (ty - eye.y) * .22) * .72;
+  eye.x += eye.vx; eye.y += eye.vy;
+  if (t > nextBlink + 130) nextBlink = t + rand(1800, 4500);
+  const blinking = t > nextBlink && !dead;
+  for (const sgn of [1, -1]) {
+    const ex = h[0] + fx * r0 * .3 + sx * r0 * .48 * sgn, ey = h[1] + fy * r0 * .3 + sy * r0 * .48 * sgn;
+    ctx.fillStyle = INK; circle(ex, ey, eR + 1.4);
+    ctx.fillStyle = "#fff"; circle(ex, ey, eR);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.8; ctx.lineCap = "round";
+    if (dead) {
+      const d = eR * .5; ctx.beginPath(); ctx.moveTo(ex - d, ey - d); ctx.lineTo(ex + d, ey + d); ctx.moveTo(ex + d, ey - d); ctx.lineTo(ex - d, ey + d); ctx.stroke();
+    } else if (blinking) {
+      ctx.fillStyle = segColor(0, t); circle(ex, ey, eR);
+      ctx.beginPath(); ctx.moveTo(ex - eR * .7, ey); ctx.lineTo(ex + eR * .7, ey); ctx.stroke();
+    } else {
+      const wob2 = effects.reverse ? sgn : 1;
+      ctx.fillStyle = INK; circle(ex + eye.x * wob2, ey + eye.y, eR * .5);
+      ctx.fillStyle = "#fff"; circle(ex + eye.x * wob2 - eR * .15, ey + eye.y - eR * .15, eR * .15);
+    }
+  }
+  if (effects.reverse && !dead) emoji(Math.floor(t / 250) % 2 ? "❓" : "💫", h[0] + 10, h[1] - 14, 10);
+  if (hatLevel > 0) emoji(HATS[hatLevel - 1][1], h[0], h[1] - r0 - 4 + Math.sin(t / 200) * 1.2, 15 * (effects.tiny ? .7 : 1), Math.sin(t / 300) * .2);
+}
+
+function drawBubble(t, alpha) {
+  if (!bubble || !snake.length) return;
+  const a = t - bubble.t0, dur = 1800;
+  if (a > dur) { bubble = null; return; }
+  const c = snake[0], p = prev[0] || c;
+  const hx = (p[0] + (c[0] - p[0]) * alpha) * S + S / 2, hy = (p[1] + (c[1] - p[1]) * alpha) * S + S / 2;
+  ctx.font = "800 13px ui-rounded, system-ui, sans-serif";
+  const w = ctx.measureText(bubble.text).width + 18, h = 24;
+  const below = hy < 50;
+  const bx = clamp(hx, w / 2 + 4, W - w / 2 - 4), by = below ? hy + 34 : hy - 34;
+  const sc = a < 180 ? easeOutBack(a / 180) : a > dur - 200 ? (dur - a) / 200 : 1;
+  ctx.save(); ctx.translate(bx, by); ctx.scale(sc, sc); ctx.rotate(Math.sin(t / 200) * .03);
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineJoin = "round";
+  rr(-w / 2, -h / 2, w, h, 11); ctx.fill(); ctx.stroke();
+  const tx = clamp(hx - bx, -w / 2 + 12, w / 2 - 12), ty = below ? -h / 2 : h / 2, dy = below ? -8 : 8;
+  ctx.beginPath(); ctx.moveTo(tx - 6, ty); ctx.lineTo(tx, ty + dy); ctx.lineTo(tx + 6, ty); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(tx - 6, ty); ctx.lineTo(tx, ty + dy); ctx.lineTo(tx + 6, ty); ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.fillRect(tx - 5, ty - (below ? -1.5 : 1.5) - 1, 10, 2.5);
+  ctx.fillStyle = INK; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(bubble.text, 0, 1);
+  ctx.restore();
+}
+
+/* ================= main loop ================= */
+function frame(t) {
+  const dt = Math.min(100, t - lastT); lastT = t;
+  let alpha = 1;
+  if (phase === "play" && !paused) {
+    tickAcc += dt;
+    let ms = stepMs();
+    while (tickAcc >= ms && phase === "play") { tickAcc -= ms; step(t); ms = stepMs(); }
+    for (const k in effects) if (effects[k].until < t) {
+      delete effects[k];
+      if (k === "reverse") say("my brain is back");
+      if (k === "tiny") say("big again");
+    }
+    if (food && food.kind.waddle && t > food.nextHop) {
+      const opts = Object.values(DIRS).map(d => [food.x + d[0], food.y + d[1]])
+        .filter(c => c[0] >= 0 && c[1] >= 0 && c[0] < N && c[1] < N && !snake.some(p => p[0] === c[0] && p[1] === c[1]));
+      if (opts.length) { const c = pick(opts); food.fx = food.x; food.fy = food.y; food.x = c[0]; food.y = c[1]; food.hopAt = t; }
+      food.nextHop = t + rand(500, 900);
+    }
+    if (food && food.kind.expires && t - food.born > food.kind.expires) {
+      floaters.push({ x: food.x * S + S / 2, y: food.y * S, text: "it got away!", t0: t, color: "#ffd25e", size: 14 });
+      SFX.escape(); placeFood();
+    }
+    if (phase === "play") alpha = clamp(tickAcc / stepMs(), 0, 1);
+  }
+  if (phase === "dying") dyingUpdate(t);
+  if (phase === "title") { // idle wiggle on the title screen
+    dir = [1, 0];
+  }
+  const k = dt / 16;
+  particles.forEach(p => { p.life += dt; p.x += p.vx * k; p.y += p.vy * k; p.vy += .12 * k; p.vx *= .99; p.rot += p.vr * k; });
+  particles = particles.filter(p => p.life < p.max);
+  floaters = floaters.filter(f => t - f.t0 < 900);
+  updateFx(t);
+  draw(t, alpha);
+  requestAnimationFrame(frame);
+}
+
+/* ================= input ================= */
+function primary() {
+  initAudio();
+  if (phase === "title") start();
+  else if (phase === "dead" && now() - deadShownAt > 700) start();
+}
+addEventListener("keydown", e => {
+  initAudio();
+  const k = e.key, d = KEYS[k] || KEYS[k.toLowerCase()];
+  if (k === "m" || k === "M") { toggleMute(); return; }
+  if (phase === "title" || phase === "dead") {
+    if (d || k === " " || k === "Enter") { e.preventDefault(); primary(); }
+    return;
+  }
+  if (phase === "play") {
+    if (k === "p" || k === "P" || k === "Escape" || k === " ") { e.preventDefault(); togglePause(); return; }
+    if (d) { e.preventDefault(); turn(d); }
+  }
+});
+document.querySelectorAll("[data-d]").forEach(b => b.addEventListener("pointerdown", e => {
+  e.preventDefault(); initAudio();
+  if (phase === "play") turn(b.dataset.d); else primary();
+}));
+let tsx = null, tsy = 0;
+addEventListener("touchstart", e => {
+  if (e.target.closest("button, .card")) { tsx = null; return; }
+  tsx = e.touches[0].clientX; tsy = e.touches[0].clientY;
+}, { passive: true });
+addEventListener("touchend", e => {
+  if (tsx === null) return;
+  const dx = e.changedTouches[0].clientX - tsx, dy = e.changedTouches[0].clientY - tsy;
+  tsx = null; initAudio();
+  if (phase !== "play") { primary(); return; }
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 22) return;
+  turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+});
+$("startBtn").addEventListener("click", start);
+$("pauseBtn").addEventListener("click", () => { initAudio(); togglePause(); });
+function toggleMute() { muted = !muted; localStorage.setItem("noodle-muted", muted ? "1" : "0"); applyMute(); }
+$("muteBtn").addEventListener("click", () => { initAudio(); toggleMute(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && phase === "play" && !paused) togglePause(); });
+
+/* ================= boot ================= */
+$("logo").innerHTML = "NOODLE".split("").map((c, i) =>
+  `<span style="color:${["#ff8fc7", "#ffd25e", "#7ee8c4", "#8fd3ff", "#c9a7ff", "#ff8fc7"][i]};animation-delay:${i * .12}s">${c}</span>`).join("");
+$("titleName").textContent = noodleName;
+$("legend").innerHTML = FOODS.map(f => `<div><span>${f.e}</span>${f.desc}</div>`).join("");
+$("bg").innerHTML = Array.from({ length: 16 }, () =>
+  `<span style="left:${rand(0, 95)}vw;animation-duration:${rand(16, 32)}s;animation-delay:-${rand(0, 30)}s">${pick(FOODS).e}</span>`).join("");
+applyMute();
+updateHUD();
+requestAnimationFrame(t => { lastT = t; frame(t); });
+</script>
+</body>
+</html>
