@@ -37,12 +37,12 @@ window.JAM_CONFIG = {
   // The moment submissions close. Format: YYYY-MM-DDTHH:MM:SS+HH:MM
   // The "+02:00" part is your timezone (South Africa = +02:00, UK winter = +00:00).
   // The countdown is correct for everyone, wherever they are.
-  deadline: "2026-12-08T17:00:00+02:00", // >>> PLACEHOLDER <<<
+  deadline: "2026-12-08T18:00:00+02:00", // >>> PLACEHOLDER <<<
 
   // Shown on the home page and in the guide. Add or remove rows freely.
   timeline: [ // >>> PLACEHOLDER dates <<<
     { when: "Tues 24 Nov", what: "Kick-off: the guide and Loom video go out" },
-    { when: "Fri 8 Dec, 17:00", what: "Submissions close. Hands off keyboards!" },
+    { when: "Fri 8 Dec, 18:00", what: "Submissions close. Hands off keyboards!" },
     { when: "Tues 15 Dec", what: "Winners announced" }
   ],
 
@@ -90,9 +90,9 @@ window.JAM_CONFIG = {
 
   // Prizes. Edit the amounts and wording. Remove a block to remove a prize.
   prizes: [ // >>> PLACEHOLDER amounts <<<
-    { title: "Grand champion", amount: "$100", description: "Highest score from the judges. Eternal glory included." },
-    { title: "Runner-up", amount: "$50", description: "Second-highest score. Still extremely silly." },
-    { title: "People's choice", amount: "$30", description: "Highest average star rating from everyone. Charm the crowd." }
+    { title: "Grand champion", amount: "$200", description: "Highest score from the judges. Eternal glory included." },
+    { title: "Runner-up", amount: "$100", description: "Second-highest score. Still extremely silly." },
+    { title: "People's choice", amount: "$60", description: "Highest average star rating from everyone. Charm the crowd." }
   ],
 
   // The AI assistants people can pick from when they submit.
