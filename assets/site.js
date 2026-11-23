@@ -40,7 +40,8 @@
     ["No company data", "No logos, customer data or anything confidential. The site may be public."],
     ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo or teams of two."],
     ["Keep it kind", "Silly, not mean. No games about a colleague without their blessing."],
-    ["The deadline is firm", "Re-submit as often as you like until the deadline."]
+    ["The deadline is firm", "Re-submit as often as you like until the deadline."],
+    ["Get people playing", "To qualify for People's choice, your game needs at least {min} star ratings. Submit early and share your link so colleagues can play and rate it."]
   ];
 
   var AWARD_LABEL = { "winner": "Winner", "runner-up": "Runner-up", "peoples-choice": "People's choice" };
@@ -497,7 +498,7 @@
 
   function renderRules() {
     fill("rules", RULES.map(function (r) {
-      return "<li><strong>" + esc(r[0]) + "</strong>" + esc(r[1]) + "</li>";
+      return "<li><strong>" + esc(r[0]) + "</strong>" + esc(r[1].replace("{min}", CFG.minRatingsForPeoplesChoice || 5)) + "</li>";
     }).join(""));
   }
 
@@ -919,8 +920,12 @@
         fill("submit-result",
           '<div class="card success-box"><h3>' + (res.updated ? "Updated! " + esc(title) + " is now v" + res.version + " 🎉" : "You're in! " + esc(title) + " has been submitted 🎉") + "</h3>" +
           "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. You can re-submit as often as you like before the deadline.</p>" +
+          '<p><strong>Now get people playing.</strong> You need at least ' + (CFG.minRatingsForPeoplesChoice || 5) + " star ratings to qualify for People's choice. Share your link in the RAY Connect chat:</p>" +
+          '<p><code id="share-link">' + esc(new URL("play.html?game=" + encodeURIComponent(res.slug), location.href).href) + '</code></p>' +
+          '<p><button class="btn btn-small copy-btn" type="button" data-copy="#share-link">' + icon("copy") + " Copy link</button></p>" +
           '<div class="btn-row"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(res.slug) + '">' + icon("play") + ' Play it</a><a class="btn" href="gallery.html">Go to the gallery</a></div>' +
           '<p class="muted" style="margin:1rem 0 0">If it says "file missing" at first, wait a minute and refresh.</p></div>');
+        bindCopyButtons(slot("submit-result"));
         slot("submit-result").scrollIntoView({ behavior: "smooth", block: "center" });
         return refreshMe().then(render);
       }, function (err) {
@@ -1035,7 +1040,9 @@
         if (!ratable(g)) { el.innerHTML = g.excludeFromJudging && apiOn() ? '<span class="muted">Example game, not rated</span>' : ""; return; }
         var rated = signedIn() && Auth.me.myRatedVersions ? Auth.me.myRatedVersions[g.slug] : 0;
         var stale = myRating(g.slug) && rated && rated < version;
-        el.innerHTML = '<span class="rate-summary">' + esc(starSummary(g.slug)) + "</span>" + starsWidget(g) +
+        var count = (Stats[g.slug] || {}).count || 0, min = CFG.minRatingsForPeoplesChoice || 5;
+        var qualify = count < min ? " · needs " + (min - count) + " more to qualify" : " · qualifies";
+        el.innerHTML = '<span class="rate-summary">' + esc(starSummary(g.slug) + qualify) + "</span>" + starsWidget(g) +
           (stale ? '<span class="rate-note">Updated to v' + version + " since you rated it. Change your stars if you like.</span>" : "");
         bindStars(el, g, drawRating);
       }

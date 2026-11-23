@@ -13,8 +13,8 @@
 
 const TABS = {
   submissions: ["Timestamp", "Email", "Name", "Slug", "Title", "Authors", "AI used", "Blurb", "Emoji", "Version"],
-  ratings: ["Updated", "Email", "Slug", "Stars", "Version rated"],
-  judging: ["Updated", "Email", "Slug", "Silliness", "Playability", "Originality", "Presentation", "Wildcard", "Weighted total"],
+  ratings: ["Updated", "Rater", "Email", "Game", "Creator", "Stars", "Version rated", "Slug"],
+  judging: ["Updated", "Judge", "Email", "Game", "Creator", "Silliness", "Playability", "Originality", "Presentation", "Wildcard", "Weighted total", "Slug"],
   removed: ["Removed at", "Removed by", "From tab", "Row"]
 };
 const RUBRIC_MULTIPLIERS = [8, 4, 4, 2, 2];
@@ -187,7 +187,10 @@ function rate(user, data) {
   if (game.excludeFromJudging) throw new UserError("This is an example game, so it can't be rated.");
   if (isOwner(user, game)) throw new UserError("Nice try! You can't rate your own game.");
   const version = Number(game.version) || 1;
-  withLock(() => upsert("ratings", user.email, game.slug, [new Date(), user.email, game.slug, stars, version]));
+  withLock(() => upsert("ratings", {
+    Updated: new Date(), Rater: user.name, Email: user.email, Game: game.title, Creator: (game.authors || []).join(" & "),
+    Stars: stars, "Version rated": version, Slug: game.slug
+  }));
   CacheService.getScriptCache().remove("stats");
   return { ok: true, stars: stars, version: version, stats: ratingStats()[game.slug] };
 }
@@ -200,7 +203,11 @@ function judge(user, data) {
   const scores = (data.scores || []).map(Number);
   if (scores.length !== 5 || scores.some(s => !(s >= 1 && s <= 5 && Math.round(s) === s))) throw new UserError("Every criterion needs a score from 1 to 5.");
   const total = scores.reduce((sum, s, i) => sum + s * RUBRIC_MULTIPLIERS[i], 0);
-  withLock(() => upsert("judging", user.email, game.slug, [new Date(), user.email, game.slug].concat(scores, [total])));
+  withLock(() => upsert("judging", {
+    Updated: new Date(), Judge: user.name, Email: user.email, Game: game.title, Creator: (game.authors || []).join(" & "),
+    Silliness: scores[0], Playability: scores[1], Originality: scores[2], Presentation: scores[3], Wildcard: scores[4],
+    "Weighted total": total, Slug: game.slug
+  }));
   return { ok: true, total: total };
 }
 
@@ -356,20 +363,21 @@ function starRanking() {
   const min = siteConfig().minRatings;
   return games().filter(g => !g.excludeFromJudging).map(g => {
     const s = stats[g.slug] || { avg: 0, count: 0 };
-    return { slug: g.slug, title: g.title, avg: s.avg, count: s.count, qualifies: s.count >= min };
+    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: s.avg, count: s.count, qualifies: s.count >= min, short: Math.max(0, min - s.count) };
   }).sort((a, b) => (b.qualifies - a.qualifies) || (b.avg - a.avg) || (b.count - a.count));
 }
 
 function judgeRanking() {
   const per = {};
   rows("judging").forEach(r => {
-    const p = per[r.Slug] || (per[r.Slug] = { totals: [], silly: [], judges: [] });
+    const p = per[r.Slug] || (per[r.Slug] = { totals: [], silly: [], judges: [], byJudge: {} });
     p.totals.push(Number(r["Weighted total"])); p.silly.push(Number(r.Silliness)); p.judges.push(r.Email);
+    p.byJudge[r.Email] = Number(r["Weighted total"]);
   });
   const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
   const list = games().filter(g => !g.excludeFromJudging).map(g => {
-    const p = per[g.slug] || { totals: [], silly: [], judges: [] };
-    return { slug: g.slug, title: g.title, avg: Math.round(avg(p.totals) * 10) / 10, sillyAvg: Math.round(avg(p.silly) * 100) / 100, judged: p.judges.length };
+    const p = per[g.slug] || { totals: [], silly: [], judges: [], byJudge: {} };
+    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: Math.round(avg(p.totals) * 10) / 10, sillyAvg: Math.round(avg(p.silly) * 100) / 100, judged: p.judges.length, byJudge: p.byJudge };
   }).sort((a, b) => (b.avg - a.avg) || (b.sillyAvg - a.sillyAvg));
   list.forEach((e, i) => {
     const same = o => o && o.avg === e.avg && o.sillyAvg === e.sillyAvg && e.judged > 0;
@@ -387,20 +395,54 @@ function onOpen() {
     .addToUi();
 }
 
+// Rebuilds the two leaderboard tabs. Runs automatically every 10 minutes (see setup),
+// and from the Bonanza menu.
 function refreshLeaderboards() {
   const ss = SpreadsheetApp.getActive();
-  const tab = ss.getSheetByName("Leaderboard") || ss.insertSheet("Leaderboard");
+  const old = ss.getSheetByName("Leaderboard");
+  if (old) ss.deleteSheet(old); // replaced by the two tabs below
+  const stamp = "Updated " + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "d MMM, HH:mm") + ". Refreshes every 10 minutes.";
+
+  // Judges' leaderboard: one column per judge with their total out of 100.
+  const judgeEmails = settings().judges;
+  const judgeNames = {};
+  rows("judging").forEach(r => { if (r.Judge) judgeNames[r.Email] = r.Judge; });
+  const nameOf = e => judgeNames[e] || nameFromEmail(e);
+  const j = judgeRanking();
+  const jHead = ["Rank", "Game", "Average total /100", "Average silliness /5"].concat(judgeEmails.map(e => nameOf(e) + " /100"), ["Note"]);
+  const jRows = j.map((e, i) => [i + 1, e.title, e.judged ? e.avg : "", e.judged ? e.sillyAvg : ""]
+    .concat(judgeEmails.map(em => e.byJudge[em] !== undefined ? e.byJudge[em] : ""),
+      [e.tied ? "Tied: judges discuss" : (e.judged ? "" : "Not scored yet")]));
+  writeBoard(ss, "Judges' leaderboard", jHead, jRows, stamp, { 3: "0.0", 4: "0.00" });
+
+  // People's choice: star ratings.
+  const min = siteConfig().minRatings;
+  const pHead = ["Rank", "Game", "Creator", "Average stars /5", "Ratings", "Qualifies (" + min + "+ ratings)"];
+  const pRows = starRanking().map((e, i) => [i + 1, e.title, e.creator, e.count ? e.avg : "", e.count, e.qualifies ? "Yes" : "No: needs " + e.short + " more"]);
+  writeBoard(ss, "People's choice", pHead, pRows, stamp, { 4: "0.00" });
+}
+
+function writeBoard(ss, title, head, data, stamp, formats) {
+  const tab = ss.getSheetByName(title) || ss.insertSheet(title);
   tab.clear();
-  const j = judgeRanking(), s = starRanking();
-  const rowsOut = [["Judges' ranking (Grand champion & Runner-up)", "", "", "", ""], ["Rank", "Game", "Average /100", "Silliness avg", "Judges scored"]];
-  j.forEach((e, i) => rowsOut.push([i + 1, e.title + (e.tied ? "  (TIED: judges discuss)" : ""), e.avg, e.sillyAvg, e.judged]));
-  rowsOut.push(["", "", "", "", ""], ["People's choice (star ratings)", "", "", "", ""], ["Rank", "Game", "Average stars", "Ratings", "Qualifies?"]);
-  s.forEach((e, i) => rowsOut.push([i + 1, e.title, e.avg, e.count, e.qualifies ? "Yes" : "Needs " + siteConfig().minRatings + " ratings"]));
-  tab.getRange(1, 1, rowsOut.length, 5).setValues(rowsOut);
-  tab.getRange("A1").setFontWeight("bold");
-  tab.getRange(j.length + 4, 1).setFontWeight("bold");
-  tab.autoResizeColumns(1, 5);
-  ss.setActiveSheet(tab);
+  const all = [head].concat(data);
+  tab.getRange(1, 1, all.length, head.length).setValues(all);
+  tab.getRange(1, 1, 1, head.length).setFontWeight("bold").setBackground("#f3f1ee");
+  tab.setFrozenRows(1);
+  Object.keys(formats || {}).forEach(col => { if (data.length) tab.getRange(2, Number(col), data.length, 1).setNumberFormat(formats[col]); });
+  tab.getRange(1, 1).setNote(stamp);
+  tab.autoResizeColumns(1, head.length);
+}
+
+// "jadon.naiken@getray.ai" -> "Jadon Naiken" (used when we don't have a proper name)
+function nameFromEmail(email) {
+  return String(email || "").split("@")[0].split(/[._-]+/).filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+function ensureAutoRefresh() {
+  const exists = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === "refreshLeaderboards");
+  if (!exists) ScriptApp.newTrigger("refreshLeaderboards").timeBased().everyMinutes(10).create();
 }
 
 // Run this once from the editor (select "setup", click Run). It checks every setting.
@@ -409,6 +451,13 @@ function setup() {
   const report = [];
   Object.keys(TABS).forEach(sheet);
   report.push("✅ Sheet tabs are ready.");
+  try {
+    ensureAutoRefresh();
+    refreshLeaderboards();
+    report.push("✅ Leaderboards refresh automatically every 10 minutes.");
+  } catch (err) {
+    report.push("⚠️ Couldn't set up the automatic leaderboard refresh: " + err.message);
+  }
   report.push(s.clientId ? "✅ GOOGLE_CLIENT_ID is set." : "❌ GOOGLE_CLIENT_ID is missing (SETUP step 4).");
   report.push(s.domains.length ? "✅ Only these email domains can sign in: " + s.domains.join(", ") : "⚠️ ALLOWED_DOMAINS is empty: ANY Google account could sign in.");
   report.push(s.judges.length ? "✅ Judges: " + s.judges.join(", ") : "⚠️ JUDGE_EMAILS is empty: nobody can score as a judge yet.");
@@ -472,15 +521,42 @@ function sheet(name) {
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, TABS[name].length).setFontWeight("bold");
   } else if (!headersChecked[name]) {
-    // Older sheets: add any new column headings without touching existing data.
-    const want = TABS[name];
-    const have = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].filter(String);
-    if (have.length < want.length) sh.getRange(1, 1, 1, want.length).setValues([want]).setFontWeight("bold");
+    migrateTab(sh, name);
   }
   headersChecked[name] = true;
   return sh;
 }
 const headersChecked = {};
+
+// If a tab still has an older column layout, rewrite it in the new one.
+// Rows are matched by column name, so no data is lost; missing names are filled in.
+function migrateTab(sh, name) {
+  const want = TABS[name];
+  const values = sh.getDataRange().getValues();
+  const have = values[0].map(String);
+  if (want.every((h, i) => have[i] === h)) return;
+  const byGame = {};
+  try { games().forEach(g => { byGame[g.slug] = g; }); } catch (e) { /* GitHub unavailable: fill what we can */ }
+  const people = {};
+  if (name !== "submissions") rows("submissions").forEach(r => { if (r.Name) people[r.Email] = r.Name; });
+  const rowsOut = values.slice(1).map(v => {
+    const o = {};
+    have.forEach((h, i) => { o[h] = v[i]; });
+    const g = byGame[o.Slug] || {};
+    if (!o.Game) o.Game = g.title || o.Slug;
+    if (!o.Creator) o.Creator = (g.authors || []).join(" & ");
+    const person = people[o.Email] || nameFromEmail(o.Email);
+    if (name === "ratings" && !o.Rater) o.Rater = person;
+    if (name === "judging" && !o.Judge) o.Judge = person;
+    return want.map(h => o[h] === undefined ? "" : o[h]);
+  });
+  sh.clear();
+  const all = [want].concat(rowsOut);
+  sh.getRange(1, 1, all.length, want.length).setValues(all);
+  sh.getRange(1, 1, 1, want.length).setFontWeight("bold");
+  sh.setFrozenRows(1);
+  sh.autoResizeColumns(1, want.length);
+}
 
 function rows(name) {
   const values = sheet(name).getDataRange().getValues();
@@ -488,12 +564,15 @@ function rows(name) {
   return values.map(v => { const o = {}; head.forEach((h, i) => o[h] = v[i]); return o; });
 }
 
-// Replace the row for this email + slug, or add one.
-function upsert(name, email, slug, row) {
+// Replace the row for this person + game, or add one. `record` is keyed by column name.
+function upsert(name, record) {
   const sh = sheet(name);
   const values = sh.getDataRange().getValues();
+  const head = values[0];
+  const row = head.map(h => record[h] === undefined ? "" : record[h]);
+  const e = head.indexOf("Email"), sl = head.indexOf("Slug");
   for (let i = 1; i < values.length; i++) {
-    if (values[i][1] === email && values[i][2] === slug) {
+    if (values[i][e] === record.Email && values[i][sl] === record.Slug) {
       sh.getRange(i + 1, 1, 1, row.length).setValues([row]);
       return;
     }
