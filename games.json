@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "organisers-toaster-panic",
+    "title": "Toaster Panic",
+    "authors": ["The organisers"],
+    "llm": "Claude",
+    "file": "games/organisers-toaster-panic.html",
+    "blurb": "Your toaster has become self-aware and is firing breakfast at the ceiling. Catch it.",
+    "emoji": "🍞",
+    "added": "2026-11-23",
+    "award": null,
+    "excludeFromJudging": true
+  }
+]

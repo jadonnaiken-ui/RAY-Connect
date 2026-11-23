@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<title>Gallery · {name}</title>
+<meta name="description" content="Play every game entered in the RAY Connect silly game jam.">
+</head>
+<body data-page="gallery">
+<div id="site-header"></div>
+
+<main id="main">
+  <section class="hero" style="padding-bottom:0">
+    <div class="wrap">
+      <span class="eyebrow">Gallery</span>
+      <h1>Every game, ready to play</h1>
+      <p class="lead">Click a game to play it right here. Everything runs in your browser, on a laptop or your phone.</p>
+      <div class="status" data-slot="status"></div>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="guide.html#submit" data-submit-link>Submit your game</a>
+        <a class="btn" href="#" data-vote-link hidden>Vote for people's choice</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:3rem">
+    <div class="wrap" data-slot="gallery"><p class="muted">Loading games…</p></div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+<script src="config.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

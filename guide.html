@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<title>Guide · {name}</title>
+<meta name="description" content="Everything you need to build and submit a silly browser game with an AI assistant, in about an hour.">
+</head>
+<body data-page="guide">
+<div id="site-header"></div>
+
+<main id="main">
+  <section class="hero" style="padding-bottom:0">
+    <div class="wrap">
+      <span class="eyebrow">Entrant guide</span>
+      <h1>From silly idea to submitted game in an hour</h1>
+      <p class="lead">No coding experience needed. Read this top to bottom (about five minutes), then go build.</p>
+    </div>
+  </section>
+
+  <div class="wrap guide-layout">
+    <nav class="toc" aria-label="On this page">
+      <ol>
+        <li data-show="loom"><a href="#video">Video walkthrough</a></li>
+        <li><a href="#challenge">The challenge</a></li>
+        <li><a href="#rules">Rules</a></li>
+        <li><a href="#build">How to build it</a></li>
+        <li><a href="#prompt">Starter prompt</a></li>
+        <li><a href="#tips">Tips for iterating</a></li>
+        <li><a href="#trouble">Troubleshooting</a></li>
+        <li><a href="#submit">How to submit</a></li>
+        <li><a href="#timeline">Timeline</a></li>
+        <li><a href="#judging">Judging</a></li>
+        <li><a href="#help">Who to ask</a></li>
+      </ol>
+    </nav>
+
+    <div class="read" style="max-width:none">
+      <section id="video" data-show="loom">
+        <h2>Video walkthrough</h2>
+        <p class="muted">Prefer watching? This short video covers the whole thing.</p>
+        <div data-slot="loom"></div>
+      </section>
+
+      <section id="challenge" class="read">
+        <h2>The challenge</h2>
+        <p>Make the <strong>silliest browser game you can</strong>, mostly by chatting with an AI assistant. Think of a game where you herd confused pigeons, race office chairs, or defend a sandwich from seagulls. It can be as absurd as you like, but it <strong>must still be playable</strong>: someone should be able to pick it up, understand it in 30 seconds, and have a goal to chase.</p>
+        <p>The twist: use the basic, everyday version of whatever AI you have. The skill being tested is what you can make with the little you have.</p>
+      </section>
+
+      <section id="rules">
+        <h2>Rules</h2>
+        <ol class="rules" data-slot="rules"></ol>
+      </section>
+
+      <section id="build">
+        <h2>How to build it</h2>
+        <ol class="steps">
+          <li>
+            <strong>Pick a ridiculous idea</strong>
+            <p>Take a simple game everyone knows and give it one absurd twist. Some starters:</p>
+            <ul>
+              <li>Whack-a-mole, but the moles are unread emails that multiply</li>
+              <li>A racing game where every car is a sofa</li>
+              <li>Catch falling pancakes on your head; stack them as high as you can</li>
+              <li>Pilot a pigeon through a city using only its very loud coo</li>
+              <li>Keep a houseplant alive while it develops strong opinions</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Copy the starter prompt into your AI</strong>
+            <p>Use the <a href="#prompt">starter prompt below</a>. Replace the last line with your idea, then send it. One or two sentences about your idea is plenty.</p>
+          </li>
+          <li>
+            <strong>Play the result</strong>
+            <p><strong>In Claude:</strong> the game usually appears right in the chat, in a panel on the side. Click it to play.</p>
+            <p><strong>In ChatGPT, Gemini or Copilot:</strong> click "Preview" or open the "Canvas" if you see that option. Otherwise copy all of the code, paste it into a plain text editor (Notepad on Windows, TextEdit on Mac in plain-text mode), save it as <code>game.html</code>, and double-click the file. It opens in your browser.</p>
+          </li>
+          <li>
+            <strong>Iterate in plain language</strong>
+            <p>Tell the AI what to change, one thing at a time: "make the pigeon faster", "add a sound when I score". See <a href="#tips">tips for iterating</a>.</p>
+          </li>
+          <li>
+            <strong>Save the final file</strong>
+            <p>Name it <code>firstname-game-title.html</code>, all lowercase with dashes, for example <code>jadon-sofa-racer.html</code>. The <a href="#submit">submission helper</a> below works this out for you.</p>
+            <p class="muted">In Claude: use the download button on the game panel. Elsewhere: copy all the code into a text file and save it with <code>.html</code> at the end.</p>
+          </li>
+          <li>
+            <strong>Submit before the deadline</strong>
+            <p>Send the file and a few details. See <a href="#submit">how to submit</a>. You can send updated versions as often as you like until <span data-slot="deadline-text">the deadline</span>.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="prompt">
+        <h2>Starter prompt</h2>
+        <p class="muted">Copy this, paste it into your AI assistant, and replace the last line with your idea.</p>
+        <div class="prompt-box">
+          <pre id="starter-prompt" data-slot="starter-prompt"></pre>
+          <div class="prompt-actions">
+            <span>Works with Claude, ChatGPT, Gemini and Copilot</span>
+            <button class="btn btn-small btn-primary copy-btn" type="button" data-copy="#starter-prompt"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg> Copy prompt</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tips" class="read">
+        <h2>Tips for iterating</h2>
+        <p>Ask for <strong>one change at a time</strong> and play it after every change. Good follow-ups to try:</p>
+        <div class="chat">
+          <div class="bubble me">Make it sillier. Add three absurd surprises that happen at random.</div>
+          <div class="bubble me">Add sound effects with the Web Audio API: a boing when I jump and a sad trombone when I lose.</div>
+          <div class="bubble me">Make it get harder over time, so a round lasts about a minute.</div>
+          <div class="bubble me">When I press the left arrow, the character goes right. Please fix that.</div>
+          <div class="bubble me">Make it work on a phone: tap and drag should control it, and it should fit the screen.</div>
+          <div class="bubble me">Add a title screen with the game name and a one-line "how to play".</div>
+        </div>
+        <p style="margin-top:1.25rem" class="muted">To fix a bug, describe what you <em>see</em>, not what you think the problem is. "The score stays at zero when I catch a pancake" works better than "fix the score variable".</p>
+      </section>
+
+      <section id="trouble" class="read">
+        <h2>Troubleshooting</h2>
+        <details>
+          <summary>The game is a blank white screen</summary>
+          <p>Tell the AI: "The game shows a blank screen when I open it. Please check for errors and send me the complete fixed file." Ask for the <em>complete</em> file, not just the changed part.</p>
+        </details>
+        <details>
+          <summary>The AI only sent part of the code, or it cut off halfway</summary>
+          <p>Say: "Your reply was cut off. Please send the complete HTML file again, from &lt;!DOCTYPE html&gt; to &lt;/html&gt;." If it keeps happening, ask it to "make the code shorter and simpler".</p>
+        </details>
+        <details>
+          <summary>It tried to load an image, font or library from the internet</summary>
+          <p>Say: "Don't load anything from the internet. Draw everything with code, emoji or inline SVG, and put all the code in the one file." Games that load outside files may break on the gallery.</p>
+        </details>
+        <details>
+          <summary>It doesn't work on my phone</summary>
+          <p>Say: "It doesn't work on my phone. Add touch controls (tap and drag), make the game fit any screen size, and stop the page from scrolling while I play."</p>
+        </details>
+        <details>
+          <summary>The keyboard doesn't do anything</summary>
+          <p>Click on the game first so it has focus, then try the keys. If it still doesn't respond, tell the AI which key you pressed and what happened.</p>
+        </details>
+        <details>
+          <summary>The high score or "game over" pop-up doesn't work in the gallery</summary>
+          <p>The gallery runs games in a safe sandbox, where saving high scores (localStorage) and pop-up boxes can fail. Say: "Don't use localStorage or alert(). Show messages inside the game instead."</p>
+        </details>
+        <details>
+          <summary>I made it worse and want to go back</summary>
+          <p>Scroll up in the chat, copy an earlier version, and continue from there. Or say: "Go back to the version before the last change."</p>
+        </details>
+      </section>
+
+      <section id="submit">
+        <h2>How to submit</h2>
+        <p class="read">Fill in the helper below. It names your file correctly and writes the message for you.</p>
+
+        <form class="card" id="submit-helper" onsubmit="return false" style="margin:1.25rem 0">
+          <h3>Submission helper</h3>
+          <div class="form-grid">
+            <div class="field">
+              <label for="sh-names">Your name(s)</label>
+              <input id="sh-names" autocomplete="name" placeholder="e.g. Jadon, or Jadon & Sam">
+              <p class="hint">Teams of two: separate names with "&amp;".</p>
+            </div>
+            <div class="field">
+              <label for="sh-title">Game title</label>
+              <input id="sh-title" placeholder="e.g. Sofa Racer">
+            </div>
+            <div class="field field-wide">
+              <label for="sh-blurb">One-line description</label>
+              <input id="sh-blurb" maxlength="100" placeholder="e.g. Formula 1, but everyone is a couch.">
+              <p class="hint" id="sh-count" aria-live="polite">0 / 100</p>
+            </div>
+            <div class="field">
+              <label for="sh-emoji">One emoji for your game</label>
+              <input id="sh-emoji" maxlength="8" placeholder="🛋️">
+            </div>
+            <div class="field">
+              <label for="sh-llm">Main AI you used</label>
+              <select id="sh-llm"></select>
+            </div>
+          </div>
+          <div class="output">
+            <p>Save your game as: <code id="sh-filename"></code></p>
+            <pre id="sh-message"></pre>
+            <button class="btn btn-primary copy-btn" type="button" data-copy="#sh-message"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg> Copy message</button>
+          </div>
+        </form>
+
+        <h3>Send it</h3>
+        <ol class="steps">
+          <li><strong>Open the submission channel</strong><p>Go to <a href="#" data-submit-link><span data-submit-label>the submission channel</span></a>.</p></li>
+          <li><strong>Paste the message and attach your file</strong><p>Paste the message from the helper, then attach your <code>.html</code> file. If you made a screenshot for a thumbnail, attach that too (optional).</p></li>
+          <li><strong>That's it</strong><p>The organisers add it to the gallery, usually within a day. To update your game, post the new file in the same thread before the deadline.</p></li>
+        </ol>
+
+        <div class="panel" data-show="repo-route" style="margin-top:1.5rem">
+          <h3>Comfortable with GitHub? Upload it yourself</h3>
+          <p>If you have a GitHub account, you can add your game directly. The organisers check and approve it.</p>
+          <ol>
+            <li>Open the <a href="#" data-repo-link>competition repository</a> and go into the <code>games</code> folder.</li>
+            <li>Click <strong>Add file → Upload files</strong>, drop in your <code>.html</code>, and choose <strong>"Create a new branch… and start a pull request"</strong>.</li>
+            <li>In the pull request description, paste the message from the helper above.</li>
+          </ol>
+          <p class="muted" style="margin:0">Step-by-step pictures are on the <a href="sample.html#upload">sample game page</a>.</p>
+        </div>
+      </section>
+
+      <section id="timeline" data-show="timeline">
+        <h2>Timeline</h2>
+        <ol class="timeline" data-slot="timeline"></ol>
+      </section>
+
+      <section id="judging" class="read">
+        <h2>Judging</h2>
+        <p>Judges score every game from 1 to 5 on five criteria, weighted to a total out of 100.</p>
+        <div class="criteria" data-slot="criteria"></div>
+        <p style="margin-top:1.25rem">There's also a <strong>people's choice</strong> award voted for by everyone. <a href="judging.html">Read the full judging guide</a>.</p>
+      </section>
+
+      <section id="help" class="read">
+        <h2>Who to ask</h2>
+        <p>Stuck, confused, or want to check if your idea is too silly (it isn't)? Ask <strong data-contact>the organisers</strong>. Also see the <a href="resources.html">resources page</a> for tutorials and inspiration.</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+<script src="config.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

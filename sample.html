@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<title>Sample game · {name}</title>
+<meta name="description" content="A sample entry for the RAY Connect silly game jam, with every prompt used to build it and how it was uploaded.">
+</head>
+<body data-page="sample">
+<div id="site-header"></div>
+
+<main id="main">
+  <section class="hero" style="padding-bottom:0">
+    <div class="wrap">
+      <span class="eyebrow">Sample game</span>
+      <h1 data-slot="sc-title">The sample game</h1>
+      <p class="lead" data-slot="sc-blurb"></p>
+      <div class="panel" data-show="placeholder-note" style="margin-top:1rem">
+        <strong>Heads up:</strong> this is a stand-in sample made by the organisers. The organiser's own game, and its real build story, will replace it soon.
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:2.5rem">
+    <div class="wrap grid" style="grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:2rem;align-items:start" id="sample-top">
+      <div data-slot="sc-game"><p class="muted">Loading the game…</p></div>
+      <aside class="card">
+        <h3>At a glance</h3>
+        <dl style="margin:0;display:grid;gap:.9rem">
+          <div><dt class="muted" style="font-size:.85rem">Built by</dt><dd style="margin:0" data-slot="sc-builder"></dd></div>
+          <div><dt class="muted" style="font-size:.85rem">Main AI used</dt><dd style="margin:0" data-slot="sc-llm"></dd></div>
+          <div><dt class="muted" style="font-size:.85rem">Time from idea to upload</dt><dd style="margin:0" data-slot="sc-time"></dd></div>
+          <div><dt class="muted" style="font-size:.85rem">Coding experience needed</dt><dd style="margin:0">None</dd></div>
+        </dl>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head"><div><span class="eyebrow">Part 1</span><h2>How it was built: every prompt</h2></div></div>
+      <p class="read muted">These are the actual messages sent to the AI, in order. After each one, the game was played, then the next change was asked for. Notice how short and plain they are.</p>
+      <div class="chat" data-slot="sc-chat"></div>
+      <div class="panel" style="margin-top:1.5rem">
+        <h3>What we learned</h3>
+        <ul data-slot="sc-lessons" style="margin:0;padding-left:1.2rem"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="upload">
+    <div class="wrap">
+      <div class="section-head"><div><span class="eyebrow">Part 2</span><h2>How it was uploaded</h2></div></div>
+      <p class="read muted">Most entrants just send their file to the organisers (see <a href="guide.html#submit">how to submit</a>). This is what happens next: how a game gets from a file on a laptop into the gallery, using only the GitHub website.</p>
+
+      <ol class="steps">
+        <li>
+          <strong>Save the game as one file</strong>
+          <p>In Claude, the download button on the game panel saves the file. It was renamed to <code>organisers-toaster-panic.html</code>: lowercase, dashes, ending in <code>.html</code>.</p>
+        </li>
+        <li>
+          <strong>Open the <code>games</code> folder on GitHub</strong>
+          <p>On the repository's main page, click the <kbd>games</kbd> folder.</p>
+        </li>
+        <li>
+          <strong>Upload the file</strong>
+          <p>Click <kbd>Add file</kbd> → <kbd>Upload files</kbd>, then drag the <code>.html</code> file into the box. At the bottom, write a short note like "Add Toaster Panic" and click <kbd>Commit changes</kbd>.</p>
+        </li>
+        <li>
+          <strong>Add it to the gallery list</strong>
+          <p>Go back to the main page and click <code>games.json</code>, then the pencil icon (<kbd>Edit this file</kbd>). Paste the entry from the submission message just before the final <code>]</code>. Put a comma after the <code>}</code> of the entry above it. Click <kbd>Commit changes</kbd>.</p>
+          <pre class="panel" style="white-space:pre-wrap;font-size:.84rem;margin:.5rem 0 0">[
+  { …the entry that was already there… },   ← add this comma
+  {
+    "slug": "organisers-toaster-panic",
+    "title": "Toaster Panic",
+    "authors": ["The organisers"],
+    "llm": "Claude",
+    "file": "games/organisers-toaster-panic.html",
+    "blurb": "Your toaster has become self-aware and is firing breakfast at the ceiling. Catch it.",
+    "emoji": "🍞",
+    "added": "2026-11-23",
+    "award": null
+  }
+]</pre>
+        </li>
+        <li>
+          <strong>Wait for the green tick</strong>
+          <p>Click the <kbd>Actions</kbd> tab. Within a minute you'll see a green tick (all good) or a red cross. Click a red cross and it tells you in plain English what's wrong, for example "Entry 3 (jadon-sofa-racer) is missing a blurb".</p>
+        </li>
+        <li>
+          <strong>Play it on the live site</strong>
+          <p>About two minutes later the game appears in the <a href="gallery.html">gallery</a>. Refresh the page if you don't see it yet.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap card" style="display:flex;justify-content:space-between;align-items:center;gap:1.5rem;flex-wrap:wrap">
+      <div>
+        <h2 style="margin-bottom:.25rem">Your turn</h2>
+        <p class="muted" style="margin:0">Grab the starter prompt and make something even sillier.</p>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="guide.html#prompt">Get the starter prompt</a>
+        <a class="btn" href="resources.html">Browse resources</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+<script src="config.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

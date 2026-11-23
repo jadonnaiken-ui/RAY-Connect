@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<title>Judging · {name}</title>
+<meta name="description" content="How games in the RAY Connect silly game jam are judged: rubric, scoring scale, process and tools.">
+</head>
+<body data-page="judging">
+<div id="site-header"></div>
+
+<main id="main">
+  <section class="hero" style="padding-bottom:0">
+    <div class="wrap">
+      <span class="eyebrow">Judging</span>
+      <h1>How every game gets scored</h1>
+      <p class="lead">Same rubric, same scale, every game. Here's exactly what the judges look for, and the tools they use.</p>
+      <p data-slot="judges" class="muted"></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head"><div><span class="eyebrow">The rubric</span><h2>Five criteria, out of 100</h2></div></div>
+      <p class="read">Each judge gives each game a score from 1 to 5 per criterion. The score is multiplied by the criterion's multiplier, so a perfect game scores 5 × (8 + 4 + 4 + 2 + 2) = 100.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Criterion</th><th scope="col">Weight</th><th scope="col">Multiplier</th><th scope="col">What judges look for</th></tr></thead>
+          <tbody data-slot="rubric"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head"><div><span class="eyebrow">The scale</span><h2>What the numbers mean</h2></div></div>
+      <div class="grid grid-3">
+        <article class="card"><span class="countdown"><span class="unit"><span class="num">1</span></span></span><h3 style="margin-top:1rem">Didn't work or didn't land</h3><p class="muted">Broken, confusing, or the joke fell flat.</p></article>
+        <article class="card"><span class="countdown"><span class="unit"><span class="num">3</span></span></span><h3 style="margin-top:1rem">Solid, got a smile</h3><p class="muted">Works well and raised a grin. Use 2 and 4 for in-between.</p></article>
+        <article class="card"><span class="countdown"><span class="unit"><span class="num">5</span></span></span><h3 style="margin-top:1rem">Still talking about it</h3><p class="muted">The game people quote at lunch the next day.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap grid grid-2" style="gap:3rem;align-items:start">
+      <div>
+        <span class="eyebrow">The process</span>
+        <h2>How judging works</h2>
+        <ol class="steps">
+          <li><strong>Play everything</strong><p>Each judge plays every entry before the demo session, on the <a href="gallery.html">gallery</a>.</p></li>
+          <li><strong>Score on the sheet</strong><p>Use the scoring sheet below: one row per game.</p></li>
+          <li><strong>Average the judges</strong><p>A game's final score is the average of all its judges' weighted totals.</p></li>
+          <li><strong>Break ties</strong><p>If two games tie, the higher Silliness average wins. Still tied? The judges discuss.</p></li>
+        </ol>
+      </div>
+      <div>
+        <span class="eyebrow">Fair play</span>
+        <h2>The small print</h2>
+        <div class="card">
+          <h3>Conflict of interest</h3>
+          <p class="muted">Judges don't score their own entry. It's scored by the other judges and averaged as normal. Just leave that row blank on your sheet.</p>
+          <h3>Example entries</h3>
+          <p class="muted">Games by "The organisers" are examples and aren't judged.</p>
+          <h3>People's choice</h3>
+          <p class="muted" style="margin-bottom:0">A separate vote by everyone taking part: one vote per person, and you can't vote for yourself. <a href="#" data-vote-link hidden>Cast your vote</a><span data-vote-only hidden>.</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="sheet">
+    <div class="wrap">
+      <div class="section-head"><div><span class="eyebrow">For judges</span><h2>Your scoring sheet</h2></div></div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>Get a sheet with every game already listed</h3>
+          <p class="muted">Type your name and download. The sheet works out each weighted total for you. Open it in Google Sheets (File → Import → Upload) or Excel.</p>
+          <div class="field" style="margin-bottom:1rem">
+            <label for="judge-name">Your name</label>
+            <input id="judge-name" autocomplete="name" placeholder="e.g. Thandi">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" type="button" id="make-sheet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> Download my sheet</button>
+            <a class="btn" href="templates/scoring-sheet.csv" download>Blank template</a>
+          </div>
+          <div data-slot="sheet-msg" style="margin-top:1rem"></div>
+        </div>
+        <div class="card">
+          <h3>How to fill it in</h3>
+          <ol class="muted" style="padding-left:1.2rem;margin:0">
+            <li>Play a game, then score it 1–5 in the five score columns.</li>
+            <li>The "Weighted total" column calculates itself. Don't type in it.</li>
+            <li>Add a short note so you remember why. It helps in the discussion.</li>
+            <li>Skip your own entry by leaving its row empty.</li>
+            <li>When done: File → Download → CSV, and send it to the organiser.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="results">
+    <div class="wrap">
+      <div class="section-head"><div><span class="eyebrow">For the organiser</span><h2>Results calculator</h2></div></div>
+      <p class="read">Add every judge's finished sheet. The calculator averages the weighted totals, applies the Silliness tie-break, and ranks the games. Nothing is uploaded anywhere: it all happens in your browser.</p>
+      <div class="card">
+        <div class="form-grid">
+          <div class="field">
+            <label for="results-files">Judges' sheets (CSV files)</label>
+            <input id="results-files" type="file" accept=".csv,text/csv,text/plain" multiple>
+            <p class="hint">Select several files at once with Ctrl (Windows) or Cmd (Mac).</p>
+          </div>
+          <div class="field">
+            <label for="results-paste">…or paste a sheet here</label>
+            <textarea id="results-paste" placeholder="Judge,Entry slug,Entry title,Silliness,…"></textarea>
+            <p class="hint">Tip: you can paste all the judges' rows into one sheet, as long as the column headings come first.</p>
+          </div>
+        </div>
+        <p style="margin-top:1rem"><button class="btn btn-primary" type="button" id="calc-results">Calculate the ranking</button></p>
+        <div data-slot="results" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+<script src="config.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>
