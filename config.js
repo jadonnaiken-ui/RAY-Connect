@@ -24,11 +24,11 @@ window.JAM_CONFIG = {
   name: "RAY Connect Bonanza 2027",
 
   // One short line under the name.
-  tagline: "One week. One HTML file. Maximum nonsense.",
+  tagline: "Two weeka. One HTML file. Supreme silliness.",
 
   // A friendly paragraph on the home page.
   welcome:
-    "Welcome, brave builders! For one week, everyone at RAY Connect gets to make the silliest " +
+    "Welcome, brave builders! For two weeks, everyone at RAY gets to make the silliest " +
     "browser game they can, with an AI assistant doing the heavy lifting. No coding experience " +
     "needed. The real skill being tested: what can you make with the little you have?",
 
@@ -37,14 +37,13 @@ window.JAM_CONFIG = {
   // The moment submissions close. Format: YYYY-MM-DDTHH:MM:SS+HH:MM
   // The "+02:00" part is your timezone (South Africa = +02:00, UK winter = +00:00).
   // The countdown is correct for everyone, wherever they are.
-  deadline: "2027-01-22T17:00:00+02:00", // >>> PLACEHOLDER <<<
+  deadline: "2026-12-08T17:00:00+02:00", // >>> PLACEHOLDER <<<
 
   // Shown on the home page and in the guide. Add or remove rows freely.
   timeline: [ // >>> PLACEHOLDER dates <<<
-    { when: "Mon 11 Jan", what: "Kick-off: the guide and Loom video go out" },
-    { when: "Fri 22 Jan, 17:00", what: "Submissions close. Hands off keyboards!" },
-    { when: "Tue 26 Jan", what: "Demo session: we play every game together, and judging happens" },
-    { when: "Wed 27 Jan", what: "Winners announced" }
+    { when: "Tues 24 Nov", what: "Kick-off: the guide and Loom video go out" },
+    { when: "Fri 8 Dec, 17:00", what: "Submissions close. Hands off keyboards!" },
+    { when: "Tues 15 Dec", what: "Winners announced" }
   ],
 
   // Change to true once judging is done and you've added "award" values in games.json.
@@ -76,13 +75,13 @@ window.JAM_CONFIG = {
   /* ---------- People and prizes ---------- */
 
   // Leave as [] to show "Judges will be announced at kick-off".
-  judges: [], // e.g. ["Thandi", "Sam", "Priya"]
+  judges: ["Jadon", "Ronald", "Joshua"], // e.g. ["Thandi", "Sam", "Priya"]
 
   // Prizes. Edit the amounts and wording. Remove a block to remove a prize.
   prizes: [ // >>> PLACEHOLDER amounts <<<
-    { title: "Grand champion", amount: "R 5,000", description: "Highest score from the judges. Eternal glory included." },
-    { title: "Runner-up", amount: "R 2,500", description: "Second-highest score. Still extremely silly." },
-    { title: "People's choice", amount: "R 1,500", description: "Voted for by everyone. Charm the crowd." }
+    { title: "Grand champion", amount: "$100", description: "Highest score from the judges. Eternal glory included." },
+    { title: "Runner-up", amount: "$50", description: "Second-highest score. Still extremely silly." },
+    { title: "People's choice", amount: "$30", description: "Voted for by everyone. Charm the crowd." }
   ],
 
   // The AI assistants people can pick from when they submit.
