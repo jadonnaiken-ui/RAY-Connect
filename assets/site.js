@@ -242,7 +242,14 @@
   var SESSION_KEY = "bonanza.session";
 
   function saveSession(token, expires) {
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token: token, expires: expires, me: Auth.me })); } catch (e) { /* private mode */ }
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token: token, expires: expires, me: Auth.me, savedAt: Date.now() })); } catch (e) { /* private mode */ }
+  }
+  // Keep the saved copy of "me" (ratings, games, scores) in step after a change.
+  function persistMe() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+      if (s && s.token === Auth.token) saveSession(s.token, s.expires);
+    } catch (e) { /* ignore */ }
   }
   function loadSession() {
     try {
@@ -265,13 +272,22 @@
   }
   function signedIn() { return !!(Auth.me && Auth.token); }
 
-  function api(action, data) {
+  // Actions that are safe to repeat if the first try hits a hiccup.
+  var RETRYABLE = { me: 1, rate: 1, judge: 1, results: 1, signout: 1 };
+
+  function transient(message) { var e = new Error(message); e.transient = true; return e; }
+
+  function api(action, data, attempt) {
+    attempt = attempt || 1;
     var body = Object.assign({ action: action, idToken: Auth.token }, data || {});
     // Sent as plain text so the browser doesn't need a CORS preflight.
     return fetch(CFG.apiUrl, { method: "POST", body: JSON.stringify(body) })
-      .then(function (r) { return r.json(); }, function () { throw new Error("Couldn't reach the server. Check your connection and try again."); })
+      .then(function (r) {
+        return r.json().catch(function () { throw transient("The server didn't respond properly. Please try again."); });
+      }, function () { throw transient("Couldn't reach the server. Check your connection and try again."); })
       .then(function (res) {
         if (res.ok) return res;
+        if (/busy|in a moment/i.test(res.error || "")) throw transient(res.error);
         if (res.code === "auth" && action !== "me") {
           Auth.token = null; Auth.me = null; clearSession(); authChanged();
           if (window.google && google.accounts) google.accounts.id.prompt();
@@ -279,6 +295,11 @@
         var err = new Error(res.error || "Something went wrong.");
         err.code = res.code;
         throw err;
+      })
+      .catch(function (err) {
+        // Brief hiccups (network blips, a busy moment) are retried for actions that are safe to repeat.
+        if (!err.transient || !RETRYABLE[action] || attempt >= 3) throw err;
+        return new Promise(function (r) { setTimeout(r, attempt * 1200); }).then(function () { return api(action, data, attempt + 1); });
       });
   }
 
@@ -299,6 +320,8 @@
       Auth.token = saved.token;
       Auth.me = saved.me;
       authChanged();
+      // Signed in moments ago on another page? Skip the check to keep page changes instant.
+      if (saved.savedAt && Date.now() - saved.savedAt < 90000) { startGoogle(false); return; }
       refreshMe().then(function () { saveSession(saved.token, saved.expires); authChanged(); }, function (e) {
         if (e.code !== "auth") return; // offline for a moment: keep the saved sign-in
         Auth.token = null; Auth.me = null; clearSession(); authChanged();
@@ -385,7 +408,8 @@
   var Stats = {};
   function loadStats() {
     if (!apiOn()) return Promise.resolve(Stats);
-    return fetch(CFG.apiUrl + "?action=stats").then(function (r) { return r.json(); })
+    var get = function () { return fetch(CFG.apiUrl + "?action=stats").then(function (r) { return r.json(); }); };
+    return get().catch(function () { return new Promise(function (r) { setTimeout(r, 1500); }).then(get); })
       .then(function (res) { Stats = (res && res.ratings) || {}; return Stats; }, function () { return Stats; });
   }
 
@@ -417,6 +441,7 @@
         $$("[data-stars]", root).forEach(function (b) { b.disabled = true; });
         api("rate", { slug: g.slug, stars: stars }).then(function (res) {
           Auth.me.myRatings[g.slug] = stars;
+          persistMe();
           Auth.me.myRatedVersions = Auth.me.myRatedVersions || {};
           Auth.me.myRatedVersions[g.slug] = res.version || 1;
           if (res.stats) Stats[g.slug] = res.stats;
@@ -1007,7 +1032,7 @@
       if (!problem && state.errors && state.errors.length && !state.override) problem = "Your game hit an error in the preview. Fix it with your AI, or tick \"it works anyway\" under the preview.";
       if (problem) { fill("submit-result", '<div class="error-box"><p style="margin:0">' + esc(problem) + "</p></div>"); return; }
       var btn = $("#sf-submit");
-      btn.disabled = true; btn.textContent = "Publishing… (about 10 seconds)";
+      btn.disabled = true; btn.textContent = "Publishing… (usually 10 seconds, up to a minute when busy)";
       api("submit", {
         title: title, authors: authors(), llm: llmSelect.value, blurb: blurb,
         emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null, photo: state.photo || null
@@ -1091,6 +1116,7 @@
         api("judge", { slug: slug, scores: vals }).then(function (res) {
           Auth.me.myScores = Auth.me.myScores || {};
           Auth.me.myScores[slug] = vals;
+          persistMe();
           $("[data-total]", formEl).textContent = "Saved: " + res.total + " / 100";
           toast("Saved: " + res.total + " / 100", "good");
         }, function (err) { toast(err.message, "bad"); }).then(function () { btn.disabled = false; });

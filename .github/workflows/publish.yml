@@ -1,0 +1,45 @@
+# Publishes the site to GitHub Pages on every change to main.
+#
+# Why this instead of "Deploy from a branch":
+#  • No hourly limit. Branch publishing allows about 10 updates an hour, which a rush
+#    of submissions near the deadline would exceed.
+#  • It checks the site first. If config.js or games.json has a typo, nothing is published
+#    and the last working version stays live, so a mistake can't take the site down.
+#
+# One-time switch: Settings → Pages → Build and deployment → Source → "GitHub Actions".
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# If several changes land at once, publish them in order and skip straight to the newest.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check games.json and config.js (a problem here stops the publish)
+        run: node scripts/validate.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

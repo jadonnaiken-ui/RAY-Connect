@@ -43,7 +43,7 @@ It runs free on **GitHub Pages**, with a small free backend in Google Apps Scrip
 ## Setup checklist
 
 1. ✅ Repository created and files uploaded
-2. ✅ GitHub Pages switched on (Settings → Pages → Deploy from branch → `main` / root)
+2. ✅ GitHub Pages switched on. Use **Settings → Pages → Source → GitHub Actions**: it has no hourly publish limit, and it won't publish a broken `config.js` or `games.json` (the last working version stays live)
 3. ⬜ Fill in the placeholders in `config.js` (search for `PLACEHOLDER`)
 4. ⬜ **Connect the backend:** follow [backend/SETUP.md](backend/SETUP.md) (about 30 minutes). Until then, the Submit page says "opening soon" and star ratings are hidden.
 5. ⬜ Record the Loom and add its ID to `config.js` (see below)

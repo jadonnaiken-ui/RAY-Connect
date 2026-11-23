@@ -187,7 +187,7 @@ function rate(user, data) {
   if (game.excludeFromJudging) throw new UserError("This is an example game, so it can't be rated.");
   if (isOwner(user, game)) throw new UserError("Nice try! You can't rate your own game.");
   const version = Number(game.version) || 1;
-  withLock(() => upsert("ratings", {
+  withLock("sheet", () => upsert("ratings", {
     Updated: new Date(), Rater: user.name, Email: user.email, Game: game.title, Creator: (game.authors || []).join(" & "),
     Stars: stars, "Version rated": version, Slug: game.slug
   }));
@@ -203,7 +203,7 @@ function judge(user, data) {
   const scores = (data.scores || []).map(Number);
   if (scores.length !== 5 || scores.some(s => !(s >= 1 && s <= 5 && Math.round(s) === s))) throw new UserError("Every criterion needs a score from 1 to 5.");
   const total = scores.reduce((sum, s, i) => sum + s * RUBRIC_MULTIPLIERS[i], 0);
-  withLock(() => upsert("judging", {
+  withLock("sheet", () => upsert("judging", {
     Updated: new Date(), Judge: user.name, Email: user.email, Game: game.title, Creator: (game.authors || []).join(" & "),
     Silliness: scores[0], Playability: scores[1], Originality: scores[2], Presentation: scores[3], Wildcard: scores[4],
     "Weighted total": total, Slug: game.slug
@@ -262,7 +262,7 @@ function submit(user, d) {
   const slug = (slugify(authors[0].split(" ")[0]) + "-" + slugify(title)).slice(0, 60).replace(/-+$/, "");
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) throw new UserError("Please use letters or numbers in your name and title.");
 
-  return withLock(() => {
+  return withLock("publish", () => {
     const today = Utilities.formatDate(new Date(), "Etc/GMT", "yyyy-MM-dd");
     const result = commitGames(games => {
       const index = games.findIndex(g => g.slug === slug);
@@ -309,7 +309,7 @@ function submit(user, d) {
 function deleteGame(user, data) {
   if (!user.isAdmin) throw new UserError("Only organisers can remove games.");
   const slug = String(data.slug || "");
-  return withLock(() => {
+  return withLock("publish", () => {
     const result = commitGames(games => {
       const index = games.findIndex(g => g.slug === slug);
       if (index === -1) throw new UserError("That game has already been removed.");
@@ -321,7 +321,7 @@ function deleteGame(user, data) {
     });
     // Move its ratings, judges' scores and submission history to the "Removed" tab,
     // so standings stay clean and a future game with the same name starts fresh.
-    const moved = ["ratings", "judging", "submissions"].reduce((n, tab) => n + archiveRows(tab, slug, user.email), 0);
+    const moved = withLock("sheet", () => ["ratings", "judging", "submissions"].reduce((n, tab) => n + archiveRows(tab, slug, user.email), 0));
     CacheService.getScriptCache().remove("stats");
     return { ok: true, title: result.title, archived: moved };
   });
@@ -506,9 +506,17 @@ function slugify(text) {
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-function withLock(fn) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) throw new UserError("Lots of people are submitting right now. Please try again in a moment.");
+// Two separate queues, so a star rating never waits behind a game being published:
+//  "sheet"   - quick writes to the Google Sheet (ratings, judges' scores)
+//  "publish" - publishing to GitHub (submissions, removals), which takes a few seconds each
+function withLock(kind, fn) {
+  const lock = kind === "sheet" ? (LockService.getDocumentLock() || LockService.getScriptLock()) : LockService.getScriptLock();
+  const wait = kind === "sheet" ? 20000 : 120000;
+  if (!lock.tryLock(wait)) {
+    throw new UserError(kind === "sheet"
+      ? "The site is very busy. Please try again in a moment."
+      : "Lots of people are submitting right now. Please press Submit again in a minute.");
+  }
   try { return fn(); } finally { lock.releaseLock(); }
 }
 
@@ -533,9 +541,11 @@ const headersChecked = {};
 // Rows are matched by column name, so no data is lost; missing names are filled in.
 function migrateTab(sh, name) {
   const want = TABS[name];
+  // Cheap check first: read only the header row.
+  const header = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String);
+  if (want.every((h, i) => header[i] === h)) return;
   const values = sh.getDataRange().getValues();
   const have = values[0].map(String);
-  if (want.every((h, i) => have[i] === h)) return;
   const byGame = {};
   try { games().forEach(g => { byGame[g.slug] = g; }); } catch (e) { /* GitHub unavailable: fill what we can */ }
   const people = {};
