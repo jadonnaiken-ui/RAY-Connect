@@ -27,19 +27,5 @@
     "version": 1,
     "award": null,
     "photo": "games/photos/jadon-noodle-run.jpg"
-  },
-  {
-    "slug": "jadon-noodle-run-test",
-    "title": "Noodle Run (Test)",
-    "authors": [
-      "Jadon Naiken"
-    ],
-    "llm": "Claude",
-    "file": "games/jadon-noodle-run-test.html",
-    "blurb": "Just a hungry noodle :)",
-    "emoji": "🍜",
-    "added": "2026-11-23",
-    "version": 1,
-    "award": null
   }
 ]
