@@ -12,20 +12,5 @@
     "added": "2026-11-23",
     "award": null,
     "excludeFromJudging": true
-  },
-  {
-    "slug": "jadon-noodle",
-    "title": "Noodle",
-    "authors": [
-      "Jadon Naiken"
-    ],
-    "llm": "Claude",
-    "file": "games/jadon-noodle.html",
-    "blurb": "(Test) Just a hungry noodle :)",
-    "emoji": "🍜",
-    "added": "2026-11-23",
-    "version": 1,
-    "award": null,
-    "photo": "games/photos/jadon-noodle.jpg"
   }
 ]
