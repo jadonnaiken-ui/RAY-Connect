@@ -57,48 +57,15 @@
 
   <section class="section" id="upload">
     <div class="wrap">
-      <div class="section-head"><div><span class="eyebrow">Part 2</span><h2>How it was uploaded</h2></div></div>
-      <p class="read muted">Most entrants just send their file to the organisers (see <a href="guide.html#submit">how to submit</a>). This is what happens next: how a game gets from a file on a laptop into the gallery, using only the GitHub website.</p>
-
+      <div class="section-head"><div><span class="eyebrow">Part 2</span><h2>How it was submitted</h2></div></div>
+      <p class="read muted">From a file on a laptop to the gallery in about three minutes, without touching GitHub.</p>
       <ol class="steps">
-        <li>
-          <strong>Save the game as one file</strong>
-          <p>In Claude, the download button on the game panel saves the file. It was renamed to <code>organisers-toaster-panic.html</code>: lowercase, dashes, ending in <code>.html</code>.</p>
-        </li>
-        <li>
-          <strong>Open the <code>games</code> folder on GitHub</strong>
-          <p>On the repository's main page, click the <kbd>games</kbd> folder.</p>
-        </li>
-        <li>
-          <strong>Upload the file</strong>
-          <p>Click <kbd>Add file</kbd> → <kbd>Upload files</kbd>, then drag the <code>.html</code> file into the box. At the bottom, write a short note like "Add Toaster Panic" and click <kbd>Commit changes</kbd>.</p>
-        </li>
-        <li>
-          <strong>Add it to the gallery list</strong>
-          <p>Go back to the main page and click <code>games.json</code>, then the pencil icon (<kbd>Edit this file</kbd>). Paste the entry from the submission message just before the final <code>]</code>. Put a comma after the <code>}</code> of the entry above it. Click <kbd>Commit changes</kbd>.</p>
-          <pre class="panel" style="white-space:pre-wrap;font-size:.84rem;margin:.5rem 0 0">[
-  { …the entry that was already there… },   ← add this comma
-  {
-    "slug": "organisers-toaster-panic",
-    "title": "Toaster Panic",
-    "authors": ["The organisers"],
-    "llm": "Claude",
-    "file": "games/organisers-toaster-panic.html",
-    "blurb": "Your toaster has become self-aware and is firing breakfast at the ceiling. Catch it.",
-    "emoji": "🍞",
-    "added": "2026-11-23",
-    "award": null
-  }
-]</pre>
-        </li>
-        <li>
-          <strong>Wait for the green tick</strong>
-          <p>Click the <kbd>Actions</kbd> tab. Within a minute you'll see a green tick (all good) or a red cross. Click a red cross and it tells you in plain English what's wrong, for example "Entry 3 (jadon-sofa-racer) is missing a blurb".</p>
-        </li>
-        <li>
-          <strong>Play it on the live site</strong>
-          <p>About two minutes later the game appears in the <a href="gallery.html">gallery</a>. Refresh the page if you don't see it yet.</p>
-        </li>
+        <li><strong>Save the game as one file</strong><p>In Claude, the download button on the game panel saves the <code>.html</code> file. In other assistants, copy all the code into a text file and save it ending in <code>.html</code>.</p></li>
+        <li><strong>Open the Submit page and sign in</strong><p>Click <a href="submit.html">Submit</a> in the menu, then <kbd>Sign in with Google</kbd> using a work account.</p></li>
+        <li><strong>Fill in four details</strong><p>Name, title ("Toaster Panic"), main AI ("Claude"), and a one-liner: "Your toaster has become self-aware and is firing breakfast at the ceiling. Catch it." Plus an emoji: 🍞.</p></li>
+        <li><strong>Choose the file and check the preview</strong><p>After picking the file, a preview appears right on the page. A quick play confirms it works in the gallery's sandbox.</p></li>
+        <li><strong>Submit, then wait about two minutes</strong><p>The website publishes the game automatically. A couple of minutes later it's in the <a href="gallery.html">gallery</a>, ready to play and rate.</p></li>
+        <li><strong>Updates are just as easy</strong><p>Asked the AI for a fix? Back on the Submit page, click <kbd>Update</kbd> next to the game, choose the new file, and submit again.</p></li>
       </ol>
     </div>
   </section>

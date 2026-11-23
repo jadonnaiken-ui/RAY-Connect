@@ -1,7 +1,7 @@
 /* =====================================================================
    RAY Connect Bonanza: site logic
    Hosts never need to edit this file. Settings live in config.js,
-   entries live in games.json.
+   entries live in games.json (the backend adds new entries automatically).
    ===================================================================== */
 (function () {
   "use strict";
@@ -40,7 +40,7 @@
     ["No company data", "No logos, customer data or anything confidential. The site may be public."],
     ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo or teams of two."],
     ["Keep it kind", "Silly, not mean. No games about a colleague without their blessing."],
-    ["The deadline is firm", "Send updates as often as you like until the deadline."]
+    ["The deadline is firm", "Re-submit as often as you like until the deadline."]
   ];
 
   var AWARD_LABEL = { "winner": "Winner", "runner-up": "Runner-up", "peoples-choice": "People's choice" };
@@ -50,6 +50,7 @@
     ["index.html", "Home", "home"],
     ["gallery.html", "Gallery", "gallery"],
     ["guide.html", "Guide", "guide"],
+    ["submit.html", "Submit", "submit"],
     ["judging.html", "Judging", "judging"],
     ["sample.html", "Sample game", "sample"],
     ["resources.html", "Resources", "resources"]
@@ -58,12 +59,12 @@
   var ICONS = {
     arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     play: '<path d="M7 4.5v15l12-7.5z"/>',
-    external: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
-    download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
     back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
-    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>'
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/>'
   };
   function icon(name) {
     return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + ICONS[name] + "</svg>";
@@ -123,6 +124,20 @@
     setTimeout(function () { live.textContent = msg; }, 50);
   }
 
+  var toastTimer;
+  function toast(msg, kind) {
+    var el = $("#toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "toast"; el.className = "toast"; el.setAttribute("role", "status");
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.className = "toast show" + (kind ? " " + kind : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.className = "toast"; }, 4000);
+  }
+
   // Any button with data-copy="#id" copies that element's text.
   function bindCopyButtons(root) {
     $$("[data-copy]", root).forEach(function (btn) {
@@ -132,8 +147,7 @@
       btn.addEventListener("click", function () {
         var target = $(btn.getAttribute("data-copy"));
         if (!target) return;
-        var text = "value" in target && target.tagName !== "PRE" ? target.value : target.textContent;
-        copyText(text).then(function (ok) {
+        copyText(target.textContent).then(function (ok) {
           if (ok) {
             btn.innerHTML = icon("check") + " Copied";
             btn.setAttribute("data-copied", "true");
@@ -147,19 +161,12 @@
     });
   }
 
-  function download(filename, text, type) {
-    var blob = new Blob([text], { type: type || "text/csv;charset=utf-8" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  }
-
   /* ---------------- Config ---------------- */
 
   var CFG = window.JAM_CONFIG;
   var page = document.body.getAttribute("data-page");
+
+  function apiOn() { return !!(CFG && CFG.apiUrl && CFG.googleClientId); }
 
   function renderShell() {
     var name = (CFG && CFG.name) || "RAY Connect Bonanza";
@@ -170,12 +177,14 @@
         '<a class="skip-link" href="#main">Skip to content</a>' +
         '<header class="site-header"><div class="wrap">' +
         '<a class="brand" href="index.html"><b>' + esc(parts[1]) + "</b>" + (parts[2] ? "<span>" + esc(parts[2].trim()) + "</span>" : "") + "</a>" +
-        '<button class="btn btn-small nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">' + icon("menu") + " Menu</button>" +
         '<nav class="site-nav" id="site-nav" aria-label="Main"><ul>' +
         NAV.map(function (n) {
           return '<li><a href="' + n[0] + '"' + (n[2] === page ? ' aria-current="page"' : "") + ">" + n[1] + "</a></li>";
         }).join("") +
-        "</ul></nav></div></header>";
+        "</ul></nav>" +
+        '<div class="header-end"><div class="auth-slot" data-auth="compact"></div>' +
+        '<button class="btn btn-small nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">' + icon("menu") + '<span class="visually-hidden">Menu</span></button></div>' +
+        "</div></header>";
       var toggle = $(".nav-toggle"), nav = $("#site-nav");
       toggle.addEventListener("click", function () {
         var open = nav.classList.toggle("open");
@@ -186,17 +195,15 @@
     if (footer) {
       footer.outerHTML =
         '<footer class="site-footer"><div class="wrap">' +
-        "<span>" + esc(name) + ". Built one HTML file at a time.</span>" +
-        "<span>" + (CFG && CFG.contact ? "Questions? Ask " + esc(CFG.contact) + "." : "") + "</span>" +
+        "<span>" + esc(name) + "</span>" +
+        "<span>" + (CFG && CFG.contact ? "Questions? Message " + esc(CFG.contact) + "." : "") + "</span>" +
         "</div></footer>";
     }
     var live = document.createElement("div");
     live.id = "live-region"; live.className = "visually-hidden";
     live.setAttribute("aria-live", "polite");
     document.body.appendChild(live);
-    if (CFG && CFG.name && document.title.indexOf(CFG.name) === -1) {
-      document.title = document.title.replace("{name}", CFG.name);
-    }
+    if (CFG && CFG.name) document.title = document.title.replace("{name}", CFG.name);
   }
 
   function renderConfigError() {
@@ -216,15 +223,154 @@
       "</div></div>";
   }
 
+  /* ---------------- Sign-in (Google) and the backend ---------------- */
+
+  var Auth = { token: null, me: null, loading: false, gsi: false, failed: false, subs: [] };
+
+  function onAuth(fn) { Auth.subs.push(fn); }
+  function authChanged() {
+    renderAuthSlots();
+    Auth.subs.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } });
+  }
+  function signedIn() { return !!(Auth.me && Auth.token); }
+
+  function api(action, data) {
+    var body = Object.assign({ action: action, idToken: Auth.token }, data || {});
+    // Sent as plain text so the browser doesn't need a CORS preflight.
+    return fetch(CFG.apiUrl, { method: "POST", body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); }, function () { throw new Error("Couldn't reach the server. Check your connection and try again."); })
+      .then(function (res) {
+        if (res.ok) return res;
+        if (res.code === "auth" && action !== "me") {
+          Auth.token = null; Auth.me = null; authChanged();
+          if (window.google && google.accounts) google.accounts.id.prompt();
+        }
+        throw new Error(res.error || "Something went wrong.");
+      });
+  }
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src; s.async = true; s.onload = resolve;
+      s.onerror = function () { reject(new Error("load")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function initAuth() {
+    if (!apiOn()) return;
+    loadScript("https://accounts.google.com/gsi/client").then(function () {
+      var opts = { client_id: CFG.googleClientId, callback: onCredential, auto_select: true, cancel_on_tap_outside: true, use_fedcm_for_prompt: true };
+      if (CFG.workDomain) opts.hd = CFG.workDomain;
+      google.accounts.id.initialize(opts);
+      Auth.gsi = true;
+      renderAuthSlots();
+      google.accounts.id.prompt();
+    }, function () { Auth.failed = true; renderAuthSlots(); });
+  }
+
+  function onCredential(resp) {
+    Auth.token = resp.credential;
+    Auth.loading = true;
+    renderAuthSlots();
+    refreshMe().then(function () {
+      toast("Signed in as " + Auth.me.user.name);
+    }, function (e) {
+      Auth.token = null;
+      toast(e.message, "bad");
+    }).then(function () { Auth.loading = false; authChanged(); });
+  }
+
+  function refreshMe() {
+    return api("me").then(function (me) { Auth.me = me; return me; });
+  }
+
+  function signOut() {
+    Auth.token = null; Auth.me = null;
+    if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
+    authChanged();
+    toast("Signed out");
+  }
+
+  function renderAuthSlots() {
+    $$(".auth-slot").forEach(function (el) {
+      if (!apiOn()) { el.innerHTML = ""; return; }
+      var big = el.getAttribute("data-auth") === "large";
+      if (Auth.loading) { el.innerHTML = '<span class="muted auth-note">Signing in…</span>'; return; }
+      if (signedIn()) {
+        el.innerHTML = '<span class="auth-name">' + esc(Auth.me.user.givenName || Auth.me.user.name) + "</span>" +
+          '<button class="btn btn-small" type="button" data-signout>Sign out</button>';
+        $("[data-signout]", el).addEventListener("click", signOut);
+        return;
+      }
+      if (Auth.failed) { el.innerHTML = '<span class="muted auth-note">Sign-in unavailable. Try turning off ad blockers.</span>'; return; }
+      if (!Auth.gsi) { el.innerHTML = ""; return; }
+      el.innerHTML = '<div class="gsi-btn"></div>';
+      var dark = matchMedia("(prefers-color-scheme: dark)").matches;
+      google.accounts.id.renderButton($(".gsi-btn", el), {
+        theme: dark ? "filled_black" : "outline", size: big ? "large" : "medium",
+        shape: "pill", text: big ? "signin_with" : "signin", logo_alignment: "left"
+      });
+    });
+  }
+
+  /* ---------------- Ratings ---------------- */
+
+  var Stats = {};
+  function loadStats() {
+    if (!apiOn()) return Promise.resolve(Stats);
+    return fetch(CFG.apiUrl + "?action=stats").then(function (r) { return r.json(); })
+      .then(function (res) { Stats = (res && res.ratings) || {}; return Stats; }, function () { return Stats; });
+  }
+
+  function ratable(g) { return apiOn() && !g.excludeFromJudging; }
+
+  function starSummary(slug) {
+    var s = Stats[slug];
+    if (!s || !s.count) return "No ratings yet";
+    return "★ " + s.avg.toFixed(1) + " · " + plural(s.count, "rating");
+  }
+
+  function myRating(slug) { return signedIn() && Auth.me.myRatings ? Auth.me.myRatings[slug] || 0 : 0; }
+
+  function starsWidget(g) {
+    var mine = myRating(g.slug);
+    var closed = CFG.winnersAnnounced;
+    var html = '<div class="rate" role="radiogroup" aria-label="Your rating for ' + esc(g.title) + '">';
+    for (var n = 1; n <= 5; n++) {
+      html += '<button type="button" role="radio" class="star' + (n <= mine ? " on" : "") + '" data-stars="' + n + '" aria-checked="' + (n === mine) + '" aria-label="' + plural(n, "star") + '"' + (closed ? " disabled" : "") + ">" + icon("star") + "</button>";
+    }
+    return html + "</div>";
+  }
+
+  function bindStars(root, g, onDone) {
+    $$("[data-stars]", root).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (!signedIn()) { toast("Sign in with your work Google account to rate games."); if (window.google && google.accounts) google.accounts.id.prompt(); return; }
+        var stars = Number(btn.getAttribute("data-stars"));
+        $$("[data-stars]", root).forEach(function (b) { b.disabled = true; });
+        api("rate", { slug: g.slug, stars: stars }).then(function (res) {
+          Auth.me.myRatings[g.slug] = stars;
+          if (res.stats) Stats[g.slug] = res.stats;
+          toast("You gave " + g.title + " " + plural(stars, "star") + ". You can change it any time.", "good");
+          if (onDone) onDone();
+        }, function (e) {
+          toast(e.message, "bad");
+          $$("[data-stars]", root).forEach(function (b) { b.disabled = false; });
+        });
+      });
+    });
+  }
+
   /* ---------------- Deadline / status ---------------- */
 
   function deadlineMs() { return Date.parse(CFG.deadline); }
+  function submissionsOpen() { var d = deadlineMs(); return isNaN(d) || Date.now() < d; }
 
   function phase() {
     if (CFG.winnersAnnounced) return "winners";
-    var d = deadlineMs();
-    if (isNaN(d)) return "open";
-    return Date.now() < d ? "open" : "closed";
+    return submissionsOpen() ? "open" : "closed";
   }
 
   function formatDeadline() {
@@ -255,7 +401,7 @@
       return;
     }
     if (p === "closed") {
-      el.innerHTML = '<p class="status-banner"><span class="dot"></span>Submissions closed. Judging in progress.</p>';
+      el.innerHTML = '<p class="status-banner"><span class="dot"></span>Submissions closed. Judging in progress.' + (apiOn() ? ' <a href="gallery.html">Keep rating games</a>' : "") + "</p>";
       return;
     }
     el.innerHTML =
@@ -313,20 +459,14 @@
     }).join(""));
   }
 
-  function renderSubmitLinks() {
-    $$("[data-submit-link]").forEach(function (a) {
-      if (CFG.submitUrl) { a.href = CFG.submitUrl; a.target = "_blank"; a.rel = "noopener"; }
-      else a.href = "guide.html#submit";
-    });
-    $$("[data-submit-label]").forEach(function (el) { el.textContent = CFG.submitLabel || "the submission channel"; });
+  function renderConfigText() {
     $$("[data-contact]").forEach(function (el) { el.textContent = CFG.contact || "the organisers"; });
-    $$("[data-vote-link]").forEach(function (a) {
-      if (CFG.votingUrl) { a.href = CFG.votingUrl; a.target = "_blank"; a.rel = "noopener"; a.hidden = false; }
-      else a.hidden = true;
-    });
     $$("[data-config-name]").forEach(function (el) { el.textContent = CFG.name; });
     $$("[data-config-tagline]").forEach(function (el) { el.textContent = CFG.tagline || ""; });
     $$("[data-config-welcome]").forEach(function (el) { el.textContent = CFG.welcome || ""; });
+    $$("[data-min-ratings]").forEach(function (el) { el.textContent = CFG.minRatingsForPeoplesChoice || 5; });
+    $$("[data-work-domain]").forEach(function (el) { el.textContent = CFG.workDomain ? "@" + CFG.workDomain : "work"; });
+    $$("[data-api-only]").forEach(function (el) { el.hidden = !apiOn(); });
   }
 
   /* ---------------- Games ---------------- */
@@ -356,7 +496,7 @@
         "<p>The <strong>Actions</strong> tab on GitHub names the exact line.</p>" +
         (err.detail ? "<pre>" + esc(err.detail) + "</pre>" : "");
     } else {
-      body = "<p>The list of games didn't load" + (err && err.status ? " (error " + esc(err.status) + ")" : "") + ". Check your connection and refresh. If it keeps happening, tell <span data-contact></span>.</p>";
+      body = "<p>The list of games didn't load" + (err && err.status ? " (error " + esc(err.status) + ")" : "") + ". Check your connection and refresh. If it keeps happening, message " + esc(CFG.contact || "the organisers") + ".</p>";
     }
     return '<div class="error-box"><h3>The game list didn\'t load</h3>' + body + "</div>";
   }
@@ -376,6 +516,13 @@
     var badges = [];
     if (isNew(g)) badges.push('<span class="sticker mint">New</span>');
     if (g.excludeFromJudging) badges.push('<span class="sticker">Example, not judged</span>');
+    var meta = [];
+    if (g.llm) meta.push('<span class="sticker">Made with ' + esc(g.llm) + "</span>");
+    if (ratable(g)) {
+      meta.push('<span class="sticker stars-sticker">' + esc(starSummary(g.slug)) + "</span>");
+      var mine = myRating(g.slug);
+      if (mine) meta.push('<span class="sticker mint">You: ' + "★".repeat(mine) + "</span>");
+    }
     return '<a class="game-card" href="play.html?game=' + encodeURIComponent(g.slug) + '">' +
       '<div class="game-thumb">' + thumb + "</div>" +
       (badges.length ? '<div class="badges">' + badges.join("") + "</div>" : "") +
@@ -383,7 +530,7 @@
       '<div class="game-body"><h3>' + esc(g.title) + "</h3>" +
       '<p class="game-by">by ' + esc(joinNames(g.authors || [])) + "</p>" +
       '<p class="game-blurb">' + esc(g.blurb || "") + "</p>" +
-      '<div class="game-meta">' + (g.llm ? '<span class="sticker">Made with ' + esc(g.llm) + "</span>" : "") + "</div>" +
+      '<div class="game-meta">' + meta.join("") + "</div>" +
       "</div></a>";
   }
 
@@ -415,6 +562,15 @@
     return a;
   }
 
+  function sandboxedFrame(attrs) {
+    var f = document.createElement("iframe");
+    // Sandboxed: the game can run scripts but can't touch this site, read sign-ins, or navigate away.
+    f.setAttribute("sandbox", "allow-scripts allow-pointer-lock allow-modals");
+    f.setAttribute("allow", "fullscreen; autoplay; gamepad");
+    Object.keys(attrs).forEach(function (k) { f.setAttribute(k, attrs[k]); });
+    return f;
+  }
+
   /* ---------------- Pages ---------------- */
 
   var pages = {};
@@ -423,18 +579,23 @@
     renderStatus(); renderPrizes(); renderRules(); renderCriteria(); renderTimeline();
     var el = slot("latest");
     if (!el) return;
-    loadGames().then(function (games) {
-      var html = winnersHtml(games);
-      var latest = games.slice().sort(function (a, b) { return String(b.added || "").localeCompare(String(a.added || "")); }).slice(0, 3);
-      if (!latest.length) {
-        html += '<div class="empty"><span class="big" aria-hidden="true">🕹️</span><p>No games yet. Yours could be the first.</p><a class="btn btn-primary" href="guide.html">Read the guide</a></div>';
-      } else {
-        html += '<div class="games">' + latest.map(function (g) { return gameCard(g); }).join("") + "</div>";
+    Promise.all([loadGames(), loadStats()]).then(function (res) {
+      var games = res[0];
+      function draw() {
+        var html = winnersHtml(games);
+        var latest = games.slice().sort(function (a, b) { return String(b.added || "").localeCompare(String(a.added || "")); }).slice(0, 3);
+        if (!latest.length) {
+          html += '<div class="empty"><span class="big" aria-hidden="true">🕹️</span><p>No games yet. Yours could be the first.</p><a class="btn btn-primary" href="guide.html">Read the guide</a></div>';
+        } else {
+          html += '<div class="games">' + latest.map(function (g) { return gameCard(g); }).join("") + "</div>";
+        }
+        el.innerHTML = html;
+        bindThumbFallbacks(el);
       }
-      el.innerHTML = html;
-      bindThumbFallbacks(el);
-      fill("game-count", games.length ? plural(games.length, "game") + " so far" : "");
-    }, function (err) { el.innerHTML = gamesErrorHtml(err); renderSubmitLinks(); });
+      draw();
+      onAuth(draw);
+      fill("game-count", games.length ? plural(games.length, "game") + " so far" : "Latest entries");
+    }, function (err) { el.innerHTML = gamesErrorHtml(err); });
   };
 
   pages.gallery = function () {
@@ -447,6 +608,10 @@
       var list = state.sort === "shuffle" ? shuffled.slice() : all.slice();
       if (state.sort === "az") list.sort(function (a, b) { return a.title.localeCompare(b.title); });
       if (state.sort === "new") list.sort(function (a, b) { return String(b.added || "").localeCompare(String(a.added || "")); });
+      if (state.sort === "top") list.sort(function (a, b) {
+        var sa = Stats[a.slug] || { avg: 0, count: 0 }, sb = Stats[b.slug] || { avg: 0, count: 0 };
+        return (sb.avg - sa.avg) || (sb.count - sa.count);
+      });
       var q = state.q.trim().toLowerCase();
       list = list.filter(function (g) {
         if (state.llm !== "all" && (g.llm || "Other") !== state.llm) return false;
@@ -461,10 +626,11 @@
       fill("count", list.length === all.length ? plural(all.length, "game") : list.length + " of " + plural(all.length, "game"));
     }
 
-    loadGames().then(function (games) {
+    Promise.all([loadGames(), loadStats()]).then(function (res) {
+      var games = res[0];
       all = games; shuffled = shuffle(games);
       if (!games.length) {
-        el.innerHTML = '<div class="empty"><span class="big" aria-hidden="true">🕹️</span><h3>No games yet</h3><p>The gallery fills up as entries come in. Want to be first?</p><a class="btn btn-primary" href="guide.html">Read the guide</a></div>';
+        el.innerHTML = '<div class="empty"><span class="big" aria-hidden="true">🕹️</span><h3>No games yet</h3><p>The gallery fills up as entries come in. Want to be first?</p><a class="btn btn-primary" href="submit.html">Submit your game</a></div>';
         return;
       }
       var llms = [];
@@ -478,7 +644,8 @@
           return '<button class="chip" type="button" aria-pressed="false" data-llm="' + esc(l) + '">' + esc(l) + "</button>";
         })).join("") + "</div>" +
         '<label class="visually-hidden" for="sort">Order</label>' +
-        '<select class="chip" id="sort" data-filter="sort"><option value="shuffle">Shuffled</option><option value="new">Newest first</option><option value="az">A to Z</option></select>' +
+        '<select class="chip" id="sort" data-filter="sort"><option value="shuffle">Shuffled</option><option value="new">Newest first</option>' +
+        (apiOn() ? '<option value="top">Top rated</option>' : "") + '<option value="az">A to Z</option></select>' +
         '</div><p class="muted" data-slot="count" aria-live="polite"></p><div data-slot="grid"></div>';
       $('[data-filter="q"]', el).addEventListener("input", function (e) { state.q = e.target.value; draw(); });
       $('[data-filter="sort"]', el).addEventListener("change", function (e) { state.sort = e.target.value; draw(); });
@@ -491,7 +658,8 @@
       });
       bindThumbFallbacks(el);
       draw();
-    }, function (err) { el.innerHTML = gamesErrorHtml(err); renderSubmitLinks(); });
+      onAuth(draw);
+    }, function (err) { el.innerHTML = gamesErrorHtml(err); });
   };
 
   pages.guide = function () {
@@ -501,201 +669,229 @@
     } else {
       hide("loom");
     }
-    if (!CFG.repoUrl) hide("repo-route");
-    $$("[data-repo-link]").forEach(function (a) { a.href = CFG.repoUrl; });
     fill("starter-prompt", esc(STARTER_PROMPT));
     fill("deadline-text", esc(isNaN(deadlineMs()) ? "the deadline" : formatDeadline()));
-    setupSubmissionHelper();
   };
 
-  function setupSubmissionHelper() {
-    var form = $("#submit-helper");
-    if (!form) return;
-    var llmSelect = $("#sh-llm");
-    llmSelect.innerHTML = (CFG.llms || ["Claude", "ChatGPT", "Other"]).map(function (l) {
-      return "<option>" + esc(l) + "</option>";
-    }).join("");
-    function update() {
-      var names = $("#sh-names").value.split(/,|&| and /).map(function (s) { return s.trim(); }).filter(Boolean);
-      var title = $("#sh-title").value.trim();
-      var blurb = $("#sh-blurb").value.trim();
-      var emoji = $("#sh-emoji").value.trim() || "🎮";
-      var llm = llmSelect.value;
-      $("#sh-count").textContent = blurb.length + " / 100";
-      var first = slugify((names[0] || "yourname").split(/\s+/)[0]);
-      var slug = first + "-" + (slugify(title) || "game-title");
-      var entry = {
-        slug: slug,
-        title: title || "Game title",
-        authors: names.length ? names : ["Your name"],
-        llm: llm,
-        file: "games/" + slug + ".html",
-        blurb: blurb || "One line about your game.",
-        emoji: emoji,
-        added: new Date().toISOString().slice(0, 10),
-        award: null
-      };
-      $("#sh-filename").textContent = slug + ".html";
-      $("#sh-message").textContent =
-        "New Bonanza entry\n" +
-        "Title: " + entry.title + "\n" +
-        "By: " + joinNames(entry.authors) + "\n" +
-        "Made with: " + llm + "\n" +
-        "One-liner: " + entry.blurb + "\n" +
-        "File: " + slug + ".html (attached)\n\n" +
-        "For the organisers (paste into games.json):\n" +
-        JSON.stringify(entry, null, 2);
+  /* ---------- Submit ---------- */
+
+  pages.submit = function () {
+    var form = $("#submit-form");
+    var state = { html: "", fileName: "", thumb: "" };
+    var llmSelect = $("#sf-llm");
+    llmSelect.innerHTML = (CFG.llms || ["Claude", "ChatGPT", "Other"]).map(function (l) { return "<option>" + esc(l) + "</option>"; }).join("");
+    fill("deadline-text", esc(isNaN(deadlineMs()) ? "the deadline" : formatDeadline()));
+
+    function show(which) {
+      $$("[data-state]").forEach(function (el) { el.hidden = el.getAttribute("data-state") !== which; });
     }
+
+    function render() {
+      if (!apiOn()) return show("off");
+      if (!submissionsOpen()) return show("closed");
+      if (!signedIn()) return show(Auth.loading ? "loading" : "signin");
+      show("form");
+      var names = $("#sf-name");
+      if (!names.value) names.value = Auth.me.user.name;
+      var mine = Auth.me.mySubmissions || [];
+      fill("my-games", mine.length
+        ? "<h3>Your games</h3><p class=\"muted\">To update a game, click Update, choose the new file, and submit again. The title must stay the same.</p><ul class=\"my-games\">" +
+          mine.map(function (g, i) {
+            return "<li><span>" + esc(g.emoji || "🎮") + " <strong>" + esc(g.title) + '</strong></span><span class="btn-row"><a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">Play</a><button class="btn btn-small" type="button" data-update="' + i + '">Update</button></span></li>';
+          }).join("") + "</ul>"
+        : "");
+      $$("[data-update]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var g = mine[Number(b.getAttribute("data-update"))];
+          $("#sf-title").value = g.title;
+          $("#sf-name").value = g.authors[0] || "";
+          $("#sf-partner").value = g.authors[1] || "";
+          $("#sf-blurb").value = g.blurb || "";
+          $("#sf-emoji").value = g.emoji || "";
+          if (g.llm) llmSelect.value = g.llm;
+          update();
+          $("#sf-file").focus();
+          toast("Details filled in. Now choose your updated .html file.");
+        });
+      });
+      update();
+    }
+
+    function authors() {
+      return [$("#sf-name").value.trim(), $("#sf-partner").value.trim()].filter(Boolean);
+    }
+
+    function update() {
+      var blurb = $("#sf-blurb").value;
+      $("#sf-count").textContent = blurb.length + " / 100";
+      var a = authors();
+      var slug = (slugify((a[0] || "you").split(" ")[0]) + "-" + (slugify($("#sf-title").value) || "your-game")).slice(0, 60);
+      $("#sf-slug").textContent = slug;
+    }
+
+    function checkHtml(html) {
+      var notes = [];
+      if (/<(script|link|img)[^>]+(src|href)\s*=\s*["']?\s*(https?:)?\/\//i.test(html) || /url\(\s*["']?https?:/i.test(html)) notes.push("It loads something from the internet, which may not work in the gallery. Ask your AI to put everything in the one file.");
+      if (/\blocalStorage\b/.test(html)) notes.push("It uses localStorage (saving high scores), which is blocked in the gallery. If the preview below looks broken, ask your AI to remove it.");
+      if (!/<\/html>\s*$/i.test(html.trim())) notes.push("It doesn't end with </html>, so the code might be cut off. Check the preview works.");
+      return notes;
+    }
+
+    $("#sf-file").addEventListener("change", function (e) {
+      var file = e.target.files[0];
+      state.html = ""; fill("preview", ""); fill("file-notes", "");
+      if (!file) return;
+      if (file.size > 3 * 1024 * 1024) { fill("file-notes", '<p class="field-error">That file is over 3 MB. Ask your AI to make it smaller.</p>'); return; }
+      file.text().then(function (text) {
+        if (!/<html|<!doctype|<script|<canvas|<body/i.test(text)) {
+          fill("file-notes", '<p class="field-error">That doesn\'t look like an HTML game. Make sure you saved the whole code as a .html file.</p>');
+          return;
+        }
+        state.html = text; state.fileName = file.name;
+        var notes = checkHtml(text);
+        fill("file-notes", notes.length ? '<div class="panel"><strong>Worth checking</strong><ul>' + notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul></div>" : '<p class="field-ok">' + icon("check") + " Looks good. Try it in the preview below.</p>");
+        var holder = slot("preview");
+        holder.innerHTML = '<p class="muted">Preview. This is exactly how it will run in the gallery:</p>';
+        var f = sandboxedFrame({ "class": "embed-frame", title: "Preview of your game" });
+        f.srcdoc = text;
+        holder.appendChild(f);
+      });
+    });
+
+    $("#sf-thumb").addEventListener("change", function (e) {
+      var file = e.target.files[0];
+      state.thumb = ""; fill("thumb-preview", "");
+      if (!file) return;
+      if (!/^image\//.test(file.type)) { fill("thumb-preview", '<p class="field-error">Please choose an image (PNG or JPG).</p>'); return; }
+      // Shrink to at most 800px wide so uploads stay small.
+      var img = new Image();
+      img.onload = function () {
+        var scale = Math.min(1, 800 / img.width);
+        var c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        state.thumb = c.toDataURL("image/jpeg", 0.85);
+        fill("thumb-preview", '<img src="' + state.thumb + '" alt="Your thumbnail" class="thumb-preview">');
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = function () { fill("thumb-preview", '<p class="field-error">That image couldn\'t be read. Try a PNG or JPG.</p>'); };
+      img.src = URL.createObjectURL(file);
+    });
+
     form.addEventListener("input", update);
-    update();
-  }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      fill("submit-result", "");
+      var title = $("#sf-title").value.trim(), blurb = $("#sf-blurb").value.trim();
+      var problem = !authors().length ? "Please add your name." : !title ? "Please give your game a title." : !blurb ? "Please add a one-line description." : !state.html ? "Please choose your game's .html file." : "";
+      if (problem) { fill("submit-result", '<div class="error-box"><p style="margin:0">' + esc(problem) + "</p></div>"); return; }
+      var btn = $("#sf-submit");
+      btn.disabled = true; btn.textContent = "Publishing… (about 10 seconds)";
+      api("submit", {
+        title: title, authors: authors(), llm: llmSelect.value, blurb: blurb,
+        emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null
+      }).then(function (res) {
+        form.reset(); state = { html: "", fileName: "", thumb: "" };
+        fill("preview", ""); fill("file-notes", ""); fill("thumb-preview", "");
+        fill("submit-result",
+          '<div class="card success-box"><h3>' + (res.updated ? "Updated! " : "You're in! ") + esc(title) + " has been submitted 🎉</h3>" +
+          "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. You can re-submit as often as you like before the deadline.</p>" +
+          '<div class="btn-row"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(res.slug) + '">' + icon("play") + ' Play it</a><a class="btn" href="gallery.html">Go to the gallery</a></div>' +
+          '<p class="muted" style="margin:1rem 0 0">If it says "file missing" at first, wait a minute and refresh.</p></div>');
+        slot("submit-result").scrollIntoView({ behavior: "smooth", block: "center" });
+        return refreshMe().then(render);
+      }, function (err) {
+        fill("submit-result", '<div class="error-box"><h3>That didn\'t work</h3><p style="margin:0">' + esc(err.message) + "</p></div>");
+      }).then(function () { btn.disabled = false; btn.textContent = "Submit my game"; });
+    });
+
+    render();
+    onAuth(render);
+  };
+
+  /* ---------- Judging ---------- */
 
   pages.judging = function () {
     fill("rubric", RUBRIC.map(function (c) {
       return "<tr><td><strong>" + c.name + "</strong></td><td>" + c.weight + "%</td><td>×" + c.mult + "</td><td>" + esc(c.look) + "</td></tr>";
     }).join(""));
     var judges = CFG.judges || [];
-    fill("judges", judges.length ? "Judged by " + esc(joinNames(judges)) + "." : "The judges will be announced at kick-off.");
-    $$("[data-vote-only]").forEach(function (el) { el.hidden = !CFG.votingUrl; });
+    fill("judges", judges.length ? esc(joinNames(judges)) : "The judges will be announced at kick-off.");
 
-    var btn = $("#make-sheet");
-    if (btn) btn.addEventListener("click", function () {
-      loadGames().then(function (games) {
-        var judge = $("#judge-name").value.trim();
-        var rows = games.filter(function (g) { return !g.excludeFromJudging; });
-        if (!rows.length) { announce("There are no judged entries yet."); alertBox("There are no entries to judge yet."); return; }
-        download("scoring-sheet" + (judge ? "-" + slugify(judge) : "") + ".csv", buildSheet(rows, judge));
-      }, function (err) { alertBox(gamesErrorHtml(err), true); });
-    });
-    setupResults();
-  };
-
-  function alertBox(msg, isHtml) {
-    var el = slot("sheet-msg");
-    if (!el) return;
-    el.innerHTML = isHtml ? msg : "<p>" + esc(msg) + "</p>";
-  }
-
-  function csvCell(v) {
-    v = String(v == null ? "" : v);
-    return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-  }
-
-  function buildSheet(games, judge) {
-    var head = ["Judge", "Entry slug", "Entry title", "Silliness", "Playability", "Originality", "Presentation", "Wildcard", "Weighted total", "Notes"];
-    var lines = [head.join(",")];
-    games.forEach(function (g, i) {
-      var r = i + 2;
-      lines.push([csvCell(judge), csvCell(g.slug), csvCell(g.title), "", "", "", "", "",
-        "=D" + r + "*8+E" + r + "*4+F" + r + "*4+G" + r + "*2+H" + r + "*2", ""].join(","));
-    });
-    return lines.join("\r\n") + "\r\n";
-  }
-
-  /* ---------- Results calculator ---------- */
-
-  function parseCsv(text) {
-    text = text.replace(/^﻿/, "");
-    var firstLine = text.split(/\r?\n/)[0] || "";
-    var counts = { ",": firstLine.split(",").length, ";": firstLine.split(";").length, "\t": firstLine.split("\t").length };
-    var delim = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0];
-    var rows = [], row = [], cell = "", inQ = false;
-    for (var i = 0; i < text.length; i++) {
-      var c = text[i];
-      if (inQ) {
-        if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
-        else if (c === '"') inQ = false;
-        else cell += c;
-      } else if (c === '"') inQ = true;
-      else if (c === delim) { row.push(cell); cell = ""; }
-      else if (c === "\n" || c === "\r") {
-        if (c === "\r" && text[i + 1] === "\n") i++;
-        row.push(cell); rows.push(row); row = []; cell = "";
-      } else cell += c;
-    }
-    if (cell || row.length) { row.push(cell); rows.push(row); }
-    return rows.filter(function (r) { return r.some(function (x) { return x.trim(); }); });
-  }
-
-  function computeResults(texts) {
-    var keys = ["judge", "slug", "title", "silliness", "playability", "originality", "presentation", "wildcard"];
-    var entries = {}, warnings = [], seen = {};
-    texts.forEach(function (text, fi) {
-      var rows = parseCsv(text);
-      var header = rows.shift() || [];
-      var col = {};
-      header.forEach(function (h, i) {
-        var k = h.trim().toLowerCase();
-        keys.forEach(function (key) { if (col[key] === undefined && k.indexOf(key) !== -1) col[key] = i; });
-      });
-      if (col.slug === undefined || col.silliness === undefined) {
-        warnings.push("Sheet " + (fi + 1) + " is missing the “Entry slug” or score columns, so it was skipped.");
+    var gamesP = loadGames();
+    function render() {
+      var panel = slot("judge-panel");
+      if (!apiOn()) { panel.innerHTML = '<p class="muted">Judges\' scoring opens once the organiser connects sign-in.</p>'; return; }
+      if (!signedIn()) {
+        panel.innerHTML = '<p>Judges: sign in with your work Google account to score the games.</p><div class="auth-slot" data-auth="large"></div>';
+        renderAuthSlots();
         return;
       }
-      rows.forEach(function (r, ri) {
-        var slug = (r[col.slug] || "").trim();
-        if (!slug) return;
-        var judge = col.judge !== undefined ? (r[col.judge] || "").trim() : "";
-        var scores = RUBRIC.map(function (c) { return parseFloat(String(r[col[c.name.toLowerCase()]] || "").replace(",", ".")); });
-        var where = "Sheet " + (fi + 1) + ", row " + (ri + 2) + " (" + slug + (judge ? ", " + judge : "") + ")";
-        if (scores.every(isNaN)) return;
-        if (scores.some(function (s) { return isNaN(s) || s < 1 || s > 5; })) {
-          warnings.push(where + ": every score must be a number from 1 to 5. Row skipped.");
-          return;
+      var u = Auth.me.user;
+      if (!u.isJudge && !u.isAdmin) { panel.innerHTML = '<p class="muted">You\'re signed in, but scoring is only for the judges. Rate games with stars in the <a href="gallery.html">gallery</a> instead.</p>'; return; }
+      gamesP.then(function (games) {
+        var list = games.filter(function (g) { return !g.excludeFromJudging; });
+        var scores = Auth.me.myScores || {};
+        var html = "";
+        if (u.isJudge) {
+          var done = list.filter(function (g) { return scores[g.slug]; }).length;
+          html += "<p><strong>Hi " + esc(u.givenName) + ".</strong> You've scored " + done + " of " + plural(list.length, "game") + ". Play each one, score it 1–5 on each criterion, and save. You can change scores any time. Skip your own game.</p>";
+          html += list.length ? list.map(function (g) {
+            var s = scores[g.slug] || [];
+            return '<form class="card judge-row" data-judge="' + esc(g.slug) + '">' +
+              '<div class="judge-head"><div><h3>' + esc(g.emoji || "🎮") + " " + esc(g.title) + '</h3><p class="muted" style="margin:0">by ' + esc(joinNames(g.authors)) + "</p></div>" +
+              '<a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '" target="_blank" rel="noopener">' + icon("play") + " Play</a></div>" +
+              '<div class="judge-scores">' + RUBRIC.map(function (c, i) {
+                return '<label class="field"><span>' + c.name + ' <span class="muted">×' + c.mult + '</span></span><select name="s' + i + '"><option value="">–</option>' +
+                  [1, 2, 3, 4, 5].map(function (n) { return "<option" + (s[i] === n ? " selected" : "") + ">" + n + "</option>"; }).join("") + "</select></label>";
+              }).join("") + "</div>" +
+              '<div class="judge-foot"><span data-total>' + (s.length ? "Saved: " + total(s) + " / 100" : "Not scored yet") + '</span><button class="btn btn-small btn-primary" type="submit">Save</button></div></form>';
+          }).join("") : '<p class="muted">No games to judge yet.</p>';
         }
-        var key = judge.toLowerCase() + "|" + slug;
-        if (judge && seen[key]) { warnings.push(where + ": " + judge + " scored this entry twice. Only the first score was used."); return; }
-        seen[key] = true;
-        var total = scores.reduce(function (sum, s, i) { return sum + s * RUBRIC[i].mult; }, 0);
-        var e = entries[slug] || (entries[slug] = { slug: slug, title: (col.title !== undefined && r[col.title]) || slug, totals: [], silly: [], judges: [] });
-        e.totals.push(total); e.silly.push(scores[0]); e.judges.push(judge || "?");
+        html += '<div class="card" style="margin-top:1.5rem"><h3>Current standings</h3><p class="muted">Visible to judges and organisers only.</p><button class="btn" type="button" id="show-results">Show standings</button><div data-slot="results"></div></div>';
+        panel.innerHTML = html;
+        $$("[data-judge]", panel).forEach(bindJudgeRow);
+        $("#show-results").addEventListener("click", showResults);
       });
-    });
-    function avg(a) { return a.reduce(function (s, x) { return s + x; }, 0) / a.length; }
-    var list = Object.keys(entries).map(function (k) {
-      var e = entries[k]; e.avg = avg(e.totals); e.sillyAvg = avg(e.silly); return e;
-    }).sort(function (a, b) { return b.avg - a.avg || b.sillyAvg - a.sillyAvg; });
-    var counts = list.map(function (e) { return e.totals.length; });
-    var maxJ = counts.length ? Math.max.apply(null, counts) : 0;
-    list.forEach(function (e, i) {
-      var prev = list[i - 1], next = list[i + 1];
-      function same(o) { return o && Math.abs(o.avg - e.avg) < 1e-9 && Math.abs(o.sillyAvg - e.sillyAvg) < 1e-9; }
-      e.rank = prev && same(prev) ? prev.rank : i + 1;
-      e.note = same(prev) || same(next) ? "Still tied after the Silliness tie-break: judges discuss" : "";
-      if (e.totals.length < maxJ) e.note = (e.note ? e.note + ". " : "") + "Scored by " + e.totals.length + " of " + maxJ + " judges";
-    });
-    return { list: list, warnings: warnings };
-  }
-
-  function setupResults() {
-    var btn = $("#calc-results");
-    if (!btn) return;
-    btn.addEventListener("click", function () {
-      var files = Array.prototype.slice.call($("#results-files").files || []);
-      var pasted = $("#results-paste").value;
-      Promise.all(files.map(function (f) { return f.text(); })).then(function (texts) {
-        if (pasted.trim()) texts.push(pasted);
-        var out = slot("results");
-        if (!texts.length) { out.innerHTML = '<p class="muted">Choose at least one sheet, or paste one in.</p>'; return; }
-        var res = computeResults(texts);
-        if (!res.list.length) {
-          out.innerHTML = '<div class="error-box"><h3>No scores found</h3><p>Check that the sheets have the same column headings as the template, and that scores are filled in.</p>' +
-            (res.warnings.length ? "<ul><li>" + res.warnings.map(esc).join("</li><li>") + "</li></ul>" : "") + "</div>";
-          return;
-        }
-        var plain = res.list.map(function (e) { return e.rank + ". " + e.title + " (" + e.avg.toFixed(1) + ")"; }).join("\n");
+    }
+    function total(s) { return s.reduce(function (sum, v, i) { return sum + v * RUBRIC[i].mult; }, 0); }
+    function bindJudgeRow(formEl) {
+      formEl.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var vals = RUBRIC.map(function (c, i) { return Number(formEl.elements["s" + i].value); });
+        if (vals.some(function (v) { return !v; })) { toast("Pick a score for every criterion first.", "bad"); return; }
+        var slug = formEl.getAttribute("data-judge");
+        var btn = $("button[type=submit]", formEl);
+        btn.disabled = true;
+        api("judge", { slug: slug, scores: vals }).then(function (res) {
+          Auth.me.myScores = Auth.me.myScores || {};
+          Auth.me.myScores[slug] = vals;
+          $("[data-total]", formEl).textContent = "Saved: " + res.total + " / 100";
+          toast("Saved: " + res.total + " / 100", "good");
+        }, function (err) { toast(err.message, "bad"); }).then(function () { btn.disabled = false; });
+      });
+    }
+    function showResults() {
+      var out = slot("results");
+      out.innerHTML = '<p class="muted">Loading…</p>';
+      api("results").then(function (res) {
+        var min = CFG.minRatingsForPeoplesChoice || 5;
         out.innerHTML =
-          '<div class="table-wrap"><table><thead><tr><th>Rank</th><th>Entry</th><th>Average score (out of 100)</th><th>Silliness average</th><th>Judges</th><th>Notes</th></tr></thead><tbody>' +
-          res.list.map(function (e) {
-            return "<tr><td>" + e.rank + "</td><td><strong>" + esc(e.title) + '</strong><br><span class="muted">' + esc(e.slug) + "</span></td><td>" + e.avg.toFixed(1) +
-              "</td><td>" + e.sillyAvg.toFixed(2) + "</td><td>" + esc(e.judges.join(", ")) + "</td><td>" + esc(e.note) + "</td></tr>";
+          '<h4 style="margin-top:1.25rem">Judges\' ranking</h4><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Game</th><th>Average / 100</th><th>Silliness avg</th><th>Judges</th></tr></thead><tbody>' +
+          res.judges.map(function (e, i) {
+            return "<tr><td>" + (i + 1) + "</td><td>" + esc(e.title) + (e.tied ? ' <span class="sticker pink">Tied: discuss</span>' : "") + "</td><td>" + (e.judged ? e.avg.toFixed(1) : "–") + "</td><td>" + (e.judged ? e.sillyAvg.toFixed(2) : "–") + "</td><td>" + e.judged + "</td></tr>";
           }).join("") + "</tbody></table></div>" +
-          (res.warnings.length ? '<div class="panel" style="margin-top:1rem"><strong>Check these rows</strong><ul><li>' + res.warnings.map(esc).join("</li><li>") + "</li></ul></div>" : "") +
-          '<pre id="results-plain" hidden>' + esc(plain) + '</pre><p style="margin-top:1rem"><button class="btn btn-small copy-btn" type="button" data-copy="#results-plain">' + icon("copy") + " Copy ranking as text</button></p>";
-        bindCopyButtons(out);
-      });
-    });
-  }
+          '<h4 style="margin-top:1.5rem">People\'s choice (stars)</h4><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Game</th><th>Average</th><th>Ratings</th><th>Qualifies</th></tr></thead><tbody>' +
+          res.stars.map(function (e, i) {
+            return "<tr><td>" + (i + 1) + "</td><td>" + esc(e.title) + "</td><td>" + (e.count ? "★ " + e.avg.toFixed(2) : "–") + "</td><td>" + e.count + "</td><td>" + (e.qualifies ? "Yes" : "Needs " + min) + "</td></tr>";
+          }).join("") + "</tbody></table></div>";
+      }, function (err) { out.innerHTML = '<p class="field-error">' + esc(err.message) + "</p>"; });
+    }
+    render();
+    onAuth(render);
+  };
+
+  /* ---------- Player ---------- */
 
   pages.play = function () {
     var slug = new URLSearchParams(location.search).get("game");
@@ -705,30 +901,40 @@
         '<p><a class="btn btn-primary" href="gallery.html">' + icon("back") + " Back to the gallery</a></p></div>";
     }
     if (!slug) { message("No game picked", "<p>This page plays one game at a time. Choose one from the gallery.</p>"); return; }
-    loadGames().then(function (games) {
-      var g = games.filter(function (x) { return x.slug === slug; })[0];
-      if (!g) { message("We couldn't find that game", "<p>There's no game called <code>" + esc(slug) + "</code>. It may have been renamed. Try the gallery.</p>"); return; }
+    Promise.all([loadGames(), loadStats()]).then(function (res) {
+      var g = res[0].filter(function (x) { return x.slug === slug; })[0];
+      if (!g) { message("We couldn't find that game", "<p>There's no game called <code>" + esc(slug) + "</code>. If it was just submitted, wait a minute and refresh.</p>"); return; }
       document.title = g.title + " · " + CFG.name;
       $("#player-title").innerHTML = "<strong>" + esc(g.title) + "</strong><span>by " + esc(joinNames(g.authors || [])) + (g.llm ? " · made with " + esc(g.llm) : "") + "</span>";
-      $("#open-tab").href = g.file;
-      $("#open-tab").hidden = false;
+
+      function drawRating() {
+        var el = $("#player-rating");
+        if (!ratable(g)) { el.innerHTML = g.excludeFromJudging && apiOn() ? '<span class="muted">Example game, not rated</span>' : ""; return; }
+        el.innerHTML = '<span class="rate-summary">' + esc(starSummary(g.slug)) + "</span>" + starsWidget(g);
+        bindStars(el, g, drawRating);
+      }
+      drawRating();
+      onAuth(drawRating);
+
       fetch(g.file, { method: "HEAD", cache: "no-cache" }).then(function (r) {
         if (!r.ok) throw new Error();
-        var frame = document.createElement("iframe");
-        frame.className = "player-frame";
-        frame.title = g.title;
-        // Sandboxed: the game can run scripts but can't touch this site or navigate away.
-        frame.setAttribute("sandbox", "allow-scripts allow-pointer-lock allow-modals");
-        frame.setAttribute("allow", "fullscreen; autoplay; gamepad");
-        frame.src = g.file;
+        var frame = sandboxedFrame({ "class": "player-frame", title: g.title, src: g.file });
         main.innerHTML = "";
         main.appendChild(frame);
-        frame.addEventListener("load", function () { try { frame.focus(); } catch (e) {} });
+        frame.addEventListener("load", function () { try { frame.focus(); } catch (e) { /* ignore */ } });
+        var fs = $("#fullscreen");
+        var req = frame.requestFullscreen || frame.webkitRequestFullscreen;
+        if (req) {
+          fs.hidden = false;
+          fs.addEventListener("click", function () { req.call(frame); });
+        }
       }).catch(function () {
-        message("The game file is missing", "<p>The gallery lists this game, but the file <code>" + esc(g.file) + "</code> isn't in the repository yet. If you're the organiser, upload it into the <code>games</code> folder.</p>");
+        message("The game file is missing", "<p>The gallery lists this game, but its file isn't published yet. If it was just submitted, wait a minute and refresh.</p>");
       });
-    }, function (err) { main.innerHTML = '<div class="player-msg">' + gamesErrorHtml(err) + "</div>"; renderSubmitLinks(); });
+    }, function (err) { main.innerHTML = '<div class="player-msg">' + gamesErrorHtml(err) + "</div>"; });
   };
+
+  /* ---------- Sample ---------- */
 
   pages.sample = function () {
     var s = CFG.showcase || {};
@@ -749,10 +955,10 @@
       if (!g) { frameSlot.innerHTML = '<div class="error-box"><p>The sample game <code>' + esc(s.slug) + "</code> isn't in games.json yet. Check the <code>showcase.slug</code> setting in config.js.</p></div>"; return; }
       fill("sc-title", esc(g.title));
       fill("sc-blurb", esc(g.blurb));
-      frameSlot.innerHTML = '<iframe class="embed-frame" src="' + esc(g.file) + '" title="' + esc(g.title) + '" sandbox="allow-scripts allow-pointer-lock allow-modals" loading="lazy"></iframe>' +
-        '<div class="btn-row" style="margin-top:1rem"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(g.slug) + '">' + icon("play") + " Play full screen</a>" +
-        '<a class="btn" href="' + esc(g.file) + '" target="_blank" rel="noopener">' + icon("external") + " Open the raw file</a></div>";
-    }, function (err) { frameSlot.innerHTML = gamesErrorHtml(err); renderSubmitLinks(); });
+      frameSlot.innerHTML = "";
+      frameSlot.appendChild(sandboxedFrame({ "class": "embed-frame", title: g.title, src: g.file, loading: "lazy" }));
+      frameSlot.insertAdjacentHTML("beforeend", '<div class="btn-row" style="margin-top:1rem"><a class="btn btn-primary" href="play.html?game=' + encodeURIComponent(g.slug) + '">' + icon("play") + " Play full screen</a></div>");
+    }, function (err) { frameSlot.innerHTML = gamesErrorHtml(err); });
   };
 
   pages.resources = function () {};
@@ -762,7 +968,7 @@
   function boot() {
     renderShell();
     if (!CFG || typeof CFG !== "object") { renderConfigError(); return; }
-    renderSubmitLinks();
+    renderConfigText();
     try {
       if (pages[page]) pages[page]();
     } catch (e) {
@@ -770,12 +976,9 @@
       var main = $("#main");
       if (main) main.insertAdjacentHTML("afterbegin", '<div class="wrap"><div class="error-box" style="margin-top:2rem"><h3>Something on this page broke</h3><p>Please tell the organisers. Technical detail: <code>' + esc(e.message) + "</code></p></div></div>");
     }
-    renderSubmitLinks();
     bindCopyButtons();
+    initAuth();
   }
-
-  // Expose for the results tests and for curious people in the console.
-  window.Bonanza = { computeResults: computeResults, buildSheet: buildSheet, slugify: slugify };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

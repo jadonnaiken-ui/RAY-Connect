@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<title>Submit · {name}</title>
+<meta name="description" content="Submit your game to the RAY Connect silly game jam. It goes live in the gallery in about two minutes.">
+</head>
+<body data-page="submit">
+<div id="site-header"></div>
+
+<main id="main">
+  <section class="hero" style="padding-bottom:0">
+    <div class="wrap">
+      <span class="eyebrow">Submit</span>
+      <h1>Send in your game</h1>
+      <p class="lead">Sign in, fill in four details, choose your file, and it's in the gallery about two minutes later. Re-submit as often as you like until <span data-slot="deadline-text">the deadline</span>.</p>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:2.5rem">
+    <div class="wrap"><div style="max-width:860px">
+
+      <div data-state="off" hidden class="empty">
+        <span class="big" aria-hidden="true">🛠️</span>
+        <h3>Online submissions open soon</h3>
+        <p>The organisers are still connecting this page. In the meantime, message <strong data-contact>the organisers</strong> with your <code>.html</code> file.</p>
+      </div>
+
+      <div data-state="closed" hidden class="empty">
+        <span class="big" aria-hidden="true">🔒</span>
+        <h3>Submissions are closed</h3>
+        <p>The deadline has passed. Thanks to everyone who entered! Go <a href="gallery.html">rate the games</a>.</p>
+      </div>
+
+      <div data-state="loading" hidden class="empty"><p class="muted">Signing you in…</p></div>
+
+      <div data-state="signin" hidden class="card" style="text-align:center;padding:2.5rem 1.5rem">
+        <h2>Sign in to submit</h2>
+        <p class="muted">Use your <span data-work-domain>work</span> Google account. This makes sure only you can update your game.</p>
+        <div class="auth-slot" data-auth="large" style="justify-content:center"></div>
+      </div>
+
+      <div data-state="form" hidden>
+        <div data-slot="my-games"></div>
+
+        <form class="card" id="submit-form" novalidate>
+          <h2>Game details</h2>
+          <div class="form-grid">
+            <div class="field">
+              <label for="sf-name">Your name</label>
+              <input id="sf-name" autocomplete="name" maxlength="40" required>
+            </div>
+            <div class="field">
+              <label for="sf-partner">Teammate's name <span class="muted">(optional)</span></label>
+              <input id="sf-partner" maxlength="40" placeholder="Leave empty if solo">
+            </div>
+            <div class="field">
+              <label for="sf-title">Game title</label>
+              <input id="sf-title" maxlength="60" required placeholder="e.g. Sofa Racer">
+            </div>
+            <div class="field">
+              <label for="sf-llm">Main AI you used</label>
+              <select id="sf-llm"></select>
+            </div>
+            <div class="field field-wide">
+              <label for="sf-blurb">One-line description</label>
+              <input id="sf-blurb" maxlength="100" required placeholder="e.g. Formula 1, but everyone is a couch.">
+              <p class="hint" id="sf-count" aria-live="polite">0 / 100</p>
+            </div>
+            <div class="field">
+              <label for="sf-emoji">One emoji for your game</label>
+              <input id="sf-emoji" maxlength="12" placeholder="🛋️">
+              <p class="hint">Shown on your gallery card. On a laptop: Windows key + . (Windows), Ctrl + Cmd + Space (Mac), or Search + Shift + Space (Chromebook).</p>
+            </div>
+            <div class="field">
+              <label for="sf-thumb">Screenshot <span class="muted">(optional)</span></label>
+              <input id="sf-thumb" type="file" accept="image/png,image/jpeg">
+              <p class="hint">Replaces the emoji on your card.</p>
+              <div data-slot="thumb-preview"></div>
+            </div>
+            <div class="field field-wide">
+              <label for="sf-file">Your game file (.html)</label>
+              <input id="sf-file" type="file" accept=".html,.htm,text/html" required>
+              <p class="hint">The file you saved from your AI assistant. Max 3 MB.</p>
+              <div data-slot="file-notes"></div>
+            </div>
+          </div>
+          <div data-slot="preview" style="margin-top:1.25rem"></div>
+          <p class="muted" style="margin:1.25rem 0">Your game's address will be <code>play.html?game=<span id="sf-slug"></span></code></p>
+          <button class="btn btn-primary" id="sf-submit" type="submit">Submit my game</button>
+        </form>
+        <div data-slot="submit-result" style="margin-top:1.25rem" aria-live="polite"></div>
+      </div>
+
+      <p class="muted" style="margin-top:2rem">Not built yet? Start with the <a href="guide.html">guide</a>. Stuck? Message <span data-contact>the organisers</span>.</p>
+    </div></div>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+<script src="config.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

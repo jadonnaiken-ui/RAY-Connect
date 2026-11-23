@@ -126,7 +126,7 @@ main { flex: 1; padding-bottom: 5rem; }
 .site-nav a:hover { color: var(--ink); background: var(--surface-2); }
 .site-nav a[aria-current="page"] { color: var(--ink); background: var(--surface-2); font-weight: 500; }
 
-@media (max-width: 880px) {
+@media (max-width: 1060px) {
   .site-header .nav-toggle { display: inline-flex; }
   .site-nav { display: none; position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); border-bottom: var(--hair); padding: .5rem 1.5rem 1rem; }
   .site-nav.open { display: block; }
@@ -355,3 +355,52 @@ body.player { height: 100vh; height: 100dvh; overflow: hidden; }
 }
 
 @media (max-width: 880px) { #sample-top { grid-template-columns: 1fr !important; } }
+
+/* ---------- Sign-in ---------- */
+.header-end { display: flex; align-items: center; gap: .5rem; }
+.auth-slot { display: flex; align-items: center; gap: .5rem; min-height: 36px; }
+.auth-name { font-size: .92rem; font-weight: 500; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-note { font-size: .85rem; }
+.auth-slot[data-auth="large"] { margin-top: 1rem; }
+.site-nav { margin-left: auto; }
+@media (max-width: 1060px) { .site-nav { margin-left: 0; } .header-end { margin-left: auto; } }
+@media (max-width: 420px) { .auth-name { display: none; } }
+
+/* ---------- Toast ---------- */
+.toast { position: fixed; left: 50%; bottom: 1.25rem; transform: translate(-50%, 150%); max-width: min(92vw, 30rem); background: var(--ink); color: var(--bg); padding: .8rem 1.1rem; border-radius: var(--radius-sm); font-size: .95rem; z-index: 200; opacity: 0; transition: transform .25s ease, opacity .25s ease; pointer-events: none; }
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+.toast.bad { background: var(--negative); color: #fff; }
+.toast.good { background: var(--positive); color: #fff; }
+
+/* ---------- Stars ---------- */
+.rate { display: inline-flex; gap: .1rem; }
+.rate .star { background: none; border: 0; padding: .3rem; cursor: pointer; color: var(--line-strong); border-radius: 6px; min-width: 36px; min-height: 36px; display: grid; place-items: center; }
+.rate .star .icon { width: 24px; height: 24px; }
+.rate .star.on { color: #e0a100; }
+.rate .star.on .icon { fill: currentColor; }
+/* Hovering previews the rating: stars up to the pointer light up. */
+.rate:not(:has(:disabled)):hover .star { color: #e0a100; }
+.rate:not(:has(:disabled)):hover .star .icon { fill: currentColor; }
+.rate:not(:has(:disabled)) .star:hover ~ .star { color: var(--line-strong); }
+.rate:not(:has(:disabled)) .star:hover ~ .star .icon { fill: none; }
+.rate .star:disabled { cursor: default; opacity: .6; }
+.rate-summary { font-size: .88rem; color: var(--muted); white-space: nowrap; }
+.player-rating { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.stars-sticker { color: var(--ink); }
+
+/* ---------- Submit ---------- */
+.my-games { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; gap: .5rem; }
+.my-games li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: .75rem 1rem; border: var(--hair); border-radius: var(--radius-sm); background: var(--surface); }
+.field-error { color: var(--negative); margin: .5rem 0 0; }
+.field-ok { color: var(--positive); display: flex; align-items: center; gap: .35rem; margin: .5rem 0 0; }
+.thumb-preview { max-width: 240px; border-radius: var(--radius-sm); border: var(--hair); margin-top: .5rem; display: block; }
+.success-box { border-color: var(--positive); background: var(--positive-bg); }
+.field input[type=file] { padding: .55rem; }
+
+/* ---------- Judges ---------- */
+.judge-row { margin-bottom: 1rem; }
+.judge-head { display: flex; justify-content: space-between; align-items: start; gap: 1rem; margin-bottom: 1rem; }
+.judge-head h3 { margin: 0 0 .2rem; }
+.judge-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; }
+.judge-scores .field span { display: block; font-size: .88rem; font-weight: 500; margin-bottom: .3rem; }
+.judge-foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; }

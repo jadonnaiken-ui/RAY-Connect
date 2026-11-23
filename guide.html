@@ -89,12 +89,12 @@
           </li>
           <li>
             <strong>Save the final file</strong>
-            <p>Name it <code>firstname-game-title.html</code>, all lowercase with dashes, for example <code>jadon-sofa-racer.html</code>. The <a href="#submit">submission helper</a> below works this out for you.</p>
-            <p class="muted">In Claude: use the download button on the game panel. Elsewhere: copy all the code into a text file and save it with <code>.html</code> at the end.</p>
+            <p>Save the finished game as one <code>.html</code> file. Any name works.</p>
+            <p class="muted">In Claude: use the download button on the game panel. Elsewhere: copy all the code into a plain text file and save it with <code>.html</code> at the end.</p>
           </li>
           <li>
-            <strong>Submit before the deadline</strong>
-            <p>Send the file and a few details. See <a href="#submit">how to submit</a>. You can send updated versions as often as you like until <span data-slot="deadline-text">the deadline</span>.</p>
+            <strong>Submit it on the website</strong>
+            <p>Sign in on the <a href="submit.html">Submit page</a>, fill in four details and choose your file. It's in the gallery about two minutes later. Re-submit as often as you like until <span data-slot="deadline-text">the deadline</span>. See <a href="#submit">how to submit</a>.</p>
           </li>
         </ol>
       </section>
@@ -159,58 +159,19 @@
 
       <section id="submit">
         <h2>How to submit</h2>
-        <p class="read">Fill in the helper below. It names your file correctly and writes the message for you.</p>
-
-        <form class="card" id="submit-helper" onsubmit="return false" style="margin:1.25rem 0">
-          <h3>Submission helper</h3>
-          <div class="form-grid">
-            <div class="field">
-              <label for="sh-names">Your name(s)</label>
-              <input id="sh-names" autocomplete="name" placeholder="e.g. Jadon, or Jadon & Sam">
-              <p class="hint">Teams of two: separate names with "&amp;".</p>
-            </div>
-            <div class="field">
-              <label for="sh-title">Game title</label>
-              <input id="sh-title" placeholder="e.g. Sofa Racer">
-            </div>
-            <div class="field field-wide">
-              <label for="sh-blurb">One-line description</label>
-              <input id="sh-blurb" maxlength="100" placeholder="e.g. Formula 1, but everyone is a couch.">
-              <p class="hint" id="sh-count" aria-live="polite">0 / 100</p>
-            </div>
-            <div class="field">
-              <label for="sh-emoji">One emoji for your game</label>
-              <input id="sh-emoji" maxlength="8" placeholder="🛋️">
-            </div>
-            <div class="field">
-              <label for="sh-llm">Main AI you used</label>
-              <select id="sh-llm"></select>
-            </div>
-          </div>
-          <div class="output">
-            <p>Save your game as: <code id="sh-filename"></code></p>
-            <pre id="sh-message"></pre>
-            <button class="btn btn-primary copy-btn" type="button" data-copy="#sh-message"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg> Copy message</button>
-          </div>
-        </form>
-
-        <h3>Send it</h3>
+        <p class="read">Everything happens on this website. You don't need GitHub, and you don't need to send anything to anyone.</p>
         <ol class="steps">
-          <li><strong>Open the submission channel</strong><p>Go to <a href="#" data-submit-link><span data-submit-label>the submission channel</span></a>.</p></li>
-          <li><strong>Paste the message and attach your file</strong><p>Paste the message from the helper, then attach your <code>.html</code> file. If you made a screenshot for a thumbnail, attach that too (optional).</p></li>
-          <li><strong>That's it</strong><p>The organisers add it to the gallery, usually within a day. To update your game, post the new file in the same thread before the deadline.</p></li>
+          <li><strong>Open the Submit page</strong><p>Go to <a href="submit.html">Submit</a> in the menu.</p></li>
+          <li><strong>Sign in with Google</strong><p>Use your <span data-work-domain>work</span> Google account. Only you can update your game.</p></li>
+          <li><strong>Fill in the details</strong><p>Your name (plus a teammate, if you have one), the game title, the main AI you used, a one-line description and an emoji. You can add a screenshot too if you like.</p></li>
+          <li><strong>Choose your file and check the preview</strong><p>Pick your <code>.html</code> file. A preview appears, showing exactly how it will run in the gallery. If it works there, it'll work for everyone.</p></li>
+          <li><strong>Submit</strong><p>About two minutes later it's live in the <a href="gallery.html">gallery</a> for everyone to play and rate.</p></li>
         </ol>
-
-        <div class="panel" data-show="repo-route" style="margin-top:1.5rem">
-          <h3>Comfortable with GitHub? Upload it yourself</h3>
-          <p>If you have a GitHub account, you can add your game directly. The organisers check and approve it.</p>
-          <ol>
-            <li>Open the <a href="#" data-repo-link>competition repository</a> and go into the <code>games</code> folder.</li>
-            <li>Click <strong>Add file → Upload files</strong>, drop in your <code>.html</code>, and choose <strong>"Create a new branch… and start a pull request"</strong>.</li>
-            <li>In the pull request description, paste the message from the helper above.</li>
-          </ol>
-          <p class="muted" style="margin:0">Step-by-step pictures are on the <a href="sample.html#upload">sample game page</a>.</p>
+        <div class="panel" style="margin-top:1.25rem">
+          <h3>Updating your game</h3>
+          <p style="margin:0">Go back to the Submit page. Your games are listed at the top. Click <strong>Update</strong>, choose the new file, and submit. Keep the same title, otherwise it counts as a new game.</p>
         </div>
+        <p class="muted" style="margin-top:1rem">Can't get it to work? Message <span data-contact>the organisers</span> with your file and they'll add it for you.</p>
       </section>
 
       <section id="timeline" data-show="timeline">
@@ -222,7 +183,7 @@
         <h2>Judging</h2>
         <p>Judges score every game from 1 to 5 on five criteria, weighted to a total out of 100.</p>
         <div class="criteria" data-slot="criteria"></div>
-        <p style="margin-top:1.25rem">There's also a <strong>people's choice</strong> award voted for by everyone. <a href="judging.html">Read the full judging guide</a>.</p>
+        <p style="margin-top:1.25rem">There's also a <strong>people's choice</strong> award, decided by everyone's star ratings. <a href="judging.html">Read how winners are picked</a>.</p>
       </section>
 
       <section id="help" class="read">

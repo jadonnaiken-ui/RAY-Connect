@@ -50,38 +50,39 @@ window.JAM_CONFIG = {
   // The home page and gallery then show the winners at the top.
   winnersAnnounced: false,
 
-  /* ---------- Links ---------- */
+  /* ---------- Sign-in, submissions and star ratings ---------- */
+  // These two values come from the backend setup (see backend/SETUP.md).
+  // While they're "", the Submit page says "opening soon" and star ratings are hidden.
+  apiUrl: "",          // the Apps Script "Web app URL", ending in /exec
+  googleClientId: "",  // ends in .apps.googleusercontent.com
 
-  // Where entrants send their game. A Slack channel link works well.
-  // To get one: in Slack, right-click the channel → Copy → Copy link.
-  submitUrl: "https://slack.com/app_redirect?channel=ray-bonanza", // >>> PLACEHOLDER <<<
-  submitLabel: "#ray-bonanza on Slack", // >>> PLACEHOLDER <<<
+  // Your work email domain, e.g. "getray.ai". Used for the sign-in hint and messages.
+  // (The real check happens in the backend's ALLOWED_DOMAINS setting.)
+  workDomain: "",
 
-  // People's Choice voting link (e.g. a Google Form). Leave as "" to hide the vote buttons.
-  votingUrl: "",
+  // People's choice goes to the highest average star rating among games
+  // with at least this many ratings, so one lucky 5-star can't win it.
+  minRatingsForPeoplesChoice: 5,
 
   // Your Loom walkthrough. From a link like https://www.loom.com/share/abc123def456
   // copy only the last part: "abc123def456". Leave as "" to hide the video.
   // Remember to set the Loom to "Anyone with the link can view".
   loomId: "",
 
-  // Optional: the address of this GitHub repository, e.g. "https://github.com/your-name/ray-bonanza".
-  // When filled in, the guide shows the "upload it yourself" route for people with GitHub accounts.
-  repoUrl: "", // >>> PLACEHOLDER <<<
-
   // Who people should ask for help.
-  contact: "Jadon in #ray-bonanza", // >>> PLACEHOLDER <<<
+  contact: "Jadon in the RAY Connect chat",
 
   /* ---------- People and prizes ---------- */
 
   // Leave as [] to show "Judges will be announced at kick-off".
+  // (Their email addresses go in the backend's JUDGE_EMAILS setting, so they can score on the site.)
   judges: ["Jadon", "Ronald", "Joshua"], // e.g. ["Thandi", "Sam", "Priya"]
 
   // Prizes. Edit the amounts and wording. Remove a block to remove a prize.
   prizes: [ // >>> PLACEHOLDER amounts <<<
     { title: "Grand champion", amount: "$100", description: "Highest score from the judges. Eternal glory included." },
     { title: "Runner-up", amount: "$50", description: "Second-highest score. Still extremely silly." },
-    { title: "People's choice", amount: "$30", description: "Voted for by everyone. Charm the crowd." }
+    { title: "People's choice", amount: "$30", description: "Highest average star rating from everyone. Charm the crowd." }
   ],
 
   // The AI assistants people can pick from when they submit.
