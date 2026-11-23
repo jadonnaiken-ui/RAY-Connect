@@ -57,6 +57,8 @@ Open `config.js` on GitHub → **pencil icon** → change the text between the q
 
 **Entrants submit on the website.** Once a game is published, it's live in about two minutes. Entrants can update their own game any time before the deadline. Each update raises its version (v2, v3…), and the gallery shows an "Updated" badge for a day.
 
+**One game per person:** submitting a game with a *new* title retires the person's previous game. It leaves the gallery and can no longer be rated, but its ratings and judges' scores stay on record. It stays on both leaderboards (Status column: "Retired: replaced by …") and in the judges' panel under "Replaced games", so the judges can still consider it. Re-submitting the old title brings it back and retires the newer one. The Submit page warns entrants and asks them to confirm before replacing.
+
 **Ratings and updates:** each person has one rating per game. It carries over when the game is updated, and people can change it whenever they like. Anyone who rated an older version sees a nudge: "Updated to v2 since you rated it."
 
 **Removing a game:** sign in as an admin (your email must be in `ADMIN_EMAILS`), open the game, and click **Remove game**. This deletes its files from GitHub and moves its ratings, judges' scores and submission history to the **Removed** tab of the Google Sheet. Standings stay clean, and nothing is lost for good.

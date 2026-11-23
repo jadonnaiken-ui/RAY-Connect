@@ -168,7 +168,15 @@ function me(user, token) {
   rows("submissions").forEach(r => {
     if (r.Email === user.email) mine[r.Slug] = { slug: r.Slug, title: r.Title, authors: String(r.Authors).split(" & "), llm: r["AI used"], blurb: r.Blurb, emoji: r.Emoji };
   });
-  const out = { ok: true, user: user, myRatings: myRatings, myRatedVersions: myRatedVersions, mySubmissions: Object.keys(mine).map(k => mine[k]) };
+  const listed = {};
+  games().forEach(g => { listed[g.slug] = g; });
+  Object.keys(mine).forEach(k => {
+    const g = listed[k];
+    mine[k].status = !g ? "removed" : g.retired ? "retired" : "live";
+    if (g && g.retired) mine[k].replacedBy = g.replacedBy || "";
+  });
+  const out = { ok: true, user: user, myRatings: myRatings, myRatedVersions: myRatedVersions,
+    mySubmissions: Object.keys(mine).map(k => mine[k]).filter(g => g.status !== "removed") };
   if (!isSession(token)) out.session = startSession(user);
   if (user.isJudge) {
     out.myScores = {};
@@ -185,6 +193,7 @@ function rate(user, data) {
   if (siteConfig().winnersAnnounced) throw new UserError("Voting has closed: the winners have been announced.");
   const game = findGame(data.slug);
   if (game.excludeFromJudging) throw new UserError("This is an example game, so it can't be rated.");
+  if (game.retired) throw new UserError("This game has been replaced by its creator, so it can't be rated any more.");
   if (isOwner(user, game)) throw new UserError("Nice try! You can't rate your own game.");
   const version = Number(game.version) || 1;
   withLock("sheet", () => upsert("ratings", {
@@ -264,6 +273,8 @@ function submit(user, d) {
 
   return withLock("publish", () => {
     const today = Utilities.formatDate(new Date(), "Etc/GMT", "yyyy-MM-dd");
+    const owned = {};
+    rows("submissions").forEach(r => { if (r.Email === user.email) owned[r.Slug] = true; });
     const result = commitGames(games => {
       const index = games.findIndex(g => g.slug === slug);
       const existing = index === -1 ? null : games[index];
@@ -293,10 +304,19 @@ function submit(user, d) {
       if (thumbnail) entry.thumbnail = thumbnail;
       if (photoPath) entry.photo = photoPath;
       if (existing) games[index] = entry; else games.push(entry);
+      // One live game per person: retire their other games. They leave the gallery and can't be
+      // rated, but stay in games.json (and on the leaderboards) so the judges can still consider them.
+      const retired = [];
+      games.forEach(g => {
+        if (g.slug === slug || !owned[g.slug] || g.retired) return;
+        g.retired = today;
+        g.replacedBy = slug;
+        retired.push(g.title);
+      });
       return {
         files: files,
         message: (existing ? "Update " + title + " to v" + version : "Add " + title) + " by " + authors.join(" & "),
-        result: { slug: slug, updated: !!existing, version: version }
+        result: { slug: slug, updated: !!existing, version: version, retired: retired }
       };
     });
     sheet("submissions").appendRow([new Date(), user.email, user.name, slug, title, authors.join(" & "), llm, blurb, emoji, result.version]);
@@ -364,8 +384,15 @@ function starRanking() {
   const min = siteConfig().minRatings;
   return games().filter(g => !g.excludeFromJudging).map(g => {
     const s = stats[g.slug] || { avg: 0, count: 0 };
-    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: s.avg, count: s.count, qualifies: s.count >= min, short: Math.max(0, min - s.count) };
+    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: s.avg, count: s.count, qualifies: s.count >= min, short: Math.max(0, min - s.count), status: statusOf(g) };
   }).sort((a, b) => (b.qualifies - a.qualifies) || (b.avg - a.avg) || (b.count - a.count));
+}
+
+// "Live", or "Retired: replaced by <new title>" for games their creator has since replaced.
+function statusOf(g) {
+  if (!g.retired) return "Live";
+  const next = games().filter(x => x.slug === g.replacedBy)[0];
+  return "Retired: replaced by " + (next ? next.title : "a newer game");
 }
 
 function judgeRanking() {
@@ -378,7 +405,7 @@ function judgeRanking() {
   const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
   const list = games().filter(g => !g.excludeFromJudging).map(g => {
     const p = per[g.slug] || { totals: [], silly: [], judges: [], byJudge: {} };
-    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: Math.round(avg(p.totals) * 10) / 10, sillyAvg: Math.round(avg(p.silly) * 100) / 100, judged: p.judges.length, byJudge: p.byJudge };
+    return { slug: g.slug, title: g.title, creator: (g.authors || []).join(" & "), avg: Math.round(avg(p.totals) * 10) / 10, sillyAvg: Math.round(avg(p.silly) * 100) / 100, judged: p.judges.length, byJudge: p.byJudge, status: statusOf(g) };
   }).sort((a, b) => (b.avg - a.avg) || (b.sillyAvg - a.sillyAvg));
   list.forEach((e, i) => {
     const same = o => o && o.avg === e.avg && o.sillyAvg === e.sillyAvg && e.judged > 0;
@@ -410,17 +437,17 @@ function refreshLeaderboards() {
   rows("judging").forEach(r => { if (r.Judge) judgeNames[r.Email] = r.Judge; });
   const nameOf = e => judgeNames[e] || nameFromEmail(e);
   const j = judgeRanking();
-  const jHead = ["Rank", "Game", "Average total /100", "Average silliness /5"].concat(judgeEmails.map(e => nameOf(e) + " /100"), ["Note"]);
-  const jRows = j.map((e, i) => [i + 1, e.title, e.judged ? e.avg : "", e.judged ? e.sillyAvg : ""]
+  const jHead = ["Rank", "Game", "Status", "Average total /100", "Average silliness /5"].concat(judgeEmails.map(e => nameOf(e) + " /100"), ["Note"]);
+  const jRows = j.map((e, i) => [i + 1, e.title, e.status, e.judged ? e.avg : "", e.judged ? e.sillyAvg : ""]
     .concat(judgeEmails.map(em => e.byJudge[em] !== undefined ? e.byJudge[em] : ""),
       [e.tied ? "Tied: judges discuss" : (e.judged ? "" : "Not scored yet")]));
-  writeBoard(ss, "Judges' leaderboard", jHead, jRows, stamp, { 3: "0.0", 4: "0.00" });
+  writeBoard(ss, "Judges' leaderboard", jHead, jRows, stamp, { 4: "0.0", 5: "0.00" });
 
   // People's choice: star ratings.
   const min = siteConfig().minRatings;
-  const pHead = ["Rank", "Game", "Creator", "Average stars /5", "Ratings", "Qualifies (" + min + "+ ratings)"];
-  const pRows = starRanking().map((e, i) => [i + 1, e.title, e.creator, e.count ? e.avg : "", e.count, e.qualifies ? "Yes" : "No: needs " + e.short + " more"]);
-  writeBoard(ss, "People's choice", pHead, pRows, stamp, { 4: "0.00" });
+  const pHead = ["Rank", "Game", "Creator", "Status", "Average stars /5", "Ratings", "Qualifies (" + min + "+ ratings)"];
+  const pRows = starRanking().map((e, i) => [i + 1, e.title, e.creator, e.status, e.count ? e.avg : "", e.count, e.qualifies ? "Yes" : "No: needs " + e.short + " more"]);
+  writeBoard(ss, "People's choice", pHead, pRows, stamp, { 5: "0.00" });
 }
 
 function writeBoard(ss, title, head, data, stamp, formats) {

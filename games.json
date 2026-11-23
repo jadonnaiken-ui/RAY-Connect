@@ -26,7 +26,9 @@
     "added": "2026-11-23",
     "version": 1,
     "award": null,
-    "photo": "games/photos/jadon-test-hungry-noodle.jpg"
+    "photo": "games/photos/jadon-test-hungry-noodle.jpg",
+    "retired": "2026-11-24",
+    "replacedBy": "jadon-founder-s-life"
   },
   {
     "slug": "jadon-founder-s-life",

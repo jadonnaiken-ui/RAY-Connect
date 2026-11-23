@@ -38,7 +38,7 @@
     ["Understandable in 30 seconds", "Put a one-line \"how to play\" on screen."],
     ["Must be playable", "A goal, a score or a win/lose moment, and a way to restart."],
     ["No company data", "No logos, customer data or anything confidential. The site may be public."],
-    ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo entries only."],
+    ["Any tool goes", "Claude, ChatGPT, Gemini, Copilot, or code it yourself. Solo entries, one game each: a new game replaces your previous one."],
     ["Keep it kind", "Silly, not mean. No games about a colleague without their blessing."],
     ["The deadline is firm", "Re-submit as often as you like until the deadline."],
     ["Get people playing", "To qualify for People's choice, your game needs at least {min} star ratings. Submit early and share your link so colleagues can play and rate it."]
@@ -369,7 +369,7 @@
   });
 
   function refreshMe() {
-    return api("me").then(function (me) { Auth.me = me; return me; });
+    return api("me").then(function (me) { Auth.me = me; persistMe(); return me; });
   }
 
   function signOut() {
@@ -413,7 +413,10 @@
       .then(function (res) { Stats = (res && res.ratings) || {}; return Stats; }, function () { return Stats; });
   }
 
-  function ratable(g) { return apiOn() && !g.excludeFromJudging; }
+  // One live game per person: a game replaced by its creator is "retired". It leaves the gallery
+  // and can't be rated, but stays on the leaderboards for the judges.
+  function isLive(g) { return !g.retired; }
+  function ratable(g) { return apiOn() && !g.excludeFromJudging && isLive(g); }
 
   function starSummary(slug) {
     var s = Stats[slug];
@@ -758,9 +761,9 @@
     var el = slot("latest");
     if (!el) return;
     Promise.all([loadGames(), loadStats()]).then(function (res) {
-      var games = res[0];
+      var everything = res[0], games = everything.filter(isLive);
       function draw() {
-        var html = winnersHtml(games);
+        var html = winnersHtml(everything);
         var latest = games.slice().sort(function (a, b) { return String(b.added || "").localeCompare(String(a.added || "")); }).slice(0, 3);
         if (!latest.length) {
           html += '<div class="empty"><span class="big" aria-hidden="true">🕹️</span><p>No games yet. Yours could be the first.</p><a class="btn btn-primary" href="guide.html">Read the guide</a></div>';
@@ -806,6 +809,8 @@
 
     Promise.all([loadGames(), loadStats()]).then(function (res) {
       var games = res[0];
+      var everything = games;
+      games = games.filter(isLive);
       all = games; shuffled = shuffle(games);
       if (!games.length) {
         el.innerHTML = '<div class="empty"><span class="big" aria-hidden="true">🕹️</span><h3>No games yet</h3><p>The gallery fills up as entries come in. Want to be first?</p><a class="btn btn-primary" href="submit.html">Submit your game</a></div>';
@@ -884,9 +889,12 @@
       if (!names.value) names.value = Auth.me.user.name;
       var mine = Auth.me.mySubmissions || [];
       fill("my-games", mine.length
-        ? "<h3>Your games</h3><p class=\"muted\">To update a game, click Update, choose the new file, and submit again. The title must stay the same.</p><ul class=\"my-games\">" +
+        ? "<h3>Your game</h3><p class=\"muted\">You can have one game in the gallery. To improve it, click Update, choose the new file, and submit; keep the same title. Submitting a game with a new title replaces your current one.</p><ul class=\"my-games\">" +
           mine.map(function (g, i) {
-            return "<li><span>" + esc(g.emoji || "🎮") + " <strong>" + esc(g.title) + '</strong></span><span class="btn-row"><a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">Play</a><button class="btn btn-small" type="button" data-update="' + i + '">Update</button></span></li>';
+            var live = g.status !== "retired";
+            return "<li><span>" + esc(g.emoji || "🎮") + " <strong>" + esc(g.title) + "</strong> " +
+              (live ? '<span class="sticker mint">In the gallery</span>' : '<span class="sticker">Replaced</span>') +
+              '</span><span class="btn-row"><a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">Play</a><button class="btn btn-small" type="button" data-update="' + i + '">' + (live ? "Update" : "Bring back") + "</button></span></li>";
           }).join("") + "</ul>"
         : "");
       $$("[data-update]").forEach(function (b) {
@@ -917,6 +925,21 @@
       var a = authors();
       var slug = (slugify((a[0] || "you").split(" ")[0]) + "-" + (slugify($("#sf-title").value) || "your-game")).slice(0, 60);
       $("#sf-slug").textContent = slug;
+      // Warn before a new title replaces the game they already have in the gallery.
+      var current = signedIn() ? (Auth.me.mySubmissions || []).filter(function (g) { return g.status !== "retired" && g.slug !== slug; })[0] : null;
+      state.replacing = current || null;
+      var box = slot("replace-warning");
+      if (box) {
+        if (!current || !$("#sf-title").value.trim()) { box.innerHTML = ""; state.replaceOk = false; }
+        else if (!$("#sf-replace-ok") || box.getAttribute("data-for") !== current.slug + "|" + slug) {
+          box.setAttribute("data-for", current.slug + "|" + slug);
+          state.replaceOk = false;
+          box.innerHTML = '<div class="panel" style="margin-top:1rem"><strong>This replaces ' + esc(current.title) + ".</strong>" +
+            "<p style=\"margin:.4rem 0\">You can have one game in the gallery at a time. Submitting a new title takes <em>" + esc(current.title) + "</em> out of the gallery. Its ratings and judges' scores stay on record. Want to improve " + esc(current.title) + " instead? Click <strong>Update</strong> next to it above.</p>" +
+            '<label style="display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="sf-replace-ok"> Yes, replace ' + esc(current.title) + " with this game</label></div>";
+          $("#sf-replace-ok").addEventListener("change", function (ev) { state.replaceOk = ev.target.checked; });
+        }
+      }
     }
 
     function checkHtml(html) {
@@ -1029,6 +1052,7 @@
       fill("submit-result", "");
       var title = $("#sf-title").value.trim(), blurb = $("#sf-blurb").value.trim();
       var problem = !authors().length ? "Please add your name." : !title ? "Please give your game a title." : !blurb ? "Please add a one-line description." : !state.photo && !state.hasPhoto ? "Please add your RAY profile picture." : !state.html ? "Please choose your game's .html file." : "";
+      if (!problem && state.replacing && !state.replaceOk) problem = "Tick the box to confirm you want to replace " + state.replacing.title + ", or click Update next to it to improve it instead.";
       if (!problem && state.errors && state.errors.length && !state.override) problem = "Your game hit an error in the preview. Fix it with your AI, or tick \"it works anyway\" under the preview.";
       if (problem) { fill("submit-result", '<div class="error-box"><p style="margin:0">' + esc(problem) + "</p></div>"); return; }
       var btn = $("#sf-submit");
@@ -1037,11 +1061,13 @@
         title: title, authors: authors(), llm: llmSelect.value, blurb: blurb,
         emoji: $("#sf-emoji").value.trim(), html: state.html, thumbnail: state.thumb || null, photo: state.photo || null
       }).then(function (res) {
-        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false, errors: [], override: false, frame: null };
+        form.reset(); state = { html: "", fileName: "", thumb: "", photo: "", hasPhoto: false, errors: [], override: false, frame: null, replacing: null, replaceOk: false };
+        fill("replace-warning", "");
         setPhotoNeeded(true);
         fill("preview", ""); fill("file-notes", ""); fill("thumb-preview", ""); fill("photo-preview", "");
         fill("submit-result",
           '<div class="card success-box"><h3>' + (res.updated ? "Updated! " + esc(title) + " is now v" + res.version + " 🎉" : "You're in! " + esc(title) + " has been submitted 🎉") + "</h3>" +
+          (res.retired && res.retired.length ? "<p>" + esc(res.retired.join(" and ")) + " has been taken out of the gallery. Its ratings and scores stay on record.</p>" : "") +
           "<p>It will appear in the gallery in about 2 minutes, once GitHub has published it. You can re-submit as often as you like before the deadline.</p>" +
           '<p><strong>Now get people playing.</strong> You need at least ' + (CFG.minRatingsForPeoplesChoice || 5) + " star ratings to qualify for People's choice. Share your link in the " + withChatLink(CFG.chatName || "RAY Connect chat") + ":</p>" +
           '<p><code id="share-link">' + esc(new URL("play.html?game=" + encodeURIComponent(res.slug), location.href).href) + '</code></p>' +
@@ -1080,13 +1106,14 @@
       var u = Auth.me.user;
       if (!u.isJudge && !u.isAdmin) { panel.innerHTML = '<p class="muted">You\'re signed in, but scoring is only for the judges. Rate games with stars in the <a href="gallery.html">gallery</a> instead.</p>'; return; }
       gamesP.then(function (games) {
-        var list = games.filter(function (g) { return !g.excludeFromJudging; });
+        var judged = games.filter(function (g) { return !g.excludeFromJudging; });
+        var list = judged.filter(isLive), replaced = judged.filter(function (g) { return !isLive(g); });
         var scores = Auth.me.myScores || {};
         var html = "";
         if (u.isJudge) {
           var done = list.filter(function (g) { return scores[g.slug]; }).length;
           html += "<p><strong>Hi " + esc(u.givenName) + ".</strong> You've scored " + done + " of " + plural(list.length, "game") + ". Play each one, score it 1–5 on each criterion, and save. You can change scores any time. Skip your own game.</p>";
-          html += list.length ? list.map(function (g) {
+          var row = function (g) {
             var s = scores[g.slug] || [];
             return '<form class="card judge-row" data-judge="' + esc(g.slug) + '">' +
               '<div class="judge-head"><div><h3>' + esc(g.emoji || "🎮") + " " + esc(g.title) + '</h3><p class="muted" style="margin:0">by ' + esc(joinNames(g.authors)) + "</p></div>" +
@@ -1096,7 +1123,12 @@
                   [1, 2, 3, 4, 5].map(function (n) { return "<option" + (s[i] === n ? " selected" : "") + ">" + n + "</option>"; }).join("") + "</select></label>";
               }).join("") + "</div>" +
               '<div class="judge-foot"><span data-total>' + (s.length ? "Saved: " + total(s) + " / 100" : "Not scored yet") + '</span><button class="btn btn-small btn-primary" type="submit">Save</button></div></form>';
-          }).join("") : '<p class="muted">No games to judge yet.</p>';
+          };
+          html += list.length ? list.map(row).join("") : '<p class="muted">No games to judge yet.</p>';
+          if (replaced.length) {
+            html += '<h3 style="margin-top:2rem">Replaced games</h3><p class="muted">Their creators have since submitted a newer game, so these are out of the gallery. Their scores stay on record: score them too if you want to consider them.</p>' +
+              replaced.map(row).join("");
+          }
         }
         html += '<div class="card" style="margin-top:1.5rem"><h3>Current standings</h3><p class="muted">Visible to judges and organisers only.</p><button class="btn" type="button" id="show-results">Show standings</button><div data-slot="results"></div></div>';
         panel.innerHTML = html;
@@ -1130,11 +1162,11 @@
         out.innerHTML =
           '<h4 style="margin-top:1.25rem">Judges\' ranking</h4><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Game</th><th>Average / 100</th><th>Silliness avg</th><th>Judges</th></tr></thead><tbody>' +
           res.judges.map(function (e, i) {
-            return "<tr><td>" + (i + 1) + "</td><td>" + esc(e.title) + (e.tied ? ' <span class="sticker pink">Tied: discuss</span>' : "") + "</td><td>" + (e.judged ? e.avg.toFixed(1) : "–") + "</td><td>" + (e.judged ? e.sillyAvg.toFixed(2) : "–") + "</td><td>" + e.judged + "</td></tr>";
+            return "<tr><td>" + (i + 1) + "</td><td>" + esc(e.title) + (e.status && e.status !== "Live" ? ' <span class="sticker">Retired</span>' : "") + (e.tied ? ' <span class="sticker pink">Tied: discuss</span>' : "") + "</td><td>" + (e.judged ? e.avg.toFixed(1) : "–") + "</td><td>" + (e.judged ? e.sillyAvg.toFixed(2) : "–") + "</td><td>" + e.judged + "</td></tr>";
           }).join("") + "</tbody></table></div>" +
           '<h4 style="margin-top:1.5rem">People\'s choice (stars)</h4><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Game</th><th>Average</th><th>Ratings</th><th>Qualifies</th></tr></thead><tbody>' +
           res.stars.map(function (e, i) {
-            return "<tr><td>" + (i + 1) + "</td><td>" + esc(e.title) + "</td><td>" + (e.count ? "★ " + e.avg.toFixed(2) : "–") + "</td><td>" + e.count + "</td><td>" + (e.qualifies ? "Yes" : "Needs " + min) + "</td></tr>";
+            return "<tr><td>" + (i + 1) + "</td><td>" + esc(e.title) + (e.status && e.status !== "Live" ? ' <span class="sticker">Retired</span>' : "") + "</td><td>" + (e.count ? "★ " + e.avg.toFixed(2) : "–") + "</td><td>" + e.count + "</td><td>" + (e.qualifies ? "Yes" : "Needs " + min) + "</td></tr>";
           }).join("") + "</tbody></table></div>";
       }, function (err) { out.innerHTML = '<p class="field-error">' + esc(err.message) + "</p>"; });
     }
@@ -1161,6 +1193,12 @@
 
       function drawRating() {
         var el = $("#player-rating");
+        if (!isLive(g)) {
+          var next = res[0].filter(function (x) { return x.slug === g.replacedBy; })[0];
+          el.innerHTML = '<span class="rate-note" style="flex-basis:auto">Retired: its creator replaced it' +
+            (next ? ' with <a href="play.html?game=' + encodeURIComponent(next.slug) + '">' + esc(next.title) + "</a>" : "") + ". No longer rated.</span>";
+          return;
+        }
         if (!ratable(g)) { el.innerHTML = g.excludeFromJudging && apiOn() ? '<span class="muted">Example game, not rated</span>' : ""; return; }
         var rated = signedIn() && Auth.me.myRatedVersions ? Auth.me.myRatedVersions[g.slug] : 0;
         var stale = myRating(g.slug) && rated && rated < version;

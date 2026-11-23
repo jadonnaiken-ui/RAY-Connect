@@ -40,7 +40,7 @@ try {
 }
 
 /* ---------- games.json ---------- */
-const ALLOWED = new Set(["slug", "title", "authors", "llm", "file", "blurb", "emoji", "thumbnail", "photo", "added", "updated", "version", "award", "excludeFromJudging"]);
+const ALLOWED = new Set(["slug", "title", "authors", "llm", "file", "blurb", "emoji", "thumbnail", "photo", "added", "updated", "version", "award", "excludeFromJudging", "retired", "replacedBy"]);
 const AWARDS = [null, "winner", "runner-up", "peoples-choice"];
 
 let text = "";
