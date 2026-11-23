@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Classic Snake</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1b1b1b; color: #eee; font-family: system-ui, sans-serif; touch-action: none; user-select: none; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  h1 { margin: 0; font-size: 22px; }
+  p { margin: 0; font-size: 14px; color: #aaa; text-align: center; padding: 0 10px; }
+  canvas { background: #2a2a2a; border: 3px solid #555; border-radius: 6px; width: min(90vw, 60vh); height: min(90vw, 60vh); image-rendering: pixelated; }
+  .bar { display: flex; gap: 16px; align-items: center; font-weight: bold; }
+  button { font: bold 16px system-ui; padding: 8px 16px; border-radius: 8px; border: 0; background: #4caf50; color: #fff; cursor: pointer; }
+  .pad { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; }
+  .pad button { height: 48px; padding: 0; background: #444; font-size: 20px; }
+  .pad .blank { visibility: hidden; }
+</style>
+</head>
+<body>
+  <h1>🐍 Classic Snake</h1>
+  <p>Eat the apples, don't hit the walls or yourself. Arrow keys / WASD, swipe, or tap the buttons.</p>
+  <div class="bar"><span>Score: <span id="score">0</span></span><button id="restart" type="button">Restart</button></div>
+  <canvas id="c" width="400" height="400"></canvas>
+  <div class="pad">
+    <button class="blank" tabindex="-1"></button><button data-d="up" type="button" aria-label="Up">▲</button><button class="blank" tabindex="-1"></button>
+    <button data-d="left" type="button" aria-label="Left">◀</button><button data-d="down" type="button" aria-label="Down">▼</button><button data-d="right" type="button" aria-label="Right">▶</button>
+  </div>
+<script>
+  const N = 20, S = 20;
+  const ctx = document.getElementById("c").getContext("2d");
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  let snake, dir, next, apple, score, over, timer;
+
+  function reset() {
+    snake = [[10, 10], [9, 10], [8, 10]];
+    dir = next = DIRS.right;
+    score = 0; over = false;
+    document.getElementById("score").textContent = 0;
+    placeApple();
+    clearInterval(timer);
+    timer = setInterval(step, 120);
+    draw();
+  }
+
+  function placeApple() {
+    do { apple = [Math.floor(Math.random() * N), Math.floor(Math.random() * N)]; }
+    while (snake.some(p => p[0] === apple[0] && p[1] === apple[1]));
+  }
+
+  function turn(name) {
+    const d = DIRS[name];
+    if (d && !(d[0] === -dir[0] && d[1] === -dir[1])) next = d;
+    if (over) reset();
+  }
+
+  function step() {
+    dir = next;
+    const head = [snake[0][0] + dir[0], snake[0][1] + dir[1]];
+    const hitWall = head[0] < 0 || head[1] < 0 || head[0] >= N || head[1] >= N;
+    const hitSelf = snake.some(p => p[0] === head[0] && p[1] === head[1]);
+    if (hitWall || hitSelf) { over = true; clearInterval(timer); draw(); return; }
+    snake.unshift(head);
+    if (head[0] === apple[0] && head[1] === apple[1]) {
+      score++;
+      document.getElementById("score").textContent = score;
+      placeApple();
+    } else {
+      snake.pop();
+    }
+    draw();
+  }
+
+  function draw() {
+    ctx.fillStyle = "#2a2a2a"; ctx.fillRect(0, 0, 400, 400);
+    ctx.fillStyle = "#e53935"; ctx.fillRect(apple[0] * S + 2, apple[1] * S + 2, S - 4, S - 4);
+    snake.forEach((p, i) => {
+      ctx.fillStyle = i === 0 ? "#81c784" : "#4caf50";
+      ctx.fillRect(p[0] * S + 1, p[1] * S + 1, S - 2, S - 2);
+    });
+    if (over) {
+      ctx.fillStyle = "rgba(0,0,0,.65)"; ctx.fillRect(0, 0, 400, 400);
+      ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+      ctx.font = "bold 36px system-ui"; ctx.fillText("Game over", 200, 185);
+      ctx.font = "18px system-ui"; ctx.fillText("Score: " + score + " · press any arrow or Restart", 200, 220);
+    }
+  }
+
+  const KEYS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right" };
+  addEventListener("keydown", e => { const k = KEYS[e.key] || KEYS[e.key.toLowerCase()]; if (k) { turn(k); e.preventDefault(); } });
+  document.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => turn(b.dataset.d)));
+  document.getElementById("restart").addEventListener("click", reset);
+
+  let sx = 0, sy = 0;
+  addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  addEventListener("touchend", e => {
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 25) return;
+    turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+  });
+
+  reset();
+</script>
+</body>
+</html>
