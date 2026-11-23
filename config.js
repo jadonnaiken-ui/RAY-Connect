@@ -37,7 +37,7 @@ window.JAM_CONFIG = {
   // The moment submissions close. Format: YYYY-MM-DDTHH:MM:SS+HH:MM
   // The "+02:00" part is your timezone (South Africa = +02:00, UK winter = +00:00).
   // The countdown is correct for everyone, wherever they are.
-  deadline: "2026-12-08T18:00:00+02:00", // >>> PLACEHOLDER <<<
+  deadline: "2026-12-08T18:00:00+01:00", // >>> PLACEHOLDER <<<
 
   // Shown on the home page and in the guide. Add or remove rows freely.
   timeline: [ // >>> PLACEHOLDER dates <<<
