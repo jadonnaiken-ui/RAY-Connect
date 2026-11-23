@@ -25,5 +25,18 @@
     "emoji": "🐍",
     "added": "2026-11-23",
     "award": null
+  },
+  {
+    "slug": "ronald-snake-2",
+    "title": "Snake 2",
+    "authors": [
+      "Ronald Wachira"
+    ],
+    "llm": "Claude",
+    "file": "games/ronald-snake-2.html",
+    "blurb": "Test",
+    "emoji": "🎮",
+    "added": "2026-11-23",
+    "award": null
   }
 ]
