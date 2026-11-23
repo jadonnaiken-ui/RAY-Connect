@@ -19,6 +19,7 @@ const TABS = {
 const RUBRIC_MULTIPLIERS = [8, 4, 4, 2, 2];
 const MAX_GAME_BYTES = 3 * 1024 * 1024;
 const MAX_THUMB_BYTES = 1024 * 1024;
+const SESSION_SECONDS = 6 * 60 * 60; // how long people stay signed in (6 hours is the maximum)
 
 class UserError extends Error {
   constructor(message, code) { super(message); this.code = code || "user"; }
@@ -40,7 +41,8 @@ function doPost(e) {
     try { data = JSON.parse(e.postData.contents); } catch (err) { throw new UserError("The request was garbled. Please refresh and try again."); }
     const user = verifyUser(data.idToken);
     switch (data.action) {
-      case "me": return me(user);
+      case "me": return me(user, data.idToken);
+      case "signout": endSession(data.idToken); return { ok: true };
       case "rate": return rate(user, data);
       case "submit": return submit(user, data);
       case "judge": return judge(user, data);
@@ -95,13 +97,19 @@ function siteConfig() {
 
 /* =========================== Sign-in =========================== */
 
+// Accepts either a Google sign-in token or a session pass from startSession().
 function verifyUser(idToken) {
   if (!idToken) throw new UserError("Please sign in first.", "auth");
   const s = settings();
   const cache = CacheService.getScriptCache();
+  if (isSession(idToken)) {
+    const saved = cache.get("sess_" + idToken);
+    if (!saved) throw new UserError("Your sign-in has expired. Please sign in again.", "auth");
+    return withRoles(JSON.parse(saved), s);
+  }
   const key = "tok_" + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, idToken));
   const hit = cache.get(key);
-  if (hit) return JSON.parse(hit);
+  if (hit) return withRoles(JSON.parse(hit), s);
 
   const res = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(idToken), { muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) throw new UserError("Your sign-in has expired. Please sign in again.", "auth");
@@ -116,18 +124,37 @@ function verifyUser(idToken) {
   const user = {
     email: email,
     name: t.name || email.split("@")[0],
-    givenName: t.given_name || (t.name || "").split(" ")[0] || email.split("@")[0],
-    isJudge: s.judges.indexOf(email) !== -1,
-    isAdmin: s.admins.indexOf(email) !== -1
+    givenName: t.given_name || (t.name || "").split(" ")[0] || email.split("@")[0]
   };
   const ttl = Math.max(60, Math.min(21600, Number(t.exp) - Math.floor(Date.now() / 1000) - 30));
   cache.put(key, JSON.stringify(user), ttl);
+  return withRoles(user, s);
+}
+
+// Judge/admin status is looked up fresh every time, so settings changes apply immediately.
+function withRoles(user, s) {
+  user.isJudge = s.judges.indexOf(user.email) !== -1;
+  user.isAdmin = s.admins.indexOf(user.email) !== -1;
   return user;
+}
+
+function isSession(token) { return /^s_[a-f0-9]{64}$/.test(String(token)); }
+
+// After a Google sign-in, hand out a session pass so people stay signed in across pages.
+function startSession(user) {
+  const token = "s_" + (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, "");
+  const saved = { email: user.email, name: user.name, givenName: user.givenName };
+  CacheService.getScriptCache().put("sess_" + token, JSON.stringify(saved), SESSION_SECONDS);
+  return { token: token, expires: Date.now() + (SESSION_SECONDS - 60) * 1000 };
+}
+
+function endSession(token) {
+  if (isSession(token)) CacheService.getScriptCache().remove("sess_" + token);
 }
 
 /* =========================== Actions =========================== */
 
-function me(user) {
+function me(user, token) {
   const myRatings = {};
   rows("ratings").forEach(r => { if (r.Email === user.email) myRatings[r.Slug] = Number(r.Stars); });
   const mine = {};
@@ -135,6 +162,7 @@ function me(user) {
     if (r.Email === user.email) mine[r.Slug] = { slug: r.Slug, title: r.Title, authors: String(r.Authors).split(" & "), llm: r["AI used"], blurb: r.Blurb, emoji: r.Emoji };
   });
   const out = { ok: true, user: user, myRatings: myRatings, mySubmissions: Object.keys(mine).map(k => mine[k]) };
+  if (!isSession(token)) out.session = startSession(user);
   if (user.isJudge) {
     out.myScores = {};
     rows("judging").forEach(r => {

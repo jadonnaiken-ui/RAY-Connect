@@ -227,6 +227,26 @@
 
   var Auth = { token: null, me: null, loading: false, gsi: false, failed: false, subs: [] };
 
+  // The sign-in is remembered in this browser until it expires (6 hours) or you sign out.
+  var SESSION_KEY = "bonanza.session";
+
+  function saveSession(token, expires) {
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token: token, expires: expires, me: Auth.me })); } catch (e) { /* private mode */ }
+  }
+  function loadSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+      if (s && s.token && s.expires > Date.now() + 60000) return s;
+    } catch (e) { /* ignore */ }
+    clearSession();
+    return null;
+  }
+  function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ } }
+
+  function tokenExpiry(jwt) {
+    try { return JSON.parse(atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp * 1000; } catch (e) { return Date.now() + 50 * 60000; }
+  }
+
   function onAuth(fn) { Auth.subs.push(fn); }
   function authChanged() {
     renderAuthSlots();
@@ -242,10 +262,12 @@
       .then(function (res) {
         if (res.ok) return res;
         if (res.code === "auth" && action !== "me") {
-          Auth.token = null; Auth.me = null; authChanged();
+          Auth.token = null; Auth.me = null; clearSession(); authChanged();
           if (window.google && google.accounts) google.accounts.id.prompt();
         }
-        throw new Error(res.error || "Something went wrong.");
+        var err = new Error(res.error || "Something went wrong.");
+        err.code = res.code;
+        throw err;
       });
   }
 
@@ -260,13 +282,31 @@
 
   function initAuth() {
     if (!apiOn()) return;
+    var saved = loadSession();
+    if (saved) {
+      // Signed in on an earlier page: show it straight away, then refresh ratings etc. quietly.
+      Auth.token = saved.token;
+      Auth.me = saved.me;
+      authChanged();
+      refreshMe().then(function () { saveSession(saved.token, saved.expires); authChanged(); }, function (e) {
+        if (e.code !== "auth") return; // offline for a moment: keep the saved sign-in
+        Auth.token = null; Auth.me = null; clearSession(); authChanged();
+        if (Auth.gsi) google.accounts.id.prompt(); else Auth.wantPrompt = true;
+      });
+      startGoogle(false);
+      return;
+    }
+    startGoogle(true);
+  }
+
+  function startGoogle(promptNow) {
     loadScript("https://accounts.google.com/gsi/client").then(function () {
       var opts = { client_id: CFG.googleClientId, callback: onCredential, auto_select: true, cancel_on_tap_outside: true, use_fedcm_for_prompt: true };
       if (CFG.workDomain) opts.hd = CFG.workDomain;
       google.accounts.id.initialize(opts);
       Auth.gsi = true;
       renderAuthSlots();
-      google.accounts.id.prompt();
+      if ((promptNow || Auth.wantPrompt) && !signedIn()) google.accounts.id.prompt();
     }, function () { Auth.failed = true; renderAuthSlots(); });
   }
 
@@ -274,7 +314,10 @@
     Auth.token = resp.credential;
     Auth.loading = true;
     renderAuthSlots();
-    refreshMe().then(function () {
+    refreshMe().then(function (me) {
+      // Swap Google's 1-hour token for the backend's longer session pass, if it gave one.
+      if (me.session) { Auth.token = me.session.token; saveSession(me.session.token, me.session.expires); }
+      else saveSession(Auth.token, tokenExpiry(Auth.token));
       toast("Signed in as " + Auth.me.user.name);
     }, function (e) {
       Auth.token = null;
@@ -282,12 +325,23 @@
     }).then(function () { Auth.loading = false; authChanged(); });
   }
 
+  // Signing in or out in one tab updates the others.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== SESSION_KEY || !apiOn()) return;
+    var s = loadSession();
+    Auth.token = s ? s.token : null;
+    Auth.me = s ? s.me : null;
+    authChanged();
+  });
+
   function refreshMe() {
     return api("me").then(function (me) { Auth.me = me; return me; });
   }
 
   function signOut() {
+    if (Auth.token) api("signout").catch(function () { /* already gone */ });
     Auth.token = null; Auth.me = null;
+    clearSession();
     if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
     authChanged();
     toast("Signed out");
