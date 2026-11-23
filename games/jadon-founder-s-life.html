@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Founder's Life</title>
+<style>
+  :root { --ink: #1d1d2b; --paper: #fffdf6; --accent: #ff7a59; --good: #23a559; --bad: #e0384b;
+          --stage-w: min(96vw, calc((100vh - 200px) * 1.25), 1000px); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  body { font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif; color: var(--ink);
+         background: radial-gradient(circle at 20% 10%, #ffe9c7, transparent 50%), radial-gradient(circle at 90% 90%, #d9ecff, transparent 50%), #f6efe4;
+         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 6px; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  /* HUD */
+  .hud { width: var(--stage-w); min-width: 300px; display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+  .co { flex: 1 1 150px; background: var(--ink); color: #fff; border-radius: 12px; padding: 6px 12px; display: flex; flex-direction: column; justify-content: center; }
+  .co b { font-size: 17px; letter-spacing: .3px; }
+  .co small { font-size: 11px; opacity: .75; }
+  .stat { flex: 1 1 130px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 4px 10px 6px; box-shadow: 0 3px 0 var(--ink); }
+  .stat.tiny { flex: 0 0 auto; text-align: center; }
+  .stat label { display: block; font-size: 10px; font-weight: 900; letter-spacing: 1px; opacity: .6; }
+  .stat b { font-size: 19px; font-weight: 900; }
+  .bar { position: relative; height: 8px; background: #e7e1d4; border-radius: 99px; margin-top: 3px; overflow: visible; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--good); transition: width .5s, background .5s; }
+  .bar .uni { position: absolute; right: -6px; top: -9px; font-size: 15px; }
+  .iconbtn { flex: 0 0 auto; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); font-size: 18px; padding: 0 10px; cursor: pointer; }
+  .iconbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  #todo { width: var(--stage-w); min-width: 300px; font-size: 13px; font-weight: 800; text-align: center; min-height: 18px; }
+  #todo span { background: #ffe27a; border: 2px solid var(--ink); border-radius: 99px; padding: 1px 8px; margin: 0 2px; display: inline-block; }
+
+  /* stage */
+  .stage { position: relative; width: var(--stage-w); min-width: 300px; aspect-ratio: 5 / 4; }
+  .stage.shake { animation: shake .45s; }
+  @keyframes shake { 20% { transform: translate(-7px, 3px); } 40% { transform: translate(6px, -4px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(3px, -1px); } }
+  canvas#c { width: 100%; height: 100%; display: block; border: 4px solid var(--ink); border-radius: 14px; image-rendering: pixelated; background: #4a4063; box-shadow: 0 6px 0 var(--ink); cursor: pointer; }
+
+  /* dialog */
+  .box { background: var(--paper); border: 4px solid var(--ink); border-radius: 12px; box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 5px #8fa3e6, 0 5px 0 var(--ink); }
+  #dlg { position: absolute; left: 2.5%; right: 2.5%; bottom: 3%; max-height: 94%; overflow: auto; padding: 12px 14px; z-index: 5; animation: rise .25s cubic-bezier(.2,1.3,.4,1); touch-action: pan-y; }
+  #dlg.hidden, .overlay.hidden { display: none; }
+  @keyframes rise { from { transform: translateY(30px); opacity: 0; } }
+  .dlg-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  #portrait { width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 10px; background: #dfe8ff; display: flex; align-items: center; justify-content: center; font-size: 28px; overflow: hidden; flex: 0 0 auto; }
+  #portrait canvas { width: 40px; height: 52px; image-rendering: pixelated; margin-top: 8px; }
+  #dlgName { font-weight: 900; font-size: 15px; }
+  #dlgName small { display: block; font-weight: 700; font-size: 11px; opacity: .6; }
+  #dlgText { font-size: clamp(14px, 2.1vw, 17px); font-weight: 650; line-height: 1.38; min-height: 2.6em; }
+  .deltas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .delta { font-weight: 900; font-size: 14px; border: 2.5px solid var(--ink); border-radius: 99px; padding: 2px 10px; background: #fff; animation: popin .4s cubic-bezier(.2,1.6,.4,1) both; }
+  .delta.up { background: #c9f5d6; } .delta.down { background: #ffd0d5; }
+  #dlgChoices { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .choice { text-align: left; font-family: inherit; font-weight: 800; font-size: clamp(14px, 2vw, 16px); color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 10px; padding: 8px 12px 8px 28px; cursor: pointer; position: relative; box-shadow: 0 3px 0 var(--ink); animation: popin .3s cubic-bezier(.2,1.5,.4,1) both; }
+  .choice.sel { background: #ffe27a; }
+  .choice.sel::before { content: "▶"; position: absolute; left: 9px; animation: nudge .6s infinite; }
+  @keyframes nudge { 50% { transform: translateX(3px); } }
+  @keyframes popin { from { transform: scale(.6); opacity: 0; } }
+
+  .overlay { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; background: rgba(29,29,43,.5); border-radius: 14px; }
+  .card { width: min(92%, 520px); max-height: 94%; overflow: auto; padding: 16px 18px; text-align: center; animation: popin .45s cubic-bezier(.2,1.5,.4,1); touch-action: pan-y; }
+  .card h1 { margin: 0; font-size: clamp(28px, 6vw, 44px); font-weight: 900; letter-spacing: 1px; line-height: 1; }
+  .card h1 em { font-style: normal; color: var(--accent); }
+  .card .big { font-size: 46px; line-height: 1.1; }
+  .card p { margin: 8px 0; font-weight: 650; line-height: 1.4; font-size: 15px; }
+  .card .pitch { background: #fff; border: 3px dashed var(--ink); border-radius: 12px; padding: 8px; font-weight: 800; }
+  .card .rules { text-align: left; font-size: 14px; display: grid; gap: 4px; margin: 10px 0; }
+  .btn { font-family: inherit; font-weight: 900; font-size: 17px; color: var(--ink); background: var(--accent); border: 3px solid var(--ink); border-radius: 12px; padding: 10px 18px; box-shadow: 0 4px 0 var(--ink); cursor: pointer; margin: 4px; }
+  .btn.alt { background: #8fd3ff; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  .small { font-size: 12px; opacity: .65; font-weight: 700; }
+  .statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; font-size: 13px; font-weight: 800; }
+  .statgrid div { background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 5px; }
+
+  .pop { position: absolute; left: 50%; top: 38%; z-index: 7; pointer-events: none; font-weight: 900; font-size: clamp(34px, 8vw, 72px); color: #fff;
+         -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); animation: bigpop 1.4s cubic-bezier(.2,1.5,.4,1) forwards; white-space: nowrap; }
+  .pop.up { color: #6ef09a; } .pop.down { color: #ff6b7a; }
+  @keyframes bigpop { 0% { transform: translate(-50%, -50%) scale(.2) rotate(-12deg); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.15) rotate(3deg); opacity: 1; }
+                      70% { transform: translate(-50%, -60%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -90%) scale(.9); opacity: 0; } }
+  .hint { font-size: 12px; font-weight: 800; opacity: .55; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="hud">
+    <div class="co"><b id="coName">Startup</b><small id="coTag"></small></div>
+    <div class="stat"><label>VALUATION → $1B 🦄</label><b id="val" class="mono">$5.0M</b><div class="bar"><i id="valBar"></i></div></div>
+    <div class="stat"><label>BOARD TRUST</label><b id="trust">😐 60</b><div class="bar"><i id="trustBar"></i></div></div>
+    <div class="stat tiny"><label>MONTH</label><b id="month" class="mono">1</b></div>
+    <button class="iconbtn" id="muteBtn" type="button" aria-label="Mute music">🔊</button>
+  </div>
+  <div id="todo"></div>
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div id="dlg" class="box hidden">
+      <div class="dlg-head"><div id="portrait"></div><div id="dlgName"></div></div>
+      <div id="dlgText"></div>
+      <div id="dlgExtra"></div>
+      <div id="dlgChoices"></div>
+    </div>
+    <div class="overlay" id="ov"><div class="card box" id="card"></div></div>
+  </div>
+  <div class="hint" id="hint"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   CONTENT — all the silly decisions live here.
+   o = outcomes: [probability, multiplier, add ($M), board trust change, message]
+   ============================================================ */
+const O = (p, m, a, b, msg) => ({ p, m, a, b, msg });
+const NPCS = {
+  hire: {
+    name: "Rita", title: "Head of People", zone: "hire", x: 3, y: 2,
+    look: { id: "rita", skin: "#f1c7a5", hair: "#b0452c", style: "long", shirt: "#e85d9e", pants: "#3b3f6b", headset: true },
+    idle: ["No candidates right now. I'm just vibing on LinkedIn.", "I'm writing a post called 'What my divorce taught me about B2B sales'.", "Go away, I'm doing a culture."],
+    deck: [
+      { t: "A guy who says he \"basically invented the internet\" wants to be your CTO. His only reference is his mum.",
+        c: [{ t: "Hire him. Visionaries are weird.", o: [O(.4, 3, 0, 5, "He rewrote the whole platform in one weekend. 📰 TechCrunch: \"Who IS this guy?\""), O(.6, .6, 0, -10, "He invented a new internet. It only works in his garage.")] },
+            { t: "Politely pass.", o: [O(1, 1.1, 2, 5, "The board appreciates your \"judgement\". His mum leaves a 1-star Glassdoor review.")] }] },
+      { t: "An intern offers to work for free in exchange for \"exposure\" and a bean bag.",
+        c: [{ t: "Welcome aboard, intern!", o: [O(.7, 1, 25, 3, "The intern fixed the billing bug nobody could find in 3 years. +$25M."), O(.3, .7, 0, -8, "The intern deleted production. \"For exposure.\"")] },
+            { t: "Give him THREE bean bags.", o: [O(1, 1.5, 0, -5, "He's now Chief Bean Bag Officer. Morale ×1.5. Board deeply confused.")] }] },
+      { t: "A famous ex-Big-Tech VP wants to join. Salary demand: $4M and a pet llama in the office.",
+        c: [{ t: "Hire the VP (and the llama).", o: [O(.5, 2.5, 0, 15, "Instant credibility. The llama gets a blue tick."), O(.5, .8, 0, -10, "The VP schedules meetings about meetings. The llama is the only productive one.")] },
+            { t: "Hire ONLY the llama.", o: [O(.3, 5, 0, 5, "The llama goes viral. Brand deal with a shampoo company. ×5!!"), O(.7, .85, 0, -5, "It's a llama. It spat on an investor.")] },
+            { t: "No thanks.", o: [O(1, 1.05, 0, 0, "Probably wise. Nothing happens. The llama is sad somewhere.")] }] },
+      { t: "Your cousin Gary needs a job. He's \"good with computers\".",
+        c: [{ t: "Family first. Hire Gary.", o: [O(.2, 4, 0, 5, "Plot twist: Gary is a secret cybersecurity genius. ×4!"), O(.8, .7, 0, -12, "Gary installed 14 toolbars on the production servers.")] },
+            { t: "Sorry Gary.", o: [O(1, 1.1, 0, 6, "Thanksgiving will be awkward. The board nods approvingly.")] }] },
+      { t: "Rita suggests hiring 200 people at once to \"look like a big company\".",
+        c: [{ t: "DO IT. Hypergrowth!", o: [O(.5, 2.2, 0, 10, "The press calls you \"the hottest company in tech\". You can't remember anyone's name."), O(.5, .45, 0, -25, "200 people. 3 chairs. 1 toilet. Burn rate apocalypse.")] },
+            { t: "Hire 3 really good people.", o: [O(1, 1.3, 0, 5, "Boring. Effective. Nobody writes a headline about it.")] }] },
+      { t: "A golden retriever applied. The CV is just a photo of a tennis ball.",
+        c: [{ t: "Hire as Chief Happiness Officer.", o: [O(1, 1.4, 0, 8, "Productivity up 40%. Scientists are baffled.")] },
+            { t: "Reject. We're a serious company.", o: [O(1, .85, 0, -6, "The team is devastated. Two engineers quit in protest.")] }] },
+      { t: "A candidate's only skill is \"vibes\". But the vibes are immaculate.",
+        c: [{ t: "Hire for vibes.", o: [O(.45, 2, 0, 0, "Every customer call ends in a group hug. Sales ×2."), O(.55, .8, 0, -8, "The vibes were a pyramid scheme.")] },
+            { t: "We need skills, not vibes.", o: [O(1, 1.1, 0, 4, "Correct. Also extremely boring of you.")] }] },
+    ],
+  },
+  product: {
+    name: "Dave", title: "Lead Engineer", zone: "product", x: 10, y: 2,
+    look: { id: "dave", skin: "#c68b5e", hair: "#2a1f1a", style: "spiky", shirt: "#3ba55c", pants: "#2b2b3c", beard: true, glasses: true },
+    idle: ["Shh. I'm in the zone. The zone is a YouTube video about bridges.", "It works on my machine.", "I'm refactoring the refactor."],
+    deck: [
+      { t: "Should we add AI to the product? For context: we sell socks.",
+        c: [{ t: "Add AI. Investors love AI.", o: [O(.6, 4, 0, 10, "📰 \"AI SOCKS ARE THE FUTURE\". Investors are fainting. ×4!"), O(.4, .5, 0, -15, "The socks became sentient and unionized.")] },
+            { t: "Keep the socks dumb.", o: [O(1, 1.2, 0, 3, "Customers appreciate honest socks.")] }] },
+      { t: "Dave wants to rewrite the entire codebase in a programming language he invented last night.",
+        c: [{ t: "Approve DaveLang.", o: [O(.25, 5, 0, 10, "DaveLang is genius. Every big tech company wants it. ×5!!"), O(.75, .6, 0, -15, "DaveLang has no 'if' statements. Only 'maybe'.")] },
+            { t: "Ship features instead.", o: [O(1, 1.4, 0, 5, "Dave sulks, but customers get the export button they begged for.")] }] },
+      { t: "Huge bug: the app is charging everyone $0. Forever.",
+        c: [{ t: "Fix it immediately.", o: [O(1, 1.3, 0, 5, "Revenue reappears. The accountant stops crying.")] },
+            { t: "Call it a \"Free Forever\" plan.", o: [O(.5, 3, 0, 5, "10 million signups overnight. That's growth, baby. ×3"), O(.5, .4, 0, -20, "10 million users. $0 revenue. The accountant has left the building.")] }] },
+      { t: "Dave wants to launch the big update... on Friday at 4:59pm.",
+        c: [{ t: "YOLO. Ship it.", o: [O(.5, 2.5, 0, 5, "It worked?! Nobody knows how. Don't touch anything."), O(.5, .6, 0, -10, "The servers melted. Dave is weeping in the server room.")] },
+            { t: "Wait until Tuesday like an adult.", o: [O(1, 1.2, 0, 4, "Smooth launch. Nobody notices, which is the dream.")] }] },
+      { t: "A user requested dark mode.",
+        c: [{ t: "Build dark mode.", o: [O(1, 1.25, 0, 3, "Users rejoice. Eyeballs saved.")] },
+            { t: "Build DARKER mode. So dark you can't see anything.", o: [O(.3, 6, 0, 5, "Goths worldwide unite. A whole new market. ×6!!!"), O(.7, .7, 0, -5, "Customers can't find the logout button. Or anything.")] }] },
+      { t: "Dave drew a new strategy on the whiteboard: \"Blockchain... for hamsters.\"",
+        c: [{ t: "Pivot to HamsterChain™.", o: [O(.35, 4, 0, 5, "Hamster owners are a surprisingly rich demographic. ×4"), O(.65, .35, 0, -20, "The hamsters lost their life savings. The board is furious.")] },
+            { t: "Wipe the whiteboard.", o: [O(1, 1.1, 0, 3, "Dave sulks. The product remains blissfully hamster-free.")] }] },
+      { t: "Dave says the app would be 10× faster if we removed \"all the buttons\".",
+        c: [{ t: "Remove all buttons.", o: [O(.3, 3.5, 0, 0, "Minimalism award winner. Users just... vibe with it."), O(.7, .55, 0, -10, "Users can't do anything. Complaints arrive by carrier pigeon.")] },
+            { t: "Buttons stay.", o: [O(1, 1.15, 0, 2, "The buttons thank you.")] }] },
+    ],
+  },
+  fund: {
+    name: "Chad", title: "Partner, Blitzscale Capital", zone: "fund", x: 16, y: 2,
+    look: { id: "chad", skin: "#f2c9a0", hair: "#f2d16b", style: "spiky", shirt: "#f4f4f4", pants: "#c9b38a", vest: "#2b3d63", shades: true },
+    idle: ["I only take meetings during my cold plunge.", "Have you considered being a little more like a famous billionaire?", "Ping me when you're at $10M ARR, bro."],
+    deck: [
+      { t: "A VC wants to take you to lunch. He's famous for... reasons. Some of them legal.",
+        c: [{ t: "Lunch AND take his money.", o: [O(.5, 3, 0, 10, "He wires the money before the starters arrive. ×3!"), O(.5, .5, 0, -20, "He's on the news the next day. You're in the photo. With a breadstick.")] },
+            { t: "Order dessert, then leave.", o: [O(1, 1.05, 1, 0, "He paid. You took a doggy bag. +$1M of tiramisu value.")] }] },
+      { t: "Chad offers $80M but wants 99% of the company and naming rights to your firstborn.",
+        c: [{ t: "Accept. Money is money.", o: [O(1, 1, 80, -10, "+$80M. Your future child is now named \"Series B\".")] },
+            { t: "Counter at 98%.", o: [O(.5, 1, 150, 10, "He respected the hustle! +$150M."), O(.5, .9, 0, -5, "He left. Laughing. He's still laughing.")] }] },
+      { t: "A mysterious investor wants to pay you in \"Exposure Tokens\".",
+        c: [{ t: "Accept the tokens.", o: [O(.2, 10, 0, 10, "The tokens MOONED. You're a crypto oracle now. ×10!!!"), O(.8, .3, 0, -25, "The tokens are worth exactly one arcade ticket.")] },
+            { t: "Ask for real money.", o: [O(1, 1, 12, 5, "He sighs and sends +$12M of actual dollars.")] }] },
+      { t: "Pitch Day! 3 minutes, 5 investors, and one inflatable dinosaur costume available.",
+        c: [{ t: "Pitch in the dinosaur costume.", o: [O(.4, 4, 0, 5, "Iconic. Unforgettable. Term sheets everywhere. ×4"), O(.6, .7, 0, -10, "They thought it was a cry for help.")] },
+            { t: "Pitch normally.", o: [O(.6, 1.8, 0, 5, "Solid pitch. A modest bidding war."), O(.4, 1, 0, 0, "Polite nods. Someone checks their phone.")] }] },
+      { t: "Your grandma offers a bridge round of $3M from her biscuit tin.",
+        c: [{ t: "Take grandma's money.", o: [O(1, 1.5, 3, -5, "Grandma now attends board meetings. She is TERRIFYING.")] },
+            { t: "Decline, grandma.", o: [O(1, 1, 0, 3, "She gives you a biscuit anyway.")] }] },
+      { t: "A top-tier VC: \"We'll invest, but only if you start wearing a turtleneck every day.\"",
+        c: [{ t: "Turtleneck life.", o: [O(.7, 2, 0, 10, "You look like a genius now. ×2"), O(.3, .9, 0, -5, "It's not working for you. At all.")] },
+            { t: "Refuse. I am a hoodie person.", o: [O(.5, 1.3, 0, 5, "They respect the hoodie."), O(.5, .8, 0, -5, "They do not respect the hoodie.")] }] },
+      { t: "Chad wants to do the deal on his yacht. It is currently sinking.",
+        c: [{ t: "Sign it fast, before it sinks.", o: [O(.55, 2.5, 0, 5, "Signed with 2 seconds to spare. ×2.5"), O(.45, .6, 0, -10, "The contract dissolved in sea water. So did your laptop.")] },
+            { t: "Insist on a Zoom call.", o: [O(1, 1.15, 0, 3, "Chad joins from a lifeboat. Small cheque, but a cheque.")] }] },
+    ],
+  },
+  finance: {
+    name: "Penny", title: "CFO", zone: "finance", x: 4, y: 12,
+    look: { id: "penny", skin: "#e8b48f", hair: "#7d7d86", style: "bun", shirt: "#2e7d5b", pants: "#2b2b3c", glasses: true, tie: "#d9b44a" },
+    idle: ["Every time you buy a snack I lose a year of my life.", "The spreadsheet is fine. The spreadsheet is FINE.", "I'm counting the paperclips. Again."],
+    deck: [
+      { t: "We could put ALL our cash into a dog-themed cryptocurrency. Penny is sweating.",
+        c: [{ t: "All in. To the moon. 🚀", o: [O(.3, 6, 0, 5, "The dog coin mooned. Penny faints from happiness. ×6!!"), O(.7, .25, 0, -25, "The dog coin is now worth one (1) dog biscuit.")] },
+            { t: "Boring government bonds.", o: [O(1, 1.15, 0, 6, "Penny smiles for the first time in 4 years.")] }] },
+      { t: "Penny found $30M in the office couch cushions. Nobody knows how.",
+        c: [{ t: "Keep it. Finders keepers.", o: [O(1, 1, 30, 3, "+$30M. Penny is now checking every couch in the city.")] },
+            { t: "Donate it to a llama sanctuary.", o: [O(.5, 2, 0, 5, "Llama lovers become your biggest customers. ×2"), O(.5, .9, 0, -3, "The llamas say thanks. The board does not.")] }] },
+      { t: "The auditors are coming. There's a cell in the spreadsheet that just says \"lol\".",
+        c: [{ t: "Fix the books honestly.", o: [O(1, .85, 0, 15, "Painful, but clean. The board trusts you a lot more now.")] },
+            { t: "Hide it with white text.", o: [O(.6, 1.5, 0, 0, "The auditors missed it. Penny is now 40% eye twitch."), O(.4, .3, 0, -30, "They found it. They also found \"lmao\" in cell Z99.")] }] },
+      { t: "Take a loan from \"Definitely Legit Bank (Cayman Islands Branch)\"?",
+        c: [{ t: "Take the loan.", o: [O(.4, 1, 150, 5, "Shockingly legit! +$150M."), O(.6, .5, 0, -15, "The bank was a man named Steve on a boat.")] },
+            { t: "Absolutely not.", o: [O(1, 1, 0, 5, "Penny nods so hard her bun falls out.")] }] },
+      { t: "Spend $20M on a company logo so big it's visible from space?",
+        c: [{ t: "Build the space logo.", o: [O(.3, 5, 0, 5, "Astronauts tweet it. Brand awareness: cosmic. ×5"), O(.7, .7, 0, -10, "It's visible from space as a typo.")] },
+            { t: "Buy everyone lunch instead.", o: [O(1, 1.2, 0, 3, "Team morale up. It was a very good burrito.")] }] },
+      { t: "Penny wants to cut costs by replacing all office chairs with yoga balls.",
+        c: [{ t: "Yoga balls for everyone.", o: [O(.5, 1.6, 0, 0, "Core strength up. Productivity up. ×1.6"), O(.5, .75, 0, -8, "17 injuries. 1 lawsuit. 0 working chairs.")] },
+            { t: "Keep the chairs.", o: [O(1, 1.05, 0, 2, "The chairs remain. Penny's dream dies quietly.")] }] },
+      { t: "An accountant says you could save millions in tax by registering the company to your cat.",
+        c: [{ t: "The cat is now CEO on paper.", o: [O(.35, 3, 0, -5, "It works. The cat's signature is a paw print. ×3"), O(.65, .5, 0, -20, "The tax office was not amused. Neither was the cat.")] },
+            { t: "Pay tax like a normal person.", o: [O(1, 1.1, 0, 6, "Penny gives you a rare thumbs up.")] }] },
+    ],
+  },
+  ops: {
+    name: "Oscar", title: "Head of Ops", zone: "ops", x: 14, y: 12,
+    look: { id: "oscar", skin: "#8d5a3b", hair: "#1c1c1c", style: "short", shirt: "#f08a24", pants: "#34495e", hat: "hard", beard: true },
+    idle: ["Everything's on fire, but in a controlled way.", "I labelled every box. Then I labelled the labels.", "Don't touch the red button. Seriously."],
+    deck: [
+      { t: "The servers are overheating. Oscar has two ideas.",
+        c: [{ t: "Buy proper cooling.", o: [O(1, 1.2, 0, 5, "Cool servers. Cool team. Cool.")] },
+            { t: "Put the servers in a freezer full of ice cream.", o: [O(.5, 2, 0, 5, "Fastest servers in the world, AND free ice cream. ×2"), O(.5, .6, 0, -10, "The ice cream melted into the processors. Mint choc chip everywhere.")] }] },
+      { t: "Move HQ to the Moon? Rent is suspiciously cheap.",
+        c: [{ t: "One small step for startups.", o: [O(.15, 10, 0, 10, "The moon office goes galactically viral. ×10!!!"), O(.85, .5, 0, -20, "The Wi-Fi is terrible. Also there's no air.")] },
+            { t: "Stay on Earth.", o: [O(1, 1.1, 0, 3, "Gravity: still working. Great call.")] }] },
+      { t: "A pigeon has been delivering our packages faster than the courier.",
+        c: [{ t: "Hire a pigeon army.", o: [O(.4, 3, 0, 5, "PigeonPrime™ launched. Same-day delivery! ×3"), O(.6, .7, 0, -8, "The pigeons unionized. They demand bread.")] },
+            { t: "Stick with the courier.", o: [O(1, 1.1, 0, 2, "Reliable. Pigeon-free.")] }] },
+      { t: "Oscar built a giant red button that \"automates everything\".",
+        c: [{ t: "Press the button.", o: [O(.5, 3, 0, 5, "Everything is automated. Oscar is a legend. ×3"), O(.5, .4, 0, -15, "The button ordered 40,000 rubber ducks to the office.")] },
+            { t: "Do NOT press the button.", o: [O(1, 1.1, 0, 3, "Nothing explodes. A rare win.")] }] },
+      { t: "The office ran out of coffee. Morale is collapsing.",
+        c: [{ t: "Emergency $2M espresso machine.", o: [O(1, 1.4, -2, 3, "The engineers ship 3 features before lunch.")] },
+            { t: "Switch to decaf to save money.", o: [O(1, .6, 0, -12, "Mutiny. Someone wrote \"WHY\" on the wall in espresso.")] }] },
+      { t: "Outsource all customer support to a parrot?",
+        c: [{ t: "Captain Squawk is hired.", o: [O(.35, 3, 0, 5, "Customers LOVE Captain Squawk. Support rating: 5 stars. ×3"), O(.65, .6, 0, -10, "The parrot told a customer to \"walk the plank\".")] },
+            { t: "Hire actual humans.", o: [O(1, 1.2, 0, 4, "Humans. Classic.")] }] },
+      { t: "Oscar found a warehouse full of unsold fidget spinners from 2017.",
+        c: [{ t: "Relaunch them as \"retro\".", o: [O(.45, 2.5, 0, 0, "Nostalgia is undefeated. ×2.5"), O(.55, .7, 0, -6, "Nobody wants them. Again.")] },
+            { t: "Recycle them.", o: [O(1, 1.1, 0, 3, "The planet thanks you. Mildly.")] }] },
+    ],
+  },
+};
+const ZONES = {
+  hire:    { name: "HIRING",  icon: "🤝", floor: ["#f9dbe5", "#f3ccd9"], wall: "#fdeaf0" },
+  product: { name: "PRODUCT", icon: "🧪", floor: ["#d6ecff", "#c7e2fb"], wall: "#e8f4ff" },
+  fund:    { name: "FUNDING", icon: "🦈", floor: ["#e7dbff", "#dccdfa"], wall: "#f1eaff" },
+  finance: { name: "FINANCE", icon: "💰", floor: ["#dcf3d4", "#cdebc4"], wall: "#ecf9e7" },
+  ops:     { name: "OPS",     icon: "📦", floor: ["#ebe5d6", "#dfd8c6"], wall: "#f5f1e6" },
+};
+const BOARD = [
+  [3, 25, "The board is weeping with joy. One member bought a jet ski in your honour."],
+  [1.3, 10, "Solid quarter. The board claps politely. Someone says \"synergy\"."],
+  [0.9, -10, "Flat quarter. The board is bored. One fell asleep in the guacamole."],
+  [0, -25, "The board is FURIOUS. A croissant was thrown. It hit you in the face."],
+];
+const FIRED = {
+  trust: ["The board replaced you with a golden retriever. The stock went up.", "Your replacement is a Roomba with a LinkedIn profile.", "They fired you over Slack. With a GIF. Of a duck."],
+  broke: ["The company is now worth less than your car. You don't have a car.", "The bank took the office, the servers and the coffee machine. The coffee machine hurt the most.", "You're bankrupt. The board fires you via fax, out of spite."],
+};
+const ENDINGS = {
+  ipo: ["You ring the stock exchange bell so hard it breaks. The stock opens at $420.69.", "IPO day! Your mum prints the ticker symbol on a mug. You become insufferable on podcasts."],
+  sell: ["MegaCorp buys you, then shuts the product down after 3 weeks. You buy an island. It's mostly a sandbar.", "You sell to MegaCorp. Your exit email is 4,000 words long and mentions \"the journey\" 31 times."],
+};
+const CO_A = ["Snack", "Sync", "Bloop", "Vibe", "Hustl", "Pivot", "Fluff", "Zoom", "Yeet", "Noodl", "Clowd", "Grind"];
+const CO_B = ["ly", "ify", "r", ".ai", "hub", ".io", "zilla", "scale", "verse"];
+const CO_FOR = ["ducks", "grandmas", "sandwiches", "socks", "houseplants", "pigeons", "naps", "awkward hugs", "lost TV remotes", "wizards"];
+
+/* ============================================================
+   MAP
+   ============================================================ */
+const MW = 20, MH = 16, T = 16, K = 3;
+const zone = Array.from({ length: MH }, () => Array(MW).fill("#"));
+function carve(x0, y0, x1, y1, z) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) zone[y][x] = z; }
+carve(1, 1, 5, 4, "hire"); carve(7, 1, 12, 4, "product"); carve(14, 1, 18, 4, "fund");
+carve(1, 6, 18, 8, "hall");
+carve(1, 10, 8, 14, "finance"); carve(10, 10, 18, 14, "ops");
+const DOORS = [[3, 5, "hire"], [10, 5, "product"], [16, 5, "fund"], [4, 9, "finance"], [14, 9, "ops"]];
+DOORS.forEach(([x, y]) => zone[y][x] = "door");
+
+const COFFEE = ["You drink your 9th coffee of the day. You can now hear colours.", "The coffee machine says \"insert disruption\".", "Espresso #14. Your heartbeat is now a drum solo."];
+const PINGPONG = ["You play ping pong for two hours. It counts as \"culture\".", "You lose at ping pong to the intern. Character building."];
+const DESK = ["Your desk: a pitch deck, a cold burrito, and a sticky note that says \"BE MORE CONFIDENT?\"", "You check your emails. 342 unread. You close the laptop. Strategic."];
+const DOG = ["Woof. (Biscuit believes in you. Biscuit is the only one.)", "Biscuit, Chief Vibes Officer, rolls over. Morale is restored. Spiritually.", "Biscuit sniffs your pitch deck and sneezes. Fair."];
+
+const props = [
+  { x: 1, y: 1, w: 1, h: 1, d: "plant" }, { x: 4, y: 1, w: 2, h: 1, d: "desk" }, { x: 1, y: 4, w: 2, h: 1, d: "chairs" },
+  { x: 7, y: 3, w: 2, h: 1, d: "lab" }, { x: 11, y: 1, w: 2, h: 1, d: "desk" }, { x: 12, y: 4, w: 1, h: 1, d: "beanbag" },
+  { x: 14, y: 1, w: 2, h: 1, d: "couch" }, { x: 18, y: 1, w: 1, h: 1, d: "plant" }, { x: 18, y: 4, w: 1, h: 1, d: "shark" }, { x: 14, y: 3, w: 1, h: 1, d: "ctable" },
+  { x: 1, y: 10, w: 2, h: 2, d: "vault" }, { x: 6, y: 10, w: 2, h: 1, d: "desk" }, { x: 8, y: 14, w: 1, h: 1, d: "money" }, { x: 1, y: 14, w: 2, h: 1, d: "files" },
+  { x: 16, y: 10, w: 3, h: 1, d: "servers" }, { x: 10, y: 13, w: 2, h: 2, d: "boxes" }, { x: 18, y: 14, w: 1, h: 1, d: "redbtn" },
+  { x: 1, y: 6, w: 1, h: 1, d: "coffee", talk: COFFEE, sfx: "slurp" }, { x: 5, y: 7, w: 2, h: 1, d: "pingpong", talk: PINGPONG, sfx: "pong" },
+  { x: 9, y: 7, w: 2, h: 1, d: "founderdesk", talk: DESK }, { x: 18, y: 6, w: 1, h: 1, d: "plant" }, { x: 18, y: 8, w: 1, h: 1, d: "plant" },
+];
+const solidProp = (x, y) => props.find(p => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);
+const npcAt = (x, y) => Object.values(NPCS).find(n => n.x === x && n.y === y);
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const now = () => performance.now();
+function fmt(v) {
+  if (v >= 1000) return "$" + (v / 1000).toFixed(v >= 10000 ? 1 : 2) + "B";
+  if (v >= 100) return "$" + Math.round(v) + "M";
+  if (v >= 1) return "$" + v.toFixed(1) + "M";
+  return "$" + Math.max(0, Math.round(v * 1000)) + "K";
+}
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const f = v => clamp(Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt), 0, 255);
+  return "#" + ((1 << 24) + (f(r) << 16) + (f(g) << 8) + f(b)).toString(16).slice(1);
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ============================================================
+   AUDIO — chill kazoo bossa + silly sfx (all synthesized)
+   ============================================================ */
+let AC = null, master, sfxG, musG, muted = localStorage.getItem("fl-muted") === "1";
+let musEighth = 0, musStart = 0;
+function initAudio() {
+  try {
+    if (!AC) {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.connect(AC.destination);
+      sfxG = AC.createGain(); sfxG.gain.value = .45; sfxG.connect(master);
+      musG = AC.createGain(); musG.gain.value = .5; musG.connect(master);
+      applyMute(); musStart = AC.currentTime + .1; setInterval(scheduler, 30);
+    }
+    if (AC.state === "suspended") AC.resume();
+  } catch (e) {}
+}
+function applyMute() { if (master) master.gain.value = muted ? 0 : 1; $("muteBtn").textContent = muted ? "🔇" : "🔊"; }
+function tone(f, d, o = {}) {
+  if (!AC) return;
+  const t0 = (o.at != null ? o.at : AC.currentTime) + (o.delay || 0);
+  const osc = AC.createOscillator(), g = AC.createGain();
+  osc.type = o.type || "square";
+  osc.frequency.setValueAtTime(o.scoop ? f * o.scoop : f, t0);
+  if (o.scoop) osc.frequency.exponentialRampToValueAtTime(f, t0 + .07);
+  if (o.slide) osc.frequency.exponentialRampToValueAtTime(o.slide, t0 + d);
+  const v = o.vol != null ? o.vol : .3;
+  g.gain.setValueAtTime(.0001, t0);
+  g.gain.exponentialRampToValueAtTime(v, t0 + (o.atk || .008));
+  if (o.hold) g.gain.setValueAtTime(v, t0 + d * o.hold);
+  g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  let node = osc;
+  if (o.bp) { const bq = AC.createBiquadFilter(); bq.type = "bandpass"; bq.frequency.value = o.bp; bq.Q.value = o.q || 2; osc.connect(bq); node = bq; }
+  if (o.lp) { const lq = AC.createBiquadFilter(); lq.type = "lowpass"; lq.frequency.value = o.lp; node.connect(lq); node = lq; }
+  node.connect(g); g.connect(o.dest || sfxG);
+  if (o.vib) { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = o.vib; lg.gain.value = o.vibAmt || f * .02; l.connect(lg); lg.connect(osc.frequency); l.start(t0); l.stop(t0 + d + .05); }
+  osc.start(t0); osc.stop(t0 + d + .05);
+}
+function noise(d, vol, freq, o = {}) {
+  if (!AC) return;
+  const t0 = (o.at != null ? o.at : AC.currentTime) + (o.delay || 0);
+  const len = Math.max(1, Math.floor(AC.sampleRate * d)), buf = AC.createBuffer(1, len, AC.sampleRate), data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const f = AC.createBiquadFilter(); f.type = o.type || "lowpass"; f.frequency.value = freq;
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+  src.connect(f); f.connect(g); g.connect(o.dest || sfxG); src.start(t0); src.stop(t0 + d);
+}
+const SFX = {
+  blip() { tone(rand(760, 860), .03, { vol: .035 }); },
+  select() { tone(660, .06, { vol: .1 }); tone(990, .09, { vol: .1, delay: .05 }); },
+  bump() { tone(130, .08, { vol: .12, slide: 80 }); },
+  coin() { tone(988, .08, { vol: .13 }); tone(1319, .35, { vol: .13, delay: .08 }); },
+  bigwin() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i === 4 ? .5 : .12, { vol: .13, delay: i * .08 })); SFX.coin(); },
+  womp() { tone(392, .35, { type: "sawtooth", bp: 700, vol: .45, slide: 370 }); tone(330, .7, { type: "sawtooth", bp: 700, vol: .45, delay: .4, slide: 260, vib: 6, vibAmt: 10 }); },
+  gavel() { noise(.06, .9, 2500, { type: "bandpass" }); noise(.06, .9, 2500, { type: "bandpass", delay: .18 }); },
+  bark() { tone(520, .09, { vol: .18, slide: 320 }); tone(560, .1, { vol: .18, slide: 330, delay: .14 }); },
+  slurp() { noise(.45, .25, 1400, { type: "bandpass" }); tone(300, .45, { type: "sine", slide: 900, vol: .05 }); },
+  pong() { [0, .25, .5].forEach(d => tone(1200, .04, { type: "sine", vol: .25, delay: d })); },
+  sad() { [392, 370, 349, 330].forEach((f, i) => tone(f, i === 3 ? 1.2 : .38, { type: "sawtooth", bp: 800, q: 1, vol: .5, delay: i * .4, vib: i === 3 ? 5.5 : 0, vibAmt: 9 })); },
+  fanfare() { [[523, 0], [523, .12], [523, .24], [659, .36], [784, .6], [659, .78], [1047, .96]].forEach(([f, d], i) => tone(f, i === 6 ? .9 : .16, { vol: .15, delay: d })); },
+};
+// music
+const SPB = 60 / 86;
+const midi = m => 440 * Math.pow(2, (m - 69) / 12);
+const CH = [[60, 64, 67, 71], [57, 60, 64, 67], [57, 60, 62, 65], [55, 59, 62, 65]]; // Cmaj7 Am7 Dm7 G7
+const BASS = [48, 45, 50, 43];
+const MEL = [[0, 76, 2], [3, 79, 1], [4, 81, 2], [6, 79, 1], [7, 76, 1], [8, 72, 3], [11, 76, 1], [12, 74, 4],
+             [16, 77, 2], [18, 76, 1], [19, 74, 1], [20, 72, 2], [22, 69, 2], [24, 71, 2], [26, 74, 2], [28, 79, 3], [31, 77, 1]];
+const MEL2 = [[0, 72, 1], [1, 74, 1], [2, 76, 2], [6, 79, 2], [8, 76, 4], [14, 72, 1], [15, 74, 1],
+              [16, 77, 3], [19, 76, 1], [20, 74, 4], [24, 79, 2], [26, 77, 1], [27, 76, 1], [28, 74, 4]];
+function eighthTime(e) { const beat = Math.floor(e / 2); return musStart + beat * SPB + (e % 2 ? SPB * .6 : 0); }
+function scheduler() {
+  if (!AC || muted) return;
+  if (eighthTime(musEighth) < AC.currentTime - .05) { musEighth += musEighth % 2; musStart = AC.currentTime + .06 - (musEighth / 2) * SPB; }
+  while (eighthTime(musEighth) < AC.currentTime + .25) { playEighth(musEighth, eighthTime(musEighth)); musEighth++; }
+}
+function playEighth(e, at) {
+  const pos = e % 32, bar = pos >> 3, b = pos % 8, loop = Math.floor(e / 32), d = musG;
+  if (b === 0 || b === 5) CH[bar].forEach(n => { tone(midi(n), b === 0 ? 1.4 : .6, { at, dest: d, type: "sine", vol: b === 0 ? .05 : .03, atk: .01 }); tone(midi(n) * 2, .3, { at, dest: d, type: "triangle", vol: .012 }); });
+  if (b === 0) tone(midi(BASS[bar]), .4, { at, dest: d, type: "triangle", vol: .32 });
+  if (b === 3) tone(midi(BASS[bar] + 7), .25, { at, dest: d, type: "triangle", vol: .25 });
+  if (b === 4) tone(midi(BASS[bar]), .3, { at, dest: d, type: "triangle", vol: .28 });
+  if (b === 7) tone(midi(BASS[bar] + (bar === 3 ? 5 : 2)), .2, { at, dest: d, type: "triangle", vol: .2 });
+  noise(.04, e % 2 ? .07 : .035, 6000, { at, dest: d, type: "highpass" });
+  if (b === 2 || b === 6) noise(.02, .06, 1800, { at, dest: d, type: "bandpass" }); // rim click
+  const mel = loop % 4 === 1 ? MEL : loop % 4 === 3 ? MEL2 : null;
+  if (mel) mel.forEach(([p, n, len]) => { if (p === pos) tone(midi(n), len * SPB / 2 * 1.05, { at, dest: d, type: "sawtooth", bp: 1100, q: 1.6, vol: .16, scoop: .93, vib: 5.5, vibAmt: 7, hold: .7, atk: .03 }); });
+}
+
+/* ============================================================
+   PIXEL SPRITES (generated, no image files)
+   ============================================================ */
+const sprCache = {};
+const mkC = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+function outline(c) {
+  const g = c.getContext("2d"), im = g.getImageData(0, 0, c.width, c.height), d = im.data, w = c.width, h = c.height;
+  const a = (x, y) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 0;
+  const mark = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!d[(y * w + x) * 4 + 3] && (a(x - 1, y) || a(x + 1, y) || a(x, y - 1) || a(x, y + 1))) mark.push((y * w + x) * 4);
+  mark.forEach(i => { d[i] = 29; d[i + 1] = 29; d[i + 2] = 43; d[i + 3] = 255; });
+  g.putImageData(im, 0, 0);
+}
+function personSprite(L, dir, frame) {
+  const key = L.id + dir + frame;
+  if (sprCache[key]) return sprCache[key];
+  if (dir === "right") {
+    const base = personSprite(L, "left", frame), c = mkC(base.width, base.height), g = c.getContext("2d");
+    g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(base, 0, 0); return sprCache[key] = c;
+  }
+  const c = mkC(16, 21), g = c.getContext("2d");
+  const P = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x + 2, y + 2, w, h); };
+  const side = dir === "left", up = dir === "up", sk = L.skin, hr = L.hair, sh = L.shirt, dk = shade(sh, -.25), shoe = "#2a2a3a";
+  // legs
+  if (side) { const a = frame === 1 ? -1 : frame === 2 ? 1 : 0; P(4 + a, 13, 2, 3, L.pants); P(6 - a, 13, 2, 3, L.pants); P(3 + a, 16, 3, 1, shoe); P(5 - a, 16, 3, 1, shoe); }
+  else { const l1 = frame === 1 ? 1 : 0, l2 = frame === 2 ? 1 : 0; P(3, 13, 2, 3 - l1, L.pants); P(7, 13, 2, 3 - l2, L.pants); P(3, 16 - l1, 2, 1, shoe); P(7, 16 - l2, 2, 1, shoe); }
+  // body
+  if (side) { P(3, 8, 6, 5, sh); if (L.vest) P(6, 8, 3, 5, L.vest); P(5, 9, 2, 3, dk); P(5, 12, 2, 1, sk); }
+  else {
+    P(2, 8, 8, 5, sh); P(1, 8, 1, 4, dk); P(10, 8, 1, 4, dk); P(1, 12, 1, 1, sk); P(10, 12, 1, 1, sk);
+    if (L.vest) { P(2, 8, 2, 5, L.vest); P(8, 8, 2, 5, L.vest); if (up) P(2, 8, 8, 5, L.vest); }
+    if (L.tie && !up) P(5, 8, 2, 4, L.tie);
+  }
+  // head
+  P(2, 1, 8, 7, sk);
+  if (L.style === "long") { if (up) P(1, 1, 10, 9, hr); else if (side) P(6, 2, 4, 7, hr); else { P(1, 2, 1, 7, hr); P(10, 2, 1, 7, hr); } }
+  if (up) P(2, 1, 8, 6, hr);
+  else if (side) { P(2, 1, 8, 2, hr); P(6, 3, 4, 3, hr); }
+  else { P(2, 1, 8, 2, hr); P(2, 3, 1, 2, hr); P(9, 3, 1, 2, hr); }
+  if (L.style === "bun") P(4, -1, 4, 2, hr);
+  if (L.style === "spiky") { P(2, 0, 1, 1, hr); P(5, 0, 1, 1, hr); P(8, 0, 1, 1, hr); }
+  if (!up) {
+    const E = "#1d1d2b";
+    if (side) { P(3, 4, 1, 2, E); P(2, 6, 2, 1, "#b85a55"); } else { P(4, 4, 1, 2, E); P(7, 4, 1, 2, E); P(5, 6, 2, 1, "#b85a55"); }
+    if (L.beard) { if (side) P(2, 6, 4, 2, hr); else P(3, 6, 6, 2, hr); }
+    if (L.glasses) { const gc = "#3e4f8a"; if (side) { P(2, 4, 2, 2, gc); P(3, 4, 1, 1, "#cfe8ff"); } else { P(3, 4, 2, 2, gc); P(7, 4, 2, 2, gc); P(5, 4, 2, 1, gc); P(4, 4, 1, 1, "#cfe8ff"); P(7, 4, 1, 1, "#cfe8ff"); } }
+    if (L.shades) { if (side) P(2, 4, 3, 2, "#111"); else { P(3, 4, 2, 2, "#111"); P(7, 4, 2, 2, "#111"); P(5, 4, 2, 1, "#111"); P(3, 4, 1, 1, "#777"); } }
+    if (L.headset) { if (side) { P(7, 2, 1, 4, "#333"); } else { P(1, 3, 1, 3, "#333"); P(1, 6, 3, 1, "#333"); } }
+  }
+  if (L.hat === "hard") { P(2, -1, 8, 2, "#ffc61a"); P(1, 1, 10, 1, "#e0a800"); }
+  if (L.hoodie && !up) { P(2, 8, 8, 1, shade(sh, -.4)); }
+  outline(c);
+  return sprCache[key] = c;
+}
+function dogSprite(dir, frame) {
+  const key = "dog" + dir + frame;
+  if (sprCache[key]) return sprCache[key];
+  if (dir === "right") { const b = dogSprite("left", frame), c = mkC(b.width, b.height), g = c.getContext("2d"); g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(b, 0, 0); return sprCache[key] = c; }
+  const c = mkC(18, 13), g = c.getContext("2d"), P = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x + 1, y + 1, w, h); };
+  const fur = "#d8a056", dk = "#a86f32";
+  P(4, 4, 10, 4, fur); P(5, 7, 8, 1, "#f2cf96"); P(1, 1, 5, 5, fur); P(0, 3, 2, 2, fur); P(4, 1, 2, 4, dk);
+  P(2, 2, 1, 1, "#1d1d2b"); P(0, 3, 1, 1, "#1d1d2b"); P(1, 5, 2, 1, "#ff7a8a");
+  const f = frame % 2;
+  P(5 + f, 8, 2, 2, fur); P(11 - f, 8, 2, 2, fur);
+  if (f) P(14, 2, 1, 3, fur); else P(14, 4, 2, 1, fur);
+  outline(c);
+  return sprCache[key] = c;
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const FOUNDER = { id: "you", skin: "#f0c09a", hair: "#5a3a22", style: "short", shirt: "#7d8ca3", pants: "#3a4c74", vest: "#26365c", hoodie: true };
+const cv = $("c"), ctx = cv.getContext("2d");
+cv.width = MW * T * K; cv.height = MH * T * K;
+
+let G; // game state
+const player = { x: 12, y: 7, px: 12, py: 7, dir: "down", moving: false, fx: 0, fy: 0, t: 0, step: 0, path: [], target: null };
+const dog = { x: 7, y: 8, px: 7, py: 8, dir: "left", moving: false, fx: 0, fy: 0, t: 0, next: 0 };
+let decks = {}, active = [], dialog = null, particles = [], keys = [], lastT = now();
+
+function newGame() {
+  const co = pick(CO_A) + pick(CO_B);
+  G = { co, tag: `It's like Uber, but for ${pick(CO_FOR)}.`, val: 5, shown: 5, trust: 60, month: 1, decisions: 0, lastMeeting: 5, peak: 5,
+        best: null, worst: null, over: false };
+  decks = {}; Object.keys(NPCS).forEach(k => decks[k] = shuffle(NPCS[k].deck));
+  active = shuffle(Object.keys(NPCS)).slice(0, 2);
+  Object.assign(player, { x: 12, y: 7, px: 12, py: 7, dir: "down", moving: false, path: [], target: null });
+  particles = [];
+  $("coName").textContent = co; $("coTag").textContent = G.tag;
+  updateHUD(true);
+}
+
+/* ============================================================
+   HUD
+   ============================================================ */
+function trustFace(t) { return t > 80 ? "😍" : t > 55 ? "🙂" : t > 35 ? "😐" : t > 15 ? "😠" : "🤬"; }
+function updateHUD(instant) {
+  if (instant) G.shown = G.val;
+  $("val").textContent = fmt(G.shown);
+  const lv = (Math.log10(Math.max(G.val, .5)) - Math.log10(.5)) / (Math.log10(1000) - Math.log10(.5));
+  $("valBar").style.width = clamp(lv * 100, 2, 100) + "%";
+  $("trust").textContent = `${trustFace(G.trust)} ${G.trust}`;
+  const tb = $("trustBar"); tb.style.width = clamp(G.trust, 0, 100) + "%";
+  tb.style.background = G.trust > 55 ? "var(--good)" : G.trust > 25 ? "#f0a531" : "var(--bad)";
+  $("month").textContent = G.month;
+  $("todo").innerHTML = G.over ? "" : "Waiting for you: " + active.map(k => `<span>${ZONES[k].icon} ${ZONES[k].name}</span>`).join("");
+}
+function bigPop(text, up) {
+  const el = document.createElement("div"); el.className = "pop " + (up ? "up" : "down"); el.textContent = text;
+  $("stage").appendChild(el); setTimeout(() => el.remove(), 1500);
+}
+function shakeStage() { const s = $("stage"); s.classList.remove("shake"); void s.offsetWidth; s.classList.add("shake"); }
+function rain(emoji, n) { for (let i = 0; i < n; i++) particles.push({ x: rand(0, MW * T), y: rand(-60, -5), vx: rand(-.2, .2), vy: rand(.6, 1.4), e: emoji, rot: rand(-1, 1), vr: rand(-.05, .05), life: 0 }); }
+
+/* ============================================================
+   DIALOG
+   ============================================================ */
+function portraitFor(who) {
+  const box = $("portrait"); box.innerHTML = "";
+  if (who.look) { const s = personSprite(who.look, "down", 0), c = mkC(s.width * 3, s.height * 3), g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.drawImage(s, 0, 0, c.width, c.height); box.appendChild(c); }
+  else box.textContent = who.emoji || "💬";
+}
+function showDialog(d) {
+  // d: { who:{name,title,look|emoji}, text, extra(html), choices:[{t, fn}] }
+  dialog = { ...d, shown: 0, sel: 0, typing: true, t0: now() };
+  $("dlg").classList.remove("hidden");
+  portraitFor(d.who);
+  $("dlgName").innerHTML = `${esc(d.who.name)}<small>${esc(d.who.title || "")}</small>`;
+  $("dlgText").textContent = ""; $("dlgExtra").innerHTML = ""; $("dlgChoices").innerHTML = "";
+  $("dlg").style.animation = "none"; void $("dlg").offsetWidth; $("dlg").style.animation = "";
+}
+function finishTyping() {
+  if (!dialog || !dialog.typing) return;
+  dialog.typing = false; dialog.shown = dialog.text.length;
+  $("dlgText").textContent = dialog.text;
+  if (dialog.extra) $("dlgExtra").innerHTML = dialog.extra;
+  const box = $("dlgChoices"); box.innerHTML = "";
+  dialog.choices.forEach((c, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "choice" + (i === 0 ? " sel" : ""); b.textContent = c.t;
+    b.style.animationDelay = (i * .06) + "s";
+    b.addEventListener("click", () => choose(i));
+    b.addEventListener("pointerenter", () => setSel(i));
+    box.appendChild(b);
+  });
+}
+function setSel(i) { if (!dialog || dialog.typing) return; dialog.sel = i; [...$("dlgChoices").children].forEach((b, j) => b.classList.toggle("sel", j === i)); }
+function choose(i) {
+  if (!dialog) return;
+  if (dialog.typing) { finishTyping(); return; }
+  const c = dialog.choices[i]; if (!c) return;
+  SFX.select();
+  const fn = c.fn; closeDialog(); fn && fn();
+}
+function closeDialog() { dialog = null; $("dlg").classList.add("hidden"); }
+function typeTick(t) {
+  if (!dialog || !dialog.typing) return;
+  const n = Math.min(dialog.text.length, Math.floor((t - dialog.t0) / 16));
+  if (n > dialog.shown) { if (Math.floor(n / 3) > Math.floor(dialog.shown / 3)) SFX.blip(); dialog.shown = n; $("dlgText").textContent = dialog.text.slice(0, n); }
+  if (n >= dialog.text.length) finishTyping();
+}
+const OK = (fn, label = "OK") => [{ t: label, fn }];
+
+/* ============================================================
+   DECISIONS
+   ============================================================ */
+function talkTo(npc) {
+  if (G.over) return;
+  if (!active.includes(npc.zone)) { showDialog({ who: npc, text: pick(npc.idle), choices: OK(null, "Cool cool cool") }); return; }
+  if (!decks[npc.zone].length) decks[npc.zone] = shuffle(npc.deck);
+  const sc = decks[npc.zone].pop();
+  showDialog({ who: npc, text: sc.t, choices: sc.c.map(ch => ({ t: ch.t, fn: () => resolve(npc, ch) })) });
+}
+function resolve(npc, ch) {
+  let r = Math.random(), out = ch.o[ch.o.length - 1];
+  for (const o of ch.o) { if ((r -= o.p) < 0) { out = o; break; } }
+  const before = G.val;
+  G.val = Math.max(0, G.val * out.m + out.a);
+  G.trust = clamp(G.trust + out.b, 0, 100);
+  G.peak = Math.max(G.peak, G.val);
+  const ratio = G.val / Math.max(before, .001);
+  if (!G.best || ratio > G.best.r) G.best = { r: ratio, t: ch.t };
+  if (!G.worst || ratio < G.worst.r) G.worst = { r: ratio, t: ch.t };
+
+  // juice
+  const up = ratio >= 1;
+  let label = out.m !== 1 ? "×" + (+out.m.toFixed(2)) : (out.a >= 0 ? "+" : "−") + fmt(Math.abs(out.a));
+  if (out.m === 1 && out.a === 0) label = "meh";
+  bigPop(label, up);
+  if (ratio >= 2.5) { SFX.bigwin(); rain("💸", 40); }
+  else if (ratio > 1.001) { SFX.coin(); if (ratio >= 1.5) rain("💵", 15); }
+  else if (ratio < .99) { SFX.womp(); if (ratio <= .6) { shakeStage(); rain("📉", 14); } }
+  else SFX.select();
+
+  const deltas = [];
+  deltas.push(`<span class="delta ${up ? "up" : ratio < .99 ? "down" : ""}">📈 ${fmt(before)} → ${fmt(G.val)}</span>`);
+  if (out.b) deltas.push(`<span class="delta ${out.b > 0 ? "up" : "down"}" style="animation-delay:.12s">${trustFace(G.trust)} Board ${out.b > 0 ? "+" : ""}${out.b}</span>`);
+  showDialog({ who: npc, text: out.msg, extra: `<div class="deltas">${deltas.join("")}</div>`, choices: OK(afterDecision, "Continue") });
+  updateHUD();
+}
+function afterDecision() {
+  G.decisions++; G.month++;
+  // rotate who needs you
+  const done = active.shift();
+  const pool = Object.keys(NPCS).filter(k => !active.includes(k) && k !== done);
+  active.push(pick(pool));
+  updateHUD();
+  if (checkEnd()) return;
+  if (G.decisions % 4 === 0) boardMeeting();
+}
+function boardMeeting() {
+  const r = G.val / Math.max(G.lastMeeting, .001);
+  const row = BOARD.find(b => r >= b[0]);
+  const meeting = G.decisions / 4, impatience = meeting >= 5 ? 8 * (meeting - 4) : 0;
+  const delta = row[1] - impatience;
+  G.trust = clamp(G.trust + delta, 0, 100); G.lastMeeting = G.val;
+  SFX.gavel();
+  if (delta < 0) shakeStage();
+  let text = `📋 QUARTERLY BOARD MEETING. Valuation since last time: ×${r.toFixed(2)}. ${row[2]}`;
+  if (impatience) text += ` Also: "It's month ${G.month}. Why are we not a unicorn yet?" (Impatience −${impatience})`;
+  if (G.trust > 0 && G.trust <= 25) text += " Whisper from the back: \"one more mistake...\"";
+  showDialog({ who: { name: "The Board", title: "3 people in identical fleeces", emoji: "👔" }, text,
+    extra: `<div class="deltas"><span class="delta ${delta > 0 ? "up" : "down"}">${trustFace(G.trust)} Board ${delta > 0 ? "+" : ""}${delta}</span></div>`,
+    choices: OK(() => { updateHUD(); checkEnd(); }, "Gulp. Continue") });
+  updateHUD();
+}
+function checkEnd() {
+  if (G.val >= 1000) { win(); return true; }
+  if (G.trust <= 0) { fired("trust"); return true; }
+  if (G.val < .5) { fired("broke"); return true; }
+  return false;
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+const records = () => ({ runs: +localStorage.getItem("fl-runs") || 0, fastest: +localStorage.getItem("fl-fastest") || 0, unicorns: +localStorage.getItem("fl-unicorns") || 0 });
+function statsHTML() {
+  return `<div class="statgrid">
+    <div>📅 Months: ${G.month}</div><div>🏔️ Peak: ${fmt(G.peak)}</div>
+    <div>🚀 Best call:<br><small>${G.best ? esc(G.best.t) + " (×" + G.best.r.toFixed(1) + ")" : "—"}</small></div>
+    <div>💀 Worst call:<br><small>${G.worst ? esc(G.worst.t) + " (×" + G.worst.r.toFixed(2) + ")" : "—"}</small></div></div>`;
+}
+function showCard(html) { $("card").innerHTML = html; $("ov").classList.remove("hidden"); }
+function hideCard() { $("ov").classList.add("hidden"); }
+function titleScreen() {
+  newGame();
+  const r = records();
+  showCard(`
+    <div class="big">💼</div>
+    <h1>FOUNDER'S <em>LIFE</em></h1>
+    <p class="pitch">Your startup: <b>${esc(G.co)}</b><br>${esc(G.tag)}</p>
+    <div class="rules">
+      <div>🦄 <b>Win:</b> hit a <b>$1 billion</b> valuation.</div>
+      <div>🔥 <b>Lose:</b> board trust hits 0, or the company goes broke.</div>
+      <div>🚶 Walk to the rooms with a <b>❗</b> and make a call. Every call = 1 month.</div>
+      <div>📋 Every 4 months, the board judges you.</div>
+    </div>
+    <button class="btn" id="go" type="button">START THE COMPANY 🚀</button>
+    <div class="small">${r.runs ? `Companies founded: ${r.runs} · Unicorns: ${r.unicorns}${r.fastest ? ` · Fastest unicorn: ${r.fastest} months` : ""}` : "Arrow keys / WASD to walk · tap to walk on mobile"}</div>`);
+  $("go").addEventListener("click", startGame);
+}
+function startGame() {
+  initAudio(); SFX.select(); hideCard();
+  localStorage.setItem("fl-runs", records().runs + 1);
+  showDialog({ who: { name: "Biscuit", title: "Chief Vibes Officer", emoji: "🐶" },
+    text: `Woof! Welcome to ${G.co}. The rooms with a ❗ need a decision. Walk into a person to talk. Make us a billion dollars. Woof.`,
+    choices: OK(null, "Let's go") });
+}
+function fired(kind) {
+  G.over = true; updateHUD(); SFX.sad(); shakeStage();
+  setTimeout(() => {
+    showCard(`
+      <div class="big">📦😢</div>
+      <h1>YOU'RE <em>FIRED</em></h1>
+      <p>${esc(pick(FIRED[kind]))}</p>
+      <p class="small">${kind === "trust" ? "Board trust hit zero." : "The money ran out."} You leave carrying a box with a cactus and a branded water bottle.</p>
+      ${statsHTML()}
+      <button class="btn" id="again" type="button">FOUND ANOTHER STARTUP 🔁</button>`);
+    $("again").addEventListener("click", () => { titleScreen(); });
+  }, 900);
+}
+function win() {
+  G.over = true; updateHUD(); SFX.fanfare(); rain("🦄", 30); rain("💸", 40);
+  const r = records();
+  localStorage.setItem("fl-unicorns", r.unicorns + 1);
+  const record = !r.fastest || G.month < r.fastest;
+  if (record) localStorage.setItem("fl-fastest", G.month);
+  setTimeout(() => {
+    showCard(`
+      <div class="big">🦄</div>
+      <h1>UNICORN <em>STATUS</em></h1>
+      <p><b>${esc(G.co)}</b> is worth <b>${fmt(G.val)}</b> after ${G.month} months.${record ? " 🏆 <b>Fastest unicorn ever!</b>" : ""}</p>
+      <p>Now, how do you cash out?</p>
+      <button class="btn" id="ipo" type="button">🔔 Ring the IPO bell</button>
+      <button class="btn alt" id="sell" type="button">🤝 Sell to MegaCorp</button>`);
+    const end = kind => {
+      SFX.bigwin(); rain("🎉", 40);
+      showCard(`
+        <div class="big">${kind === "ipo" ? "🔔📈" : "🏝️💰"}</div>
+        <h1>${kind === "ipo" ? "YOU <em>IPO'D</em>" : "YOU <em>SOLD</em>"}</h1>
+        <p>${esc(pick(ENDINGS[kind]))}</p>
+        ${statsHTML()}
+        <button class="btn" id="again" type="button">DO IT AGAIN, BUT FASTER 🔁</button>`);
+      $("again").addEventListener("click", titleScreen);
+    };
+    $("ipo").addEventListener("click", () => end("ipo"));
+    $("sell").addEventListener("click", () => end("sell"));
+  }, 1100);
+}
+
+/* ============================================================
+   MOVEMENT
+   ============================================================ */
+const DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+function walkable(x, y, ignoreDog) {
+  if (x < 0 || y < 0 || x >= MW || y >= MH) return false;
+  if (zone[y][x] === "#") return false;
+  if (solidProp(x, y) || npcAt(x, y)) return false;
+  if (!ignoreDog && dog.x === x && dog.y === y) return false;
+  return true;
+}
+function interactAt(x, y) {
+  const n = npcAt(x, y); if (n) { talkTo(n); return true; }
+  if (dog.x === x && dog.y === y) { SFX.bark(); showDialog({ who: { name: "Biscuit", title: "Chief Vibes Officer", emoji: "🐶" }, text: pick(DOG), choices: OK(null, "Good boy") }); return true; }
+  const p = solidProp(x, y);
+  if (p && p.talk) { if (p.sfx) SFX[p.sfx](); showDialog({ who: { name: "You", title: "Founder & CEO", look: FOUNDER }, text: pick(p.talk), choices: OK(null, "Back to work") }); return true; }
+  return false;
+}
+function tryMove(dir) {
+  player.dir = dir;
+  const [dx, dy] = DIRV[dir], nx = player.x + dx, ny = player.y + dy;
+  if (walkable(nx, ny)) { player.moving = true; player.fx = player.x; player.fy = player.y; player.x = nx; player.y = ny; player.t = 0; return true; }
+  if (!interactAt(nx, ny)) { if (!player.bumpAt || now() - player.bumpAt > 250) { SFX.bump(); player.bumpAt = now(); } }
+  return false;
+}
+function heldDir() { return keys.length ? keys[keys.length - 1] : null; }
+function bfs(sx, sy, goalFn) {
+  const prev = new Map(), q = [[sx, sy]], k = (x, y) => x + "," + y; prev.set(k(sx, sy), null);
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (goalFn(x, y)) { const path = []; let c = k(x, y); while (prev.get(c)) { path.unshift(c.split(",").map(Number)); c = prev.get(c); } return path; }
+    for (const [dx, dy] of Object.values(DIRV)) { const nx = x + dx, ny = y + dy; if (!prev.has(k(nx, ny)) && walkable(nx, ny, true)) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); } }
+  }
+  return null;
+}
+function tapTile(tx, ty) {
+  if (dialog || G.over || !$("ov").classList.contains("hidden")) return;
+  const isTarget = (x, y) => npcAt(x, y) || (dog.x === x && dog.y === y) || (solidProp(x, y) && solidProp(x, y).talk);
+  if (isTarget(tx, ty)) {
+    const adj = (x, y) => Object.values(DIRV).some(([dx, dy]) => x + dx === tx && y + dy === ty);
+    const path = bfs(player.x, player.y, adj);
+    if (path) { player.path = path; player.target = [tx, ty]; }
+    return;
+  }
+  if (!walkable(tx, ty, true)) return;
+  const path = bfs(player.x, player.y, (x, y) => x === tx && y === ty);
+  if (path) { player.path = path; player.target = null; }
+}
+function dirTo(x, y) { const dx = x - player.x, dy = y - player.y; return dx > 0 ? "right" : dx < 0 ? "left" : dy > 0 ? "down" : "up"; }
+function updatePlayer(dt) {
+  if (player.moving) {
+    player.t += dt / 150;
+    if (player.t >= 1) { player.moving = false; player.step++; player.px = player.x; player.py = player.y; }
+    else { player.px = player.fx + (player.x - player.fx) * player.t; player.py = player.fy + (player.y - player.fy) * player.t; return; }
+  }
+  if (dialog || G.over || !$("ov").classList.contains("hidden")) { player.path = []; return; }
+  const h = heldDir();
+  if (h) { player.path = []; player.target = null; tryMove(h); return; }
+  if (player.path.length) {
+    const [nx, ny] = player.path[0];
+    if (!walkable(nx, ny)) { if (dog.x === nx && dog.y === ny) return; player.path = []; return; }
+    player.path.shift(); tryMove(dirTo(nx, ny));
+    return;
+  }
+  if (player.target) { const [tx, ty] = player.target; player.target = null; player.dir = dirTo(tx, ty); interactAt(tx, ty); }
+}
+function updateDog(dt, t) {
+  if (dog.moving) {
+    dog.t += dt / 260;
+    if (dog.t >= 1) { dog.moving = false; dog.px = dog.x; dog.py = dog.y; } else { dog.px = dog.fx + (dog.x - dog.fx) * dog.t; dog.py = dog.fy + (dog.y - dog.fy) * dog.t; }
+    return;
+  }
+  if (t < dog.next) return;
+  dog.next = t + rand(500, 1800);
+  const opts = Object.entries(DIRV).filter(([d, [dx, dy]]) => { const x = dog.x + dx, y = dog.y + dy; return zone[y][x] === "hall" && walkable(x, y, true) && !(player.x === x && player.y === y); });
+  if (!opts.length) return;
+  const [d, [dx, dy]] = pick(opts);
+  if (d === "left" || d === "right") dog.dir = d;
+  dog.fx = dog.x; dog.fy = dog.y; dog.x += dx; dog.y += dy; dog.t = 0; dog.moving = true;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+function label(text, x, y, size, col, bg) {
+  ctx.font = `900 ${size}px ui-rounded, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  if (bg) { const w = ctx.measureText(text).width + 8; R(x - w / 2 - 1, y - size / 2 - 3, w + 2, size + 6, "#1d1d2b"); R(x - w / 2, y - size / 2 - 2, w, size + 4, bg); }
+  ctx.fillStyle = col; ctx.fillText(text, x, y + .5);
+}
+function emo(e, x, y, size, rot) {
+  ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot);
+  ctx.fillStyle = "#000"; ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(e, 0, 0);
+  ctx.restore();
+}
+function zoneBelow(x, y) { const z = y + 1 < MH ? zone[y + 1][x] : "#"; return z === "#" ? null : z; }
+function drawTiles(t) {
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const z = zone[y][x], X = x * T, Y = y * T;
+    if (z === "#") {
+      const below = zoneBelow(x, y);
+      if (below && below !== "door") {
+        const wc = ZONES[below] ? ZONES[below].wall : "#f3e6cf";
+        R(X, Y, T, T, wc); R(X, Y, T, 3, "#6d5f8f"); R(X, Y + 3, T, 1, shade(wc, -.08)); R(X, Y + 13, T, 3, "#b69a74"); R(X, Y + 13, T, 1, "#8a7254");
+      } else { R(X, Y, T, T, "#4a4063"); R(X, Y, T, 2, "#5d5278"); }
+    } else if (z === "hall") {
+      R(X, Y, T, T, "#e6c49a"); R(X, Y + 7, T, 1, "#d4ae82"); R(X, Y + 15, T, 1, "#d4ae82"); R(X + ((y * 7) % 16), Y, 1, 7, "#d4ae82"); R(X + ((y * 7 + 9) % 16), Y + 8, 1, 7, "#d4ae82");
+    } else if (z === "door") {
+      R(X, Y, T, T, "#e6c49a"); R(X + 2, Y + 3, 12, 10, "#7a4e3a"); R(X + 3, Y + 4, 10, 8, "#9c6a4c");
+    } else {
+      const f = ZONES[z].floor; R(X, Y, T, T, (x + y) % 2 ? f[0] : f[1]);
+    }
+  }
+  // room name signs on the back wall of each room
+  const signs = [["hire", 3, 0], ["product", 8, 0], ["fund", 16, 0], ["finance", 4.5, 9], ["ops", 14, 9]];
+  signs.forEach(([z, x, y]) => label(`${ZONES[z].icon} ${ZONES[z].name}`, x * T + 8, y * T + 8, 7, "#1d1d2b", "#fff7d6"));
+  // hall posters & windows
+  [[1, 5], [8, 5], [12, 5], [18, 5]].forEach(([x, y], i) => {
+    const X = x * T, Y = y * T;
+    if (i % 2 === 0) { R(X + 2, Y + 4, 12, 8, "#1d1d2b"); R(X + 3, Y + 5, 10, 6, "#9fd8ff"); R(X + 3, Y + 8, 10, 1, "#1d1d2b"); R(X + 8, Y + 5, 1, 6, "#1d1d2b"); }
+    else { R(X + 3, Y + 3, 10, 10, "#1d1d2b"); R(X + 4, Y + 4, 8, 8, i === 1 ? "#ffe27a" : "#ffc3d8"); emo(i === 1 ? "📈" : "🦄", X + 8, Y + 8.5, 6); }
+  });
+  // whiteboard on product wall
+  const WB = 10 * T + 2;
+  R(WB, 4, 28, 9, "#1d1d2b"); R(WB + 1, 5, 26, 7, "#fff");
+  if (Math.floor(t / 900) % 2) R(WB + 3, 7, 8, 1, "#e0384b");
+  R(WB + 12, 9, 9, 1, "#3a6fe0"); R(WB + 21, 6, 4, 3, "#23a559");
+}
+function drawProp(p, t) {
+  const X = p.x * T, Y = p.y * T, W = p.w * T, H = p.h * T, O = "#1d1d2b";
+  switch (p.d) {
+    case "plant":
+      R(X + 4, Y + 9, 8, 6, O); R(X + 5, Y + 10, 6, 4, "#c2683e");
+      R(X + 3, Y + 2, 10, 8, O); R(X + 4, Y + 3, 8, 6, "#4caf50"); R(X + 6, Y + 1, 4, 3, O); R(X + 7, Y + 1, 2, 3, "#66c46a"); R(X + 5, Y + 4, 2, 2, "#7fd383"); break;
+    case "desk": case "founderdesk":
+      R(X, Y + 4, W, 10, O); R(X + 1, Y + 5, W - 2, 5, "#b07a45"); R(X + 1, Y + 10, W - 2, 3, "#8a5a30");
+      R(X + W / 2 - 6, Y - 2, 12, 9, O); R(X + W / 2 - 5, Y - 1, 10, 6, p.d === "founderdesk" ? "#ffb3c7" : "#7fd3ff");
+      if (Math.floor(t / 500) % 2) R(X + W / 2 - 3, Y + 1, 4, 1, "#fff");
+      if (p.d === "founderdesk") emo("🌯", X + 4, Y + 6, 6);
+      if (p.x === 6) emo("🧮", X + 25, Y + 6, 7);
+      break;
+    case "chairs": for (let i = 0; i < p.w; i++) { R(X + i * T + 3, Y + 3, 10, 10, O); R(X + i * T + 4, Y + 4, 8, 5, "#e85d9e"); R(X + i * T + 4, Y + 9, 8, 3, "#b53f78"); } break;
+    case "lab": R(X, Y + 4, W, 10, O); R(X + 1, Y + 5, W - 2, 8, "#e8eef5"); emo("🧪", X + 7, Y + 5, 8); emo("🦆", X + 22, Y + 6, 8); break;
+    case "beanbag": R(X + 2, Y + 5, 12, 9, O); R(X + 3, Y + 6, 10, 7, "#ff9a3c"); R(X + 4, Y + 7, 4, 2, "#ffc07d"); break;
+    case "couch": R(X, Y + 2, W, 12, O); R(X + 1, Y + 3, W - 2, 5, "#7b5cd6"); R(X + 1, Y + 8, W - 2, 5, "#9a7cf0"); R(X + 1, Y + 3, 3, 10, "#6a4cc4"); R(X + W - 4, Y + 3, 3, 10, "#6a4cc4"); break;
+    case "ctable": R(X + 2, Y + 5, 12, 8, O); R(X + 3, Y + 6, 10, 5, "#d9c2ff"); emo("🥂", X + 8, Y + 7, 7); break;
+    case "shark": R(X + 3, Y + 10, 10, 5, O); R(X + 4, Y + 11, 8, 3, "#c9a227"); emo("🦈", X + 8, Y + 5 + Math.sin(t / 400), 11); break;
+    case "vault":
+      R(X, Y, W, H, O); R(X + 1, Y + 1, W - 2, H - 2, "#8e9aa8");
+      ctx.fillStyle = O; ctx.beginPath(); ctx.arc(X + 16, Y + 16, 13, 0, 7); ctx.fill(); ctx.fillStyle = "#b8c3cf"; ctx.beginPath(); ctx.arc(X + 16, Y + 16, 12, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(X + 16, Y + 16); ctx.rotate(t / 1500); R(-7, -1, 14, 2, O); R(-1, -7, 2, 14, O); ctx.restore(); break;
+    case "money": R(X + 4, Y + 9, 8, 6, O); R(X + 5, Y + 10, 6, 4, "#c2683e"); emo("💸", X + 8, Y + 5 + Math.sin(t / 300), 9); break;
+    case "files": for (let i = 0; i < p.w; i++) { R(X + i * T + 2, Y, 12, 15, O); R(X + i * T + 3, Y + 1, 10, 13, "#9aa5b1"); R(X + i * T + 3, Y + 7, 10, 1, O); R(X + i * T + 7, Y + 3, 2, 1, O); R(X + i * T + 7, Y + 10, 2, 1, O); } break;
+    case "servers":
+      for (let i = 0; i < p.w; i++) {
+        const sx = X + i * T; R(sx + 1, Y - 6, 14, 21, O); R(sx + 2, Y - 5, 12, 19, "#2f3640");
+        for (let j = 0; j < 4; j++) { R(sx + 3, Y - 3 + j * 4, 10, 2, "#3d4654"); R(sx + 11, Y - 3 + j * 4, 1, 1, (Math.floor(t / 180) + i + j) % 3 ? "#4cff7a" : "#ff5a5a"); }
+      } break;
+    case "boxes":
+      [[0, 0], [16, 0], [0, 16], [16, 16], [8, -6]].forEach(([dx, dy], i) => { if (i === 4 || dy < H) { R(X + dx + 1, Y + dy + 2, 14, 13, O); R(X + dx + 2, Y + dy + 3, 12, 11, "#d6a564"); R(X + dx + 2, Y + dy + 7, 12, 1, "#b8864a"); } }); break;
+    case "redbtn": R(X + 3, Y + 8, 10, 7, O); R(X + 4, Y + 9, 8, 5, "#555"); ctx.fillStyle = O; ctx.beginPath(); ctx.arc(X + 8, Y + 8, 5, 0, 7); ctx.fill(); ctx.fillStyle = Math.floor(t / 400) % 2 ? "#ff3b3b" : "#c91e1e"; ctx.beginPath(); ctx.arc(X + 8, Y + 8, 4, 0, 7); ctx.fill(); break;
+    case "coffee": R(X + 2, Y, 12, 15, O); R(X + 3, Y + 1, 10, 13, "#c0392b"); R(X + 5, Y + 3, 6, 3, "#2c2c2c"); R(X + 6, Y + 9, 4, 4, "#fff"); if (Math.floor(t / 300) % 3 === 0) R(X + 7, Y + 6, 1, 2, "#e6e6e6"); break;
+    case "pingpong": R(X, Y + 3, W, 11, O); R(X + 1, Y + 4, W - 2, 9, "#2e8b57"); R(X + W / 2, Y + 3, 1, 11, "#fff"); R(X + 1, Y + 8, W - 2, 1, "#fff");
+      { const k = (Math.sin(t / 250) + 1) / 2; R(X + 4 + k * (W - 10), Y + 6 - Math.abs(Math.sin(t / 125)) * 4, 2, 2, "#fff"); } break;
+  }
+}
+function shadow(x, y, w) { ctx.fillStyle = "rgba(29,29,43,.22)"; ctx.beginPath(); ctx.ellipse(x, y, w, 2.5, 0, 0, 7); ctx.fill(); }
+function draw(t) {
+  ctx.setTransform(K, 0, 0, K, 0, 0); ctx.imageSmoothingEnabled = false;
+  drawTiles(t);
+  props.forEach(p => drawProp(p, t));
+  // entities sorted by y
+  const ents = [];
+  Object.values(NPCS).forEach(n => ents.push({ y: n.y, draw: () => {
+    const X = n.x * T, Y = n.y * T, bob = Math.floor(t / 600 + n.x) % 2;
+    shadow(X + 8, Y + 15, 6);
+    const face = Math.abs(player.x - n.x) + Math.abs(player.y - n.y) <= 2 ? dirFromTo(n, player) : "down";
+    ctx.drawImage(personSprite(n.look, face, 0), X, Y - 3 - bob * .5 + .5);
+    if (active.includes(n.zone) && !G.over) {
+      const by = Y - 15 + Math.sin(t / 180) * 2;
+      R(X + 3, by - 1, 10, 11, "#1d1d2b"); R(X + 4, by, 8, 9, "#ffe27a"); R(X + 7, by + 10, 2, 2, "#1d1d2b");
+      R(X + 7, by + 1, 2, 5, "#e0384b"); R(X + 7, by + 7, 2, 1, "#e0384b");
+    }
+  } }));
+  ents.push({ y: dog.py, draw: () => { const X = dog.px * T, Y = dog.py * T; shadow(X + 8, Y + 14, 6); ctx.drawImage(dogSprite(dog.dir, dog.moving ? Math.floor(t / 120) : Math.floor(t / 400)), X - 1, Y + 3); } });
+  ents.push({ y: player.py, draw: () => {
+    const X = player.px * T, Y = player.py * T;
+    shadow(X + 8, Y + 15, 6);
+    const fr = player.moving ? (player.t < .5 ? 1 + (player.step % 2) : 0) : 0;
+    ctx.drawImage(personSprite(FOUNDER, player.dir, fr), X, Y - 3 - (fr ? 1 : 0));
+  } });
+  ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
+  // tap target marker
+  if (player.path.length && !player.target) { const [lx, ly] = player.path[player.path.length - 1]; ctx.strokeStyle = "rgba(255,122,89,.9)"; ctx.lineWidth = 1; ctx.strokeRect(lx * T + 2.5, ly * T + 2.5, 11, 11); }
+  // particles
+  particles.forEach(p => emo(p.e, p.x, p.y, 10, p.rot));
+  // dark vignette when game over
+  if (G.over) { ctx.fillStyle = "rgba(29,29,43,.25)"; ctx.fillRect(0, 0, MW * T, MH * T); }
+}
+function dirFromTo(a, b) { const dx = b.x - a.x, dy = b.y - a.y; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"); }
+
+/* ============================================================
+   LOOP
+   ============================================================ */
+function frame(t) {
+  const dt = Math.min(60, t - lastT); lastT = t;
+  updatePlayer(dt); updateDog(dt, t); typeTick(t);
+  // valuation counter animates in log space
+  if (Math.abs(G.shown - G.val) > .001) {
+    const a = Math.log(Math.max(G.shown, .01)), b = Math.log(Math.max(G.val, .01));
+    G.shown = Math.exp(a + (b - a) * .08); if (Math.abs(b - a) < .002) G.shown = G.val;
+    $("val").textContent = fmt(G.shown);
+  }
+  particles.forEach(p => { p.x += p.vx * dt / 16; p.y += p.vy * dt / 16; p.rot += p.vr; p.life += dt; });
+  particles = particles.filter(p => p.y < MH * T + 20 && p.life < 6000);
+  draw(t);
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+const KEYMAP = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right" };
+addEventListener("keydown", e => {
+  initAudio();
+  if (e.key === "m" || e.key === "M") { toggleMute(); return; }
+  const d = KEYMAP[e.key];
+  if (!$("ov").classList.contains("hidden")) {
+    if (e.key === "Enter" || e.key === " ") { const b = $("card").querySelector("button"); if (b) { e.preventDefault(); b.click(); } }
+    return;
+  }
+  if (dialog) {
+    e.preventDefault();
+    if (dialog.typing && (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z")) { finishTyping(); return; }
+    if (d === "up") setSel((dialog.sel + dialog.choices.length - 1) % dialog.choices.length);
+    else if (d === "down") setSel((dialog.sel + 1) % dialog.choices.length);
+    else if (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z") choose(dialog.sel);
+    else if (/^[1-9]$/.test(e.key) && !dialog.typing) choose(+e.key - 1);
+    return;
+  }
+  if (d) { e.preventDefault(); if (!keys.includes(d)) keys.push(d); return; }
+  if (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z") {
+    e.preventDefault(); if (!player.moving) { const [dx, dy] = DIRV[player.dir]; interactAt(player.x + dx, player.y + dy); }
+  }
+});
+addEventListener("keyup", e => { const d = KEYMAP[e.key]; if (d) keys = keys.filter(k => k !== d); });
+addEventListener("blur", () => keys = []);
+cv.addEventListener("pointerdown", e => {
+  initAudio();
+  if (dialog) { if (dialog.typing) finishTyping(); return; }
+  const r = cv.getBoundingClientRect();
+  const tx = Math.floor((e.clientX - r.left) / r.width * MW), ty = Math.floor((e.clientY - r.top) / r.height * MH);
+  tapTile(tx, ty);
+});
+$("dlg").addEventListener("pointerdown", e => { if (dialog && dialog.typing && !e.target.closest("button")) finishTyping(); });
+function toggleMute() { muted = !muted; localStorage.setItem("fl-muted", muted ? "1" : "0"); applyMute(); }
+$("muteBtn").addEventListener("click", () => { initAudio(); toggleMute(); });
+$("hint").textContent = matchMedia("(pointer: coarse)").matches ? "Tap to walk · tap a person to talk" : "Arrow keys / WASD to walk · walk into people to talk · Space to interact · M to mute · or click to walk";
+
+/* boot */
+titleScreen();
+requestAnimationFrame(t => { lastT = t; frame(t); });
+</script>
+</body>
+</html>
