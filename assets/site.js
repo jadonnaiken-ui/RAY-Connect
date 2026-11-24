@@ -1162,23 +1162,26 @@
       var u = Auth.me.user;
       if (!u.isJudge && !u.isAdmin) { panel.innerHTML = '<p class="muted">You\'re signed in, but scoring is only for the judges. Rate games with stars in the <a href="gallery.html">gallery</a> instead.</p>'; return; }
       gamesP.then(function (games) {
-        var list = games.filter(function (g) { return !g.excludeFromJudging; });
         var scores = Auth.me.myScores || {};
+        var judged = games.filter(function (g) { return !g.excludeFromJudging; });
+        // Judges don't score their own game (the backend refuses it too).
+        var list = judged.filter(function (g) { return !isMine(g); });
+        var skipped = judged.length - list.length;
+        var byTitle = function (a, b) { return a.title.localeCompare(b.title); };
+        var todo = list.filter(function (g) { return !scores[g.slug]; }).sort(byTitle);
+        var done = list.filter(function (g) { return scores[g.slug]; }).sort(byTitle);
         var html = "";
         if (u.isJudge) {
-          var done = list.filter(function (g) { return scores[g.slug]; }).length;
-          html += "<p><strong>Hi " + esc(u.givenName) + ".</strong> You've scored " + done + " of " + plural(list.length, "game") + ". Scores can be changed any time.</p>";
-          html += list.length ? list.map(function (g) {
-            var s = scores[g.slug] || [];
-            return '<form class="card judge-row" data-judge="' + esc(g.slug) + '">' +
-              '<div class="judge-head"><div><h3>' + esc(g.emoji || "🎮") + " " + esc(g.title) + '</h3><p class="muted" style="margin:0">by ' + esc(joinNames(g.authors)) + "</p></div>" +
-              '<a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '" target="_blank" rel="noopener">' + icon("play") + " Play</a></div>" +
-              '<div class="judge-scores">' + RUBRIC.map(function (c, i) {
-                return '<label class="field"><span>' + c.name + ' <span class="muted">×' + c.mult + '</span></span><select name="s' + i + '"><option value="">–</option>' +
-                  [1, 2, 3, 4, 5].map(function (n) { return "<option" + (s[i] === n ? " selected" : "") + ">" + n + "</option>"; }).join("") + "</select></label>";
-              }).join("") + "</div>" +
-              '<div class="judge-foot"><span data-total>' + (s.length ? "Saved: " + total(s) + " / 100" : "Not scored yet") + '</span><button class="btn btn-small btn-primary" type="submit">Save</button></div></form>';
-          }).join("") : '<p class="muted">No games to judge yet.</p>';
+          var pct = list.length ? Math.round(done.length / list.length * 100) : 0;
+          html += '<div class="judge-summary"><p><strong>Hi ' + esc(u.givenName) + ".</strong> You've scored " + done.length + " of " + plural(list.length, "game") + ". Click a game to score it; you can change scores any time.</p>" +
+            '<div class="judge-progress" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100" aria-label="Scoring progress"><span style="width:' + pct + '%"></span></div>' +
+            (skipped ? '<p class="muted" style="margin:.5rem 0 0;font-size:.9rem">Your own game isn\'t listed: the other judges score it.</p>' : "") + "</div>";
+          if (!list.length) html += '<p class="muted">No games to judge yet.</p>';
+          else {
+            html += '<h3 class="judge-group">To score <span class="sticker">' + todo.length + "</span></h3>" +
+              (todo.length ? todo.map(judgeItem).join("") : '<p class="muted">All done. Every game has your score.</p>');
+            if (done.length) html += '<h3 class="judge-group">Scored <span class="sticker mint">' + done.length + "</span></h3>" + done.map(judgeItem).join("");
+          }
         }
         html += '<div class="card" style="margin-top:1.5rem"><h3>Current standings</h3><p class="muted">Visible to judges and organisers only.</p><button class="btn" type="button" id="show-results">Show standings</button><div data-slot="results"></div></div>';
         panel.innerHTML = html;
@@ -1187,6 +1190,22 @@
       });
     }
     function total(s) { return s.reduce(function (sum, v, i) { return sum + v * RUBRIC[i].mult; }, 0); }
+
+    // One collapsed row per game: just the title until a judge opens it to score.
+    function judgeItem(g) {
+      var s = (Auth.me.myScores || {})[g.slug] || [];
+      return '<details class="judge-item">' +
+        '<summary><span class="ji-name">' + esc(g.emoji || "🎮") + " <strong>" + esc(g.title) + '</strong> <span class="muted">by ' + esc(joinNames(g.authors)) + "</span></span>" +
+        '<span class="ji-status' + (s.length ? " done" : "") + '" data-total>' + (s.length ? total(s) + " / 100" : "Not scored") + "</span>" +
+        '<span class="ji-chevron" aria-hidden="true">' + icon("arrow") + "</span></summary>" +
+        '<form class="judge-form" data-judge="' + esc(g.slug) + '">' +
+        '<div class="judge-scores">' + RUBRIC.map(function (c, i) {
+          return '<label class="field"><span>' + c.name + ' <span class="muted">×' + c.mult + '</span></span><select name="s' + i + '"><option value="">–</option>' +
+            [1, 2, 3, 4, 5].map(function (n) { return "<option" + (s[i] === n ? " selected" : "") + ">" + n + "</option>"; }).join("") + "</select></label>";
+        }).join("") + "</div>" +
+        '<div class="judge-foot"><a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '" target="_blank" rel="noopener">' + icon("play") + " Play</a>" +
+        '<button class="btn btn-small btn-primary" type="submit">Save score</button></div></form></details>';
+    }
     function bindJudgeRow(formEl) {
       formEl.addEventListener("submit", function (e) {
         e.preventDefault();
@@ -1199,9 +1218,9 @@
           Auth.me.myScores = Auth.me.myScores || {};
           Auth.me.myScores[slug] = vals;
           persistMe();
-          $("[data-total]", formEl).textContent = "Saved: " + res.total + " / 100";
           toast("Saved: " + res.total + " / 100", "good");
-        }, function (err) { toast(err.message, "bad"); }).then(function () { btn.disabled = false; });
+          render();
+        }, function (err) { toast(err.message, "bad"); btn.disabled = false; });
       });
     }
     function showResults() {

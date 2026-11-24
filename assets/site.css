@@ -445,3 +445,27 @@ body.gate-open { overflow: hidden; }
 .brief .lead { margin: 1.85rem 0 0; max-width: none; }
 @media (max-width: 880px) { .brief { grid-template-columns: 1fr; padding: 1.5rem; } .brief .lead { margin-top: 0; } }
 .site-footer .wrap { row-gap: .4rem; }
+
+/* ---------- Judges' scoring panel ---------- */
+.judge-summary { margin-bottom: 1.5rem; }
+.judge-summary p { margin: 0 0 .75rem; }
+.judge-progress { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; max-width: 28rem; }
+.judge-progress span { display: block; height: 100%; background: var(--positive); border-radius: 999px; }
+.judge-group { display: flex; align-items: center; gap: .5rem; font-size: 1.1rem; margin: 1.75rem 0 .75rem; }
+details.judge-item { border: var(--hair); border-radius: var(--radius-sm); background: var(--surface); margin-bottom: .5rem; padding: 0; }
+details.judge-item:first-of-type { border-top: var(--hair); }
+details.judge-item[open] { padding: 0; border-color: var(--line-strong); }
+details.judge-item > summary { display: flex; align-items: center; gap: 1rem; padding: .85rem 1.1rem; list-style: none; font-weight: 400; }
+details.judge-item > summary::-webkit-details-marker { display: none; }
+.ji-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ji-name strong { font-weight: 500; }
+.ji-status { font-size: .85rem; color: var(--muted); white-space: nowrap; }
+.ji-status.done { color: var(--positive); font-weight: 500; }
+.ji-chevron { display: inline-flex; color: var(--muted); transition: transform .15s ease; }
+.ji-chevron .icon { width: 18px; height: 18px; transform: rotate(90deg); }
+details.judge-item[open] .ji-chevron { transform: rotate(180deg); }
+details.judge-item > .judge-form { color: var(--ink); padding: 0 1.1rem 1.1rem; border-top: var(--hair); padding-top: 1rem; }
+.judge-form .judge-foot { justify-content: flex-end; gap: .5rem; }
+@media (max-width: 520px) { .ji-name .muted { display: none; } }
+
+.judge-scores .field > span .muted { display: inline; margin: 0; }
