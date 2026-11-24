@@ -455,6 +455,77 @@
     });
   }
 
+  /* ---------------- Rate after playing ---------------- */
+  // Once someone has played a game for PLAY_SECONDS (their "first go"), they're asked to rate it
+  // before moving on: when they leave the game, and on any page until they do. Ratings can still
+  // be changed later from the game's page.
+  var PLAY_SECONDS = 30;
+
+  function playedKey() { return "bonanza.played." + Auth.me.user.email; }
+  function playedMap() {
+    if (!signedIn()) return {};
+    try { return JSON.parse(localStorage.getItem(playedKey()) || "{}"); } catch (e) { return {}; }
+  }
+  function markPlayed(slug) {
+    var m = playedMap();
+    if (m[slug]) return;
+    m[slug] = Date.now();
+    try { localStorage.setItem(playedKey(), JSON.stringify(m)); } catch (e) { /* private mode */ }
+  }
+  function isMine(g) { return signedIn() && (Auth.me.mySubmissions || []).some(function (x) { return x.slug === g.slug; }); }
+  function needsRating(g) { return ratable(g) && signedIn() && !CFG.winnersAnnounced && !isMine(g) && !myRating(g.slug); }
+
+  // The earliest game this person has played but not yet rated (ignoring the one they're on).
+  function owedRating(games, exceptSlug) {
+    var m = playedMap();
+    return games.filter(function (g) { return m[g.slug] && g.slug !== exceptSlug && needsRating(g); })
+      .sort(function (a, b) { return m[a.slug] - m[b.slug]; })[0] || null;
+  }
+
+  function closeGate() {
+    var el = $("#rating-gate");
+    if (el) el.remove();
+    document.body.classList.remove("gate-open");
+  }
+
+  // leaving: true when they're leaving the game they just played (they may choose to keep playing).
+  function showRatingGate(g, opts) {
+    opts = opts || {};
+    closeGate();
+    var el = document.createElement("div");
+    el.className = "gate";
+    el.id = "rating-gate";
+    el.innerHTML = '<div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">' +
+      '<span class="gate-emoji" aria-hidden="true">' + esc(g.emoji || "🎮") + "</span>" +
+      '<h2 id="gate-title">How was ' + esc(g.title) + "?</h2>" +
+      '<p class="muted">' + (opts.leaving ? "Rate it before you go." : "You played this earlier. Rate it before you carry on.") +
+      " It counts towards People's choice, and you can change it any time.</p>" +
+      '<div class="gate-stars">' + starsWidget(g) + "</div>" +
+      (opts.leaving
+        ? '<button type="button" class="btn btn-small" data-gate-stay>Keep playing</button>'
+        : '<a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">Play it again first</a>') +
+      "</div>";
+    document.body.appendChild(el);
+    document.body.classList.add("gate-open");
+    bindStars(el, g, function () { closeGate(); if (opts.after) opts.after(); });
+    var stay = $("[data-gate-stay]", el);
+    if (stay) {
+      stay.addEventListener("click", closeGate);
+      el.addEventListener("keydown", function (e) { if (e.key === "Escape") closeGate(); });
+    }
+    var first = $("[data-stars]", el);
+    if (first) first.focus();
+  }
+
+  // On every page: if they owe a rating, ask for it (one game at a time).
+  function checkOwedRatings(exceptSlug) {
+    if (!apiOn() || !signedIn() || $("#rating-gate")) return;
+    loadGames().then(function (games) {
+      var g = owedRating(games, exceptSlug);
+      if (g && !$("#rating-gate")) showRatingGate(g, { after: function () { checkOwedRatings(exceptSlug); } });
+    }, function () { /* the page shows its own error */ });
+  }
+
   /* ---------------- Deadline / status ---------------- */
 
   function deadlineMs() { return Date.parse(CFG.deadline); }
@@ -1167,6 +1238,20 @@
       if (!g) { message("We couldn't find that game", "<p>There's no game called <code>" + esc(slug) + "</code>. If it was just submitted, wait a minute and refresh.</p>"); return; }
       document.title = g.title + " · " + CFG.name;
       var version = Number(g.version) || 1;
+
+      // Count time actually spent on the game (tab visible). After the first go, it needs a rating.
+      var seconds = 0;
+      var timer = setInterval(function () {
+        if (document.hidden || !needsRating(g)) return;
+        if (++seconds >= PLAY_SECONDS) { markPlayed(g.slug); clearInterval(timer); }
+      }, 1000);
+      $$('.player-bar a[href="gallery.html"]').forEach(function (a) {
+        a.addEventListener("click", function (e) {
+          if (!playedMap()[g.slug] || !needsRating(g)) return;
+          e.preventDefault();
+          showRatingGate(g, { leaving: true, after: function () { location.href = a.href; } });
+        });
+      });
       $("#player-title").innerHTML = "<strong>" + esc(g.title) + (version > 1 ? ' <span class="sticker">v' + version + "</span>" : "") + "</strong><span>by " + esc(joinNames(g.authors || [])) + (g.llm ? " · made with " + esc(g.llm) : "") + "</span>";
 
       function drawRating() {
@@ -1262,6 +1347,8 @@
       if (main) main.insertAdjacentHTML("afterbegin", '<div class="wrap"><div class="error-box" style="margin-top:2rem"><h3>Something on this page broke</h3><p>Please tell the organisers. Technical detail: <code>' + esc(e.message) + "</code></p></div></div>");
     }
     bindCopyButtons();
+    var current = page === "play" ? new URLSearchParams(location.search).get("game") : null;
+    onAuth(function () { checkOwedRatings(current); });
     initAuth();
   }
 

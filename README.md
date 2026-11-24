@@ -103,6 +103,7 @@ A game added by hand has no owner, so nobody can update it through the Submit pa
 
 - **Grand champion & Runner-up:** judges sign in and score each game on the **Judging** page (5 criteria, 1–5 each, weighted to 100). Their emails go in `JUDGE_EMAILS` in the backend settings; their names go in `judges` in `config.js`.
 - **People's choice:** everyone rates games 1–5 stars from the play page. The highest average wins, among games with at least `minRatingsForPeoplesChoice` ratings.
+- **Rating is required after playing:** once a signed-in person has played a game for 30 seconds, they must rate it before leaving it or opening another page. They can change the rating later from the game's page. Their own game and the example game never ask.
 - **Standings:** judges and admins see them at the bottom of the Judging page, or open the Google Sheet → **Bonanza** menu → **Refresh leaderboards**.
 
 ## Announcing the winners
