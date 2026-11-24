@@ -208,6 +208,7 @@
         '<footer class="site-footer"><div class="wrap">' +
         "<span>" + esc(name) + "</span>" +
         "<span>" + (CFG && CFG.contact ? "Questions? Message " + contactHtml() + "." : "") + "</span>" +
+        '<p class="footer-note">You must sign in with your RAY Google account to submit a game and to rate others.</p>' +
         "</div></footer>";
     }
     var live = document.createElement("div");

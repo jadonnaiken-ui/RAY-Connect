@@ -436,3 +436,12 @@ body.player { height: 100vh; height: 100dvh; overflow: hidden; }
 .gate-stars .rate .star { min-width: 48px; min-height: 48px; }
 .gate-stars .rate .star .icon { width: 34px; height: 34px; }
 body.gate-open { overflow: hidden; }
+
+.footer-note { flex-basis: 100%; margin: .25rem 0 0; font-size: .82rem; color: var(--muted); }
+
+/* ---------- Home: the brief ---------- */
+.brief { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 1rem 3rem; align-items: start; padding: 2rem 2.25rem; }
+.brief h2 { margin: 0; text-wrap: balance; }
+.brief .lead { margin: 1.85rem 0 0; max-width: none; }
+@media (max-width: 880px) { .brief { grid-template-columns: 1fr; padding: 1.5rem; } .brief .lead { margin-top: 0; } }
+.site-footer .wrap { row-gap: .4rem; }
