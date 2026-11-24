@@ -28,20 +28,5 @@
     "award": null,
     "updated": "2026-11-23",
     "photo": "games/photos/jadon-founder-s-life.jpg"
-  },
-  {
-    "slug": "joshua-ray-life",
-    "title": "Ray life",
-    "authors": [
-      "Joshua Munn"
-    ],
-    "llm": "Claude",
-    "file": "games/joshua-ray-life.html",
-    "blurb": "Working at Ray",
-    "emoji": "🎮",
-    "added": "2026-11-24",
-    "version": 1,
-    "award": null,
-    "photo": "games/photos/joshua-ray-life.jpg"
   }
 ]
