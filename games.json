@@ -28,5 +28,21 @@
     "award": null,
     "updated": "2026-11-23",
     "photo": "games/photos/jadon-founder-s-life.jpg"
+  },
+  {
+    "slug": "macarena-survive-the-founders",
+    "title": "Survive the founders",
+    "authors": [
+      "Macarena Gomez"
+    ],
+    "llm": "Claude",
+    "file": "games/macarena-survive-the-founders.html",
+    "blurb": "An office Pac-Man where the ghosts are founders and every run-in means one more request.",
+    "emoji": "🏃",
+    "added": "2026-11-24",
+    "version": 1,
+    "award": null,
+    "thumbnail": "games/thumbs/macarena-survive-the-founders.jpg",
+    "photo": "games/photos/macarena-survive-the-founders.jpg"
   }
 ]

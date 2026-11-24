@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Survive the Founders</title>
+<style>
+:root{
+  --bg:#e6ecf3; --ink:#1c2541; --muted:#5b6782; --card:#ffffff;
+  --floor:#f6f8fb; --tile:#ebf0f6; --wall:#34466e; --walltop:#556a99;
+  --sticky:#ffe066; --sticky-ink:#3a2e00; --blue:#2f6fed; --bad:#d93838; --good:#16a06c;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#111726; --ink:#e9eef8; --muted:#9aa6c0; --card:#1f2738;
+    --floor:#1a2232; --tile:#1f293b; --wall:#4a5f8c; --walltop:#6b80b0;
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+  overflow-x:hidden;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
+}
+.wrap{max-width:520px;margin:0 auto;padding:10px 12px 16px;display:flex;flex-direction:column;gap:8px}
+
+/* Sticky-note headline */
+.note-title{position:relative;align-self:center;background:var(--sticky);color:var(--sticky-ink);
+  padding:10px 22px 8px;transform:rotate(-2deg);margin-top:10px;box-shadow:0 6px 10px rgba(0,0,0,.18)}
+.note-title::before{content:"";position:absolute;left:50%;top:-10px;width:70px;height:20px;margin-left:-35px;
+  background:rgba(255,255,255,.55);transform:rotate(3deg)}
+.note-title h1{margin:0;font-size:clamp(26px,7.5vw,38px);font-weight:900;letter-spacing:-1px;line-height:1}
+.how{margin:2px 4px 0;text-align:center;color:var(--muted);font-size:14.5px;line-height:1.35}
+
+.hud{display:grid;grid-template-columns:1fr 1fr 1.6fr auto;gap:6px}
+.stat{background:var(--card);border-radius:10px;padding:6px 9px}
+.stat small{display:block;font-size:12px;color:var(--muted)}
+.stat b{font-size:19px;font-variant-numeric:tabular-nums}
+#coffee{font-size:16px;letter-spacing:1px;white-space:nowrap}
+.iconbtn{border:0;background:var(--card);color:var(--ink);border-radius:10px;font-size:20px;padding:0 12px;cursor:pointer;font-family:inherit}
+.iconbtn:focus-visible,.go:focus-visible,.pad button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+/* To-do list as sticky notes */
+#tasks{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:40px;gap:6px;height:86px}
+.empty{grid-column:1/-1;align-self:center;text-align:center;color:var(--muted);font-size:14px}
+.todo{position:relative;display:flex;align-items:center;gap:6px;background:var(--sticky);color:var(--sticky-ink);
+  border-radius:4px;padding:3px 6px 6px;overflow:hidden;border-left:5px solid var(--c);animation:drop .25s ease-out}
+@keyframes drop{from{transform:translateY(-8px) rotate(-3deg);opacity:0}to{transform:none;opacity:1}}
+.todo .ti{font-size:22px;flex:0 0 auto}
+.todo .tt{flex:1;font-size:11.5px;font-weight:800;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.todo .tf{font-size:16px}
+.todo .bar{position:absolute;left:0;bottom:0;height:4px;background:var(--c);width:100%}
+.todo.urgent{animation:blink .5s infinite alternate}
+@keyframes blink{to{background:#ffb3a7}}
+
+#stage{position:relative;display:flex;justify-content:center}
+#stage.shake{animation:shake .3s}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 6px 0 var(--wall)}
+#toast{position:absolute;left:50%;top:6px;transform:translateX(-50%);max-width:94%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--ink);color:var(--bg);
+  font-size:12.5px;font-weight:800;padding:5px 11px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:.94}
+
+.pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-areas:". up ." "left down right";gap:6px;justify-content:center}
+canvas:focus{outline:none}
+.pad button.on{background:var(--blue);color:#fff}
+.pad button{height:48px;border:0;border-radius:12px;background:var(--card);color:var(--ink);font-size:22px;cursor:pointer;
+  box-shadow:0 3px 0 rgba(0,0,0,.15);font-family:inherit}
+.pad button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.15)}
+
+#overlay{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(12,16,28,.7)}
+#overlay.hidden{display:none}
+.panel{background:var(--card);color:var(--ink);border-radius:16px;padding:20px;max-width:370px;width:100%;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.25)}
+.panel .big{font-size:54px;line-height:1}
+.panel h2{margin:8px 0 6px;font-size:23px;letter-spacing:-.5px}
+.panel p{margin:6px 0;line-height:1.4;font-size:15px}
+.legend{text-align:left;font-size:14px;line-height:1.4;margin:12px 0 16px;padding:0;list-style:none}
+.legend li{margin:7px 0;display:flex;gap:8px}
+.legend li span:first-child{flex:0 0 30px;font-size:20px}
+.rank{display:inline-block;margin:6px 0 10px;background:var(--sticky);color:var(--sticky-ink);font-weight:900;padding:4px 12px;transform:rotate(-2deg)}
+.go{background:var(--blue);color:#fff;border:0;border-radius:999px;padding:13px 28px;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 0 #1b48a8}
+.go:active{transform:translateY(3px);box-shadow:0 1px 0 #1b48a8}
+.hud{grid-template-columns:1fr 1fr 1.6fr auto auto}
+body{overscroll-behavior:none}
+.panel{max-height:calc(100vh - 32px);overflow:auto}
+
+/* Compact layout for phones: everything fits on one screen */
+@media (max-width:600px), (max-height:760px){
+  .wrap{padding:6px 10px 8px;gap:6px}
+  .note-title{padding:5px 14px 4px;margin-top:6px}
+  .note-title::before{top:-7px;width:50px;height:14px;margin-left:-25px}
+  .note-title h1{font-size:22px}
+  .how{font-size:12px;line-height:1.25;margin:0 2px}
+  .hud{gap:5px}
+  .stat{padding:3px 8px}
+  .stat small{font-size:10.5px}
+  .stat b{font-size:16px}
+  #coffee{font-size:13px}
+  .iconbtn{font-size:17px;padding:0 9px}
+  #tasks{grid-auto-rows:34px;height:74px;gap:5px}
+  .todo .ti{font-size:18px}
+  .todo .tt{font-size:11px}
+  .pad{grid-template-columns:repeat(3,60px);gap:5px}
+  .pad button{height:42px;font-size:19px}
+  .legend{font-size:13px}
+}
+/* Wide but short screens (like the submission preview): controls on the left, maze on the right */
+@media (min-width:640px) and (max-height:760px){
+  .wrap{max-width:900px;display:grid;grid-template-columns:320px 1fr;column-gap:16px;row-gap:6px;align-content:start;
+    grid-template-areas:"title stage" "how stage" "hud stage" "tasks stage" "pad stage"}
+  .note-title{grid-area:title;justify-self:center}
+  .how{grid-area:how}
+  .hud{grid-area:hud}
+  #tasks{grid-area:tasks}
+  .pad{grid-area:pad;margin-top:4px}
+  #stage{grid-area:stage;grid-row:1 / span 6;align-self:start}
+}
+@media (prefers-reduced-motion: reduce){ .note-title{transform:none} #stage.shake{animation:none} .todo.urgent{animation:none;background:#ffb3a7} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="note-title"><h1>Survive the Founders</h1></div>
+  <p class="how">Run the office maze grabbing whatever the founders ask for before time runs out, and don't let them catch you or you're stuck in a meeting.</p>
+
+  <div class="hud">
+    <div class="stat"><small>Score</small><b id="score">0</b></div>
+    <div class="stat"><small>Time left</small><b id="time">60</b></div>
+    <div class="stat"><small>Coffee left</small><span id="coffee">☕☕☕☕☕</span></div>
+    <button class="iconbtn" id="restart" aria-label="Restart game" title="Restart">↻</button>
+    <button class="iconbtn" id="mute" aria-label="Toggle sound" title="Sound">🔊</button>
+  </div>
+
+  <div id="tasks"></div>
+
+  <div id="stage"><canvas id="cv" tabindex="0" aria-label="Office maze"></canvas><div id="toast"></div></div>
+
+  <div class="pad">
+    <button data-d="up" aria-label="Up" style="grid-area:up">▲</button>
+    <button data-d="left" aria-label="Left" style="grid-area:left">◀</button>
+    <button data-d="down" aria-label="Down" style="grid-area:down">▼</button>
+    <button data-d="right" aria-label="Right" style="grid-area:right">▶</button>
+  </div>
+</div>
+<div id="overlay"><div class="panel" id="panel"></div></div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const pick = a => a[Math.random() * a.length | 0];
+const cv = $('#cv'), ctx = cv.getContext('2d'), stage = $('#stage');
+const toast = $('#toast'), tasksEl = $('#tasks'), overlay = $('#overlay'), panel = $('#panel');
+
+/* ---------- The office ---------- */
+const MAP = [
+  "#############",
+  "#...........#",
+  "#.##.###.##.#",
+  "#.#.......#.#",
+  "#.#.##.##.#.#",
+  "#...#...#...#",
+  "###.#.#.#.###",
+  "#.....#.....#",
+  "#.##.###.##.#",
+  "#...........#",
+  "#.#.#.#.#.#.#",
+  "#...#...#...#",
+  "#############"
+];
+const H = MAP.length, W = MAP[0].length;
+const open = (x, y) => y >= 0 && y < H && x >= 0 && x < W && MAP[y][x] !== '#';
+const DIRS = { up:{dx:0,dy:-1}, down:{dx:0,dy:1}, left:{dx:-1,dy:0}, right:{dx:1,dy:0} };
+const DLIST = Object.values(DIRS);
+const openCells = [];
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (open(x, y)) openCells.push([x, y]);
+
+function bfs(sx, sy){
+  const d = new Array(W * H).fill(999), q = [[sx, sy]];
+  d[sy * W + sx] = 0;
+  while (q.length){
+    const [x, y] = q.shift();
+    for (const D of DLIST){
+      const nx = x + D.dx, ny = y + D.dy;
+      if (open(nx, ny) && d[ny * W + nx] === 999){ d[ny * W + nx] = d[y * W + x] + 1; q.push([nx, ny]); }
+    }
+  }
+  return d;
+}
+
+/* ---------- Content ---------- */
+const FOUNDERS = [
+  { emo:'🤵', name:'The Visionary',    color:'#2f6fed', home:[1,1],   arrive:0,     hello:"Morning! I have a vision." },
+  { emo:'😎', name:'The Growth Guy',   color:'#e0457b', home:[11,1],  arrive:14000, hello:"Let's 10x something!" },
+  { emo:'🤓', name:'The Ideas Person', color:'#0f9d74', home:[11,11], arrive:30000, hello:"Crazy idea, hear me out…" }
+];
+const REQS = [
+  { item:'☕', text:'Oat milk latte. Extra hot. Now.' },
+  { item:'✈️', text:'Book me to Denver. Leaving in 20.' },
+  { item:'📅', text:'Move my 3pm to… yesterday.' },
+  { item:'🍕', text:'Lunch for the board. All 14 of them.' },
+  { item:'🎂', text:"Someone's birthday? Handle it." },
+  { item:'📄', text:'Print this. Color. Double-sided.' },
+  { item:'🔑', text:'Where are my keys?' },
+  { item:'💐', text:'Anniversary is TODAY. Flowers.' },
+  { item:'📊', text:'Make the numbers look… better.' },
+  { item:'🧾', text:"Expense this. Don't ask." },
+  { item:'🌮', text:'I said tacos. Not pizza.' },
+  { item:'🎤', text:'Need a keynote by noon.' }
+];
+const BUMP = ["While I have you…","Quick thing!","Got a sec?","Did you see my Slack?","Oh, and also…","Walk with me!"];
+const ANNOYED = ["I'll just do it myself.","This is why we can't scale.","Per my calendar invite…","Let's circle back on your role.","I asked for this YESTERDAY."];
+
+/* ---------- Sound ---------- */
+let ac = null, muted = false;
+function A(){
+  if (muted) return null;
+  if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return null; } }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function tone(f, d, type, v, f2, delay){
+  const a = A(); if (!a) return;
+  const t = a.currentTime + (delay || 0);
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(v || .1, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + .03);
+}
+const sfx = {
+  ping:  () => { tone(880, .08, 'sine', .07); tone(1320, .12, 'sine', .07, null, .08); },
+  knock: () => { tone(190, .07, 'square', .09); tone(170, .07, 'square', .09, null, .11); },
+  ding:  () => { tone(988, .1, 'triangle', .1); tone(1480, .22, 'triangle', .1, null, .08); },
+  sad:   () => { tone(330, .15, 'sawtooth', .05); tone(247, .3, 'sawtooth', .05, 190, .13); },
+  dnd:   () => tone(300, .4, 'sine', .1, 1200),
+  ooo:   () => tone(1200, .35, 'sine', .08, 250),
+  caught:() => [784,659,523,440,349,262].forEach((f,i) => tone(f, .16, 'square', .06, f * .85, i * .13)),
+  win:   () => [523,659,784,1047].forEach((f,i) => tone(f, .24, 'triangle', .1, null, i * .12)),
+  lose:  () => [392,370,349,294].forEach((f,i) => tone(f, i === 3 ? .7 : .25, 'sawtooth', .06, i === 3 ? 220 : null, i * .25))
+};
+
+/* ---------- Canvas sizing & colors ---------- */
+let cell = 30, dpr = 1, C = {};
+function readColors(){
+  const s = getComputedStyle(document.documentElement);
+  ['floor','tile','wall','walltop','ink'].forEach(k => C[k] = s.getPropertyValue('--' + k).trim());
+}
+function resize(){
+  dpr = window.devicePixelRatio || 1;
+  const wrap = document.querySelector('.wrap');
+  const side = getComputedStyle(wrap).display === 'grid';
+  cv.style.width = '0px'; cv.style.height = '0px';
+  const w = Math.min(stage.clientWidth || 360, side ? 600 : 500);
+  let availH;
+  if (side){
+    availH = window.innerHeight - 30;            // maze gets the full height of the frame
+  } else {
+    // measure everything else on the page, then give the maze what's left of the screen
+    const others = wrap.getBoundingClientRect().height;
+    availH = window.innerHeight - others - 14;
+  }
+  cell = Math.max(16, Math.floor(Math.min(w / W, availH / H)));
+  cv.style.width = cell * W + 'px'; cv.style.height = cell * H + 'px';
+  cv.width = cell * W * dpr; cv.height = cell * H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+// some pages resize the game's frame after it loads without telling it, so check now and then
+let lastSize = '';
+setInterval(() => {
+  const s = window.innerWidth + 'x' + window.innerHeight;
+  if (s !== lastSize){ lastSize = s; resize(); }
+}, 400);
+if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+
+/* ---------- State ---------- */
+const GAME_MS = 60000, P_STEP = 150, MAX_TASKS = 4;
+let running = false, gt = 0, score = 0, coffee = 5, done = 0;
+let p = null, founders = [], tasks = [], hp = null, lastHp = 0, dnd = 0, nextRemote = 0, distMap = [], floats = [], toastTO;
+const prog = () => Math.min(1, gt / GAME_MS);
+const ease = () => Math.pow(prog(), 1.4);
+
+function showToast(t){
+  toast.textContent = t; toast.classList.add('show');
+  clearTimeout(toastTO); toastTO = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+function shake(){ stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake'); }
+function addFloat(x, y, text, color){ floats.push({ x, y, text, color, t0: gt }); }
+
+function updateHUD(){
+  $('#score').textContent = score;
+  $('#time').textContent = Math.max(0, Math.ceil((GAME_MS - gt) / 1000));
+  $('#coffee').textContent = '☕'.repeat(coffee) + '·'.repeat(5 - coffee);
+}
+
+function renderTasks(){
+  tasksEl.innerHTML = '';
+  if (!tasks.length){ tasksEl.innerHTML = '<div class="empty">Inbox zero. Enjoy it while it lasts.</div>'; return; }
+  tasks.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'todo'; el.style.setProperty('--c', t.f.color);
+    el.innerHTML = `<span class="ti">${t.req.item}</span><span class="tt">${t.req.text}</span><span class="tf">${t.f.emo}</span><i class="bar"></i>`;
+    t.el = el; t.bar = el.querySelector('.bar');
+    tasksEl.appendChild(el);
+  });
+}
+
+/* ---------- Tasks ---------- */
+function newTask(f){
+  const used = tasks.map(t => t.req.item);
+  const req = pick(REQS.filter(r => !used.includes(r.item)));
+  const taken = new Set(tasks.map(t => t.x + ',' + t.y));
+  if (hp) taken.add(hp.x + ',' + hp.y);
+  let cands = openCells.filter(([x, y]) => distMap[y * W + x] >= 4 && !taken.has(x + ',' + y));
+  if (!cands.length) cands = openCells.filter(([x, y]) => !(x === p.x && y === p.y));
+  const [x, y] = pick(cands);
+  tasks.push({ req, f, x, y, born: gt, life: 17000 - 7000 * ease() });
+  renderTasks();
+  sfx.ping();
+}
+
+function completeTask(t){
+  const frac = 1 - (gt - t.born) / t.life;
+  const pts = 10 + Math.round(5 * frac);
+  score += pts; done++;
+  addFloat(t.x, t.y, '+' + pts, '#16a06c');
+  tasks = tasks.filter(x => x !== t);
+  renderTasks(); sfx.ding(); updateHUD();
+}
+
+function loseCoffee(msg){
+  coffee--; lostBy = 'missed'; showToast(msg); sfx.sad(); shake(); updateHUD();
+  if (coffee <= 0) endGame(false);
+}
+
+/* ---------- Movement ---------- */
+function rpos(e){
+  if (!e.moving) return [e.x, e.y];
+  const k = Math.min(1, e.t / e.step);
+  return [e.px + (e.x - e.px) * k, e.py + (e.y - e.py) * k];
+}
+
+function playerArrive(){
+  distMap = bfs(p.x, p.y);
+  const t = tasks.find(t => t.x === p.x && t.y === p.y);
+  if (t) completeTask(t);
+  if (hp && hp.x === p.x && hp.y === p.y){
+    hp = null; dnd = 6000; sfx.dnd();
+    showToast('🎧 Do Not Disturb! Bump founders to send them OOO');
+  }
+}
+
+function steer(d){
+  if (!p || !running) return;
+  p.want = d;
+  // turning around happens immediately, even between squares
+  if (p.moving && p.dir && d.dx === -p.dir.dx && d.dy === -p.dir.dy){
+    [p.x, p.px] = [p.px, p.x]; [p.y, p.py] = [p.py, p.y];
+    p.t = p.step - p.t; p.dir = d; if (d.dx) p.face = d.dx;
+  }
+}
+
+function movePlayer(dt){
+  if (p.moving){ p.t += dt; if (p.t < p.step) return; playerArrive(); }
+  let d = null;
+  if (p.want && open(p.x + p.want.dx, p.y + p.want.dy)) d = p.want;
+  else if (p.dir && open(p.x + p.dir.dx, p.y + p.dir.dy)) d = p.dir;
+  p.px = p.x; p.py = p.y; p.t = 0;
+  if (d){ p.x += d.dx; p.y += d.dy; p.dir = d; p.moving = true; p.step = P_STEP; if (d.dx) p.face = d.dx; }
+  else p.moving = false;
+}
+
+function founderDir(f){
+  const opts = DLIST.filter(d => open(f.x + d.dx, f.y + d.dy));
+  let fwd = opts.filter(d => !(f.dir && d.dx === -f.dir.dx && d.dy === -f.dir.dy));
+  if (!fwd.length) fwd = opts;
+  const dist = d => distMap[(f.y + d.dy) * W + (f.x + d.dx)];
+  if (dnd > 0) return fwd.reduce((a, b) => dist(b) > dist(a) ? b : a);
+  if (Math.random() < .35 + .45 * prog()) return fwd.reduce((a, b) => dist(b) < dist(a) ? b : a);
+  return pick(fwd);
+}
+
+function moveFounder(f, dt){
+  if (f.moving){ f.t += dt; if (f.t < f.step) return; }
+  const d = founderDir(f);
+  f.px = f.x; f.py = f.y; f.t = 0;
+  if (d){ f.x += d.dx; f.y += d.dy; f.dir = d; f.moving = true; f.step = (520 - 270 * ease()) * (dnd > 0 ? 1.5 : 1); }
+  else f.moving = false;
+}
+
+function addFounder(i){
+  const F = FOUNDERS[i];
+  const f = Object.assign({}, F, { x:F.home[0], y:F.home[1], px:F.home[0], py:F.home[1], moving:false, t:0, step:500, dir:null, cool:1500,
+    say:{ text:F.hello, until: gt + 2200 } });
+  founders[i] = f;
+  if (i > 0) showToast(`${F.emo} ${F.name} just walked in.`);
+}
+
+const DIE_MS = 1400;
+const CAUGHT = ["Gotcha! Quick 2-hour sync.","Let's hop on a call.","Walk with me… to my office.","Got a minute? (It's 90.)","Brainstorm time! No agenda."];
+let dying = 0, catcher = null, lostBy = '';
+
+function caught(f){
+  dying = DIE_MS; catcher = f;
+  f.say = { text: pick(CAUGHT), until: gt + DIE_MS };
+  coffee--; lostBy = 'caught';
+  showToast(`${f.emo} ${f.name} dragged you into a meeting! −1 ☕`);
+  sfx.caught(); shake(); updateHUD();
+}
+
+function respawn(){
+  p.x = p.px = 6; p.y = p.py = 9; p.moving = false; p.dir = null; p.want = null; p.t = 0;
+  p.invuln = 1800;
+  founders.filter(Boolean).forEach(f => {
+    f.x = f.px = f.home[0]; f.y = f.py = f.home[1]; f.moving = false; f.dir = null; f.t = 0; f.cool = 1200;
+  });
+  distMap = bfs(p.x, p.y);
+  catcher = null;
+  showToast('Back to your desk. Ready… go!');
+}
+
+/* ---------- Game loop ---------- */
+function update(dt){
+  gt += dt;
+  if (gt >= GAME_MS){ updateHUD(); endGame(true); return; }
+
+  // caught: everything pauses while you get dragged into a meeting
+  if (dying > 0){
+    dying -= dt;
+    tasks.forEach(t => t.born += dt);
+    nextRemote += dt;
+    if (hp) hp.until += dt;
+    if (dying <= 0){
+      if (coffee <= 0){ endGame(false); return; }
+      respawn();
+    }
+    updateHUD();
+    return;
+  }
+  p.invuln = Math.max(0, p.invuln - dt);
+
+  FOUNDERS.forEach((F, i) => { if (!founders[i] && gt >= F.arrive) addFounder(i); });
+  const active = founders.filter(Boolean);
+
+  // requests arrive over Slack, faster as the day goes on
+  if (gt >= nextRemote){
+    if (tasks.length < MAX_TASKS && active.length){
+      const f = pick(active);
+      newTask(f);
+      showToast(`📲 New Slack from ${f.emo} ${f.name}`);
+    }
+    nextRemote = gt + 7000 - 3800 * ease();
+  }
+
+  // noise-cancelling headphones power-up
+  if (!hp && gt - lastHp >= (lastHp ? 13000 : 9000)){
+    const taken = new Set(tasks.map(t => t.x + ',' + t.y));
+    const c = openCells.filter(([x, y]) => distMap[y * W + x] >= 3 && !taken.has(x + ',' + y));
+    const [x, y] = pick(c);
+    hp = { x, y, until: gt + 9000 }; lastHp = gt;
+  }
+  if (hp && gt > hp.until) hp = null;
+  dnd = Math.max(0, dnd - dt);
+
+  movePlayer(dt);
+  active.forEach(f => { moveFounder(f, dt); f.cool -= dt; });
+
+  // run-ins with founders
+  const [ax, ay] = rpos(p);
+  active.forEach(f => {
+    if (f.cool > 0 || !running) return;
+    const [bx, by] = rpos(f);
+    if (Math.hypot(ax - bx, ay - by) > .65) return;
+    if (dnd > 0){
+      f.x = f.px = f.home[0]; f.y = f.py = f.home[1]; f.moving = false; f.dir = null; f.cool = 1500;
+      f.say = { text:'OOO ✈️', until: gt + 1800 };
+      score += 5; addFloat(bx, by, 'OOO +5', '#2f6fed'); sfx.ooo(); updateHUD();
+      return;
+    }
+    if (p.invuln > 0) return;
+    caught(f);
+  });
+  if (!running) return;
+
+  // deadlines
+  for (const t of tasks.slice()){
+    const left = 1 - (gt - t.born) / t.life;
+    if (left <= 0){
+      tasks = tasks.filter(x => x !== t); renderTasks();
+      addFloat(t.x, t.y, 'Missed!', '#d93838');
+      loseCoffee(`${t.f.emo} ${t.f.name}: "${pick(ANNOYED)}"`);
+      if (!running) return;
+    } else if (t.bar){
+      t.bar.style.width = (left * 100) + '%';
+      t.el.classList.toggle('urgent', left < .3);
+    }
+  }
+  updateHUD();
+}
+
+/* ---------- Drawing ---------- */
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+function rr(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function emoji(ch, x, y, size, flip){
+  // Some browsers tint emojis with the current fill color, so always reset to solid
+  ctx.globalAlpha = 1; ctx.fillStyle = '#000';
+  ctx.font = `${size}px ${EMOJI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (flip){ ctx.save(); ctx.translate(x, y); ctx.scale(-1, 1); ctx.fillText(ch, 0, 0); ctx.restore(); }
+  else ctx.fillText(ch, x, y);
+}
+function bubble(text, cx, cy){
+  const fs = Math.max(11, Math.round(cell * .42));
+  ctx.font = `800 ${fs}px ui-rounded,system-ui,sans-serif`;
+  const w = ctx.measureText(text).width + 14, h = fs + 10;
+  let bx = Math.min(Math.max(cx - w / 2, 2), cell * W - w - 2);
+  let by = cy - cell * .6 - h;
+  if (by < 2) by = cy + cell * .6;
+  ctx.fillStyle = '#ffffff'; rr(bx, by, w, h, 8); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#1c2541'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, bx + w / 2, by + h / 2 + 1);
+}
+
+function draw(){
+  const cw = cell * W, ch = cell * H;
+  ctx.fillStyle = C.floor; ctx.fillRect(0, 0, cw, ch);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+    if (MAP[y][x] === '#'){
+      ctx.fillStyle = C.wall; ctx.fillRect(x * cell, y * cell, cell, cell);
+      ctx.fillStyle = C.walltop; ctx.fillRect(x * cell, y * cell, cell, cell * .28);
+    } else if ((x + y) % 2){
+      ctx.fillStyle = C.tile; ctx.fillRect(x * cell, y * cell, cell, cell);
+    }
+  }
+  if (!p) return;
+  const now = performance.now();
+
+  // requested items
+  tasks.forEach(t => {
+    const left = 1 - (gt - t.born) / t.life;
+    const urgent = left < .3;
+    const pulse = urgent ? 1 + .12 * Math.sin(now / 90) : 1 + .04 * Math.sin(now / 250 + t.x);
+    const cx = (t.x + .5) * cell, cy = (t.y + .5) * cell;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx, cy, cell * .46 * pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = Math.max(2, cell * .09);
+    ctx.strokeStyle = urgent ? '#d93838' : t.f.color; ctx.stroke();
+    emoji(t.req.item, cx, cy + 1, cell * .64 * pulse);
+  });
+
+  // headphones power-up
+  if (hp){
+    const cx = (hp.x + .5) * cell, cy = (hp.y + .5) * cell;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx, cy, cell * .48 * (1 + .08 * Math.sin(now / 150)), 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = Math.max(2, cell * .09); ctx.strokeStyle = '#2f6fed'; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+    emoji('🎧', cx, cy + 1, cell * .64);
+  }
+
+  // founders
+  founders.filter(Boolean).forEach(f => {
+    const [x, y] = rpos(f), cx = (x + .5) * cell, cy = (y + .5) * cell;
+    ctx.fillStyle = f.color;
+    ctx.beginPath(); ctx.arc(cx, cy, cell * .48, 0, Math.PI * 2); ctx.fill();
+    emoji(f.emo, cx, cy + 1, cell * .74);
+    if (dnd > 0) emoji('💤', cx + cell * .38, cy - cell * .38, cell * .42);
+  });
+
+  // you, the EA
+  if (dying > 0){
+    const k = 1 - dying / DIE_MS, cx = (p.x + .5) * cell, cy = (p.y + .5) * cell;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(k * Math.PI * 6); ctx.scale(Math.max(.05, 1 - k), Math.max(.05, 1 - k));
+    ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(0, 0, cell * .48, 0, Math.PI * 2); ctx.fill();
+    emoji('😵', 0, 1, cell * .72);
+    ctx.restore();
+  } else if (!(p.invuln > 0 && Math.floor(now / 110) % 2)) {
+    const [x, y] = rpos(p), cx = (x + .5) * cell, cy = (y + .5) * cell;
+    ctx.fillStyle = '#ffe066';
+    ctx.beginPath(); ctx.arc(cx, cy, cell * .48, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = Math.max(2, cell * .08); ctx.strokeStyle = '#1c2541'; ctx.stroke();
+    // little arrow showing where you'll turn next
+    if (p.want && p.want !== p.dir){
+      const ax2 = cx + p.want.dx * cell * .62, ay2 = cy + p.want.dy * cell * .62;
+      ctx.fillStyle = '#1c2541';
+      ctx.beginPath();
+      ctx.moveTo(ax2 + p.want.dx * cell * .16, ay2 + p.want.dy * cell * .16);
+      ctx.lineTo(ax2 - p.want.dy * cell * .13, ay2 + p.want.dx * cell * .13);
+      ctx.lineTo(ax2 + p.want.dy * cell * .13, ay2 - p.want.dx * cell * .13);
+      ctx.closePath(); ctx.fill();
+    }
+    emoji('🏃', cx, cy + 1, cell * .72, p.face === 1);
+    if (dnd > 0) emoji('🎧', cx, cy - cell * .42, cell * .45);
+  }
+
+  // speech bubbles
+  founders.filter(Boolean).forEach(f => {
+    if (f.say && gt < f.say.until){
+      const [x, y] = rpos(f);
+      bubble(f.say.text, (x + .5) * cell, (y + .5) * cell);
+    }
+  });
+
+  // floating points
+  floats = floats.filter(fl => gt - fl.t0 < 900);
+  floats.forEach(fl => {
+    const k = (gt - fl.t0) / 900;
+    ctx.globalAlpha = 1 - k;
+    ctx.font = `900 ${Math.max(13, cell * .5)}px ui-rounded,system-ui,sans-serif`;
+    ctx.fillStyle = fl.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(fl.text, (fl.x + .5) * cell, (fl.y + .2 - k * .8) * cell);
+    ctx.globalAlpha = 1;
+  });
+}
+
+let last = performance.now();
+function loop(t){
+  const dt = Math.min(50, t - last); last = t;
+  if (running) update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Controls ---------- */
+const KEYS = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', w:'up', s:'down', a:'left', d:'right', W:'up', S:'down', A:'left', D:'right' };
+const padBtns = {};
+document.querySelectorAll('.pad button').forEach(b => {
+  padBtns[b.dataset.d] = b;
+  const press = e => { e.preventDefault(); A(); steer(DIRS[b.dataset.d]); flash(b.dataset.d); };
+  b.addEventListener('pointerdown', press);
+  b.addEventListener('click', e => e.preventDefault());
+});
+function flash(k){
+  const b = padBtns[k]; if (!b) return;
+  b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 140);
+}
+document.addEventListener('keydown', e => {
+  const k = KEYS[e.key];
+  if (!k) return;
+  e.preventDefault();
+  steer(DIRS[k]); flash(k);
+}, true);
+let sw = null;
+cv.addEventListener('pointerdown', e => { e.preventDefault(); sw = { x: e.clientX, y: e.clientY }; A(); cv.focus(); });
+cv.addEventListener('pointermove', e => {
+  if (!sw || !p) return;
+  const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+  if (Math.hypot(dx, dy) < 16) return;
+  const k = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  steer(DIRS[k]); flash(k);
+  sw = { x: e.clientX, y: e.clientY };
+});
+window.addEventListener('pointerup', () => { sw = null; });
+
+/* ---------- Start / end ---------- */
+function start(){
+  A();
+  gt = 0; score = 0; coffee = 5; done = 0;
+  p = { x:6, y:9, px:6, py:9, moving:false, t:0, step:P_STEP, dir:null, want:null, face:-1, invuln:0 };
+  dying = 0; catcher = null; lostBy = '';
+  founders = []; tasks = []; floats = []; hp = null; lastHp = 0; dnd = 0;
+  distMap = bfs(p.x, p.y);
+  nextRemote = 1200;
+  renderTasks(); updateHUD();
+  toast.classList.remove('show');
+  overlay.classList.add('hidden');
+  running = true;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  try { cv.focus({ preventScroll: true }); } catch(e){ cv.focus(); }
+  window.focus();
+}
+
+function rankFor(s){
+  if (s < 70)  return ['📎', 'Calendar casualty'];
+  if (s < 150) return ['📋', 'Assistant to the Founder'];
+  if (s < 230) return ['🧠', 'Chief of Staff material'];
+  return ['👑', 'The real CEO'];
+}
+
+function endGame(won){
+  if (!running) return;
+  running = false;
+  setTimeout(() => {
+    if (won){
+      sfx.win();
+      const [icon, title] = rankFor(score);
+      panel.innerHTML = `
+        <div class="big">${icon}</div>
+        <h2>You survived the day!</h2>
+        <div class="rank">${title}</div>
+        <p>Score: <b>${score}</b> · Requests handled: <b>${done}</b></p>
+        <p style="color:var(--muted)">The founders have already scheduled tomorrow's "quick sync" for 6 a.m.</p>
+        <p style="margin-top:16px"><button class="go" id="again">Clock in again</button></p>`;
+    } else {
+      sfx.lose();
+      panel.innerHTML = `
+        <div class="big">${lostBy === 'caught' ? '📅' : '😵'}</div>
+        <h2>${lostBy === 'caught' ? 'Trapped in a meeting forever.' : 'Out of coffee. Burnout.'}</h2>
+        <p>${lostBy === 'caught' ? 'Nobody has seen you since the "quick sync." The founders are hiring 3 people to replace you.' : 'The founders are hiring 3 people to replace you.'}</p>
+        <p>Score: <b>${score}</b> · Requests handled: <b>${done}</b></p>
+        <p style="margin-top:16px"><button class="go" id="again">Try another Monday</button></p>`;
+    }
+    overlay.classList.remove('hidden');
+    $('#again').addEventListener('click', start);
+    $('#again').focus();
+  }, 600);
+}
+
+function showIntro(){
+  panel.innerHTML = `
+    <div class="big">🏃</div>
+    <h2>You're the executive assistant</h2>
+    <ul class="legend">
+      <li><span>📝</span><span>Founders send requests. Grab the matching item (☕ ✈️ 📅) in the maze before its timer runs out.</span></li>
+      <li><span>🤵</span><span>Don't let a founder catch you! They'll drag you into a 2-hour meeting and you lose a coffee.</span></li>
+      <li><span>🎧</span><span>Noise-cancelling headphones = 6 seconds of Do Not Disturb. The founders run from you, and catching one sends them out of office.</span></li>
+      <li><span>☕</span><span>Getting caught or missing a request costs a coffee. Run out and you're done. Survive 60 seconds.</span></li>
+      <li><span>⌨️</span><span>Arrow keys or WASD, swipe on the maze, or use the buttons.</span></li>
+    </ul>
+    <button class="go" id="startBtn">Start the workday</button>`;
+  overlay.classList.remove('hidden');
+  $('#startBtn').addEventListener('click', start);
+}
+
+$('#restart').addEventListener('click', start);
+$('#mute').addEventListener('click', () => { muted = !muted; $('#mute').textContent = muted ? '🔇' : '🔊'; });
+
+readColors(); resize();
+renderTasks();
+showIntro();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
