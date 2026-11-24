@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Founder Meltdown 3000</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0b1640;--navy2:#14225c;--hot:#ff3d7f;--lime:#c6ff3d;--sky:#3dd6ff;--gold:#ffc93d;--paper:#fff8e7}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--navy);color:#fff;font-family:Archivo,system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+button{font-family:inherit;cursor:pointer}
+#app{display:flex;flex-direction:column;height:100%}
+
+/* HUD */
+#hud{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:var(--navy2);border-bottom:4px solid #000;align-items:center}
+.stat{background:#000;border-radius:10px;padding:6px 10px;min-width:90px}
+.stat small{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.6}
+.stat b{font-family:'Archivo Black',sans-serif;font-size:16px}
+#coName{flex:1 1 220px;font-family:'Archivo Black',sans-serif;font-size:18px;color:var(--lime);line-height:1.1;word-break:break-word}
+#coName small{display:block;font-family:Archivo;font-size:10px;color:#fff;opacity:.6;letter-spacing:.08em;text-transform:uppercase}
+#stressWrap{flex:1 1 160px}
+#stressBar{height:14px;background:#000;border-radius:7px;overflow:hidden;border:2px solid #000}
+#stressFill{height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--gold),var(--hot));transition:width .2s}
+
+/* Arena */
+#arena{position:relative;flex:1;overflow:hidden;background:
+  radial-gradient(circle at 20% 10%,#1d2f7a 0,transparent 40%),
+  radial-gradient(circle at 80% 70%,#3a1450 0,transparent 45%),var(--navy)}
+.item{position:absolute;left:0;top:0;max-width:210px;padding:8px 11px;border-radius:12px;background:var(--paper);color:var(--navy);
+  font-weight:700;font-size:13px;line-height:1.2;border:3px solid #000;box-shadow:4px 4px 0 #000;cursor:pointer;will-change:transform}
+.item:hover{background:#fff}
+.item.meeting{background:#ffd6e5}
+.item.money{background:var(--lime)}
+.item.vc{background:#e2d4ff}
+.pop{position:absolute;pointer-events:none;font-family:'Archivo Black',sans-serif;font-size:16px;color:var(--gold);text-shadow:2px 2px 0 #000;animation:pop 1s ease-out forwards;white-space:nowrap;z-index:5}
+@keyframes pop{to{transform:translateY(-60px) scale(1.2);opacity:0}}
+#founder{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:58px;z-index:3;transition:transform .1s}
+#founder.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(calc(-50% - 10px)) rotate(-8deg)}75%{transform:translateX(calc(-50% + 10px)) rotate(8deg)}}
+#bubble{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);background:#fff;color:var(--navy);font-weight:700;font-size:13px;padding:7px 11px;border-radius:12px;border:3px solid #000;max-width:260px;text-align:center;opacity:0;transition:opacity .3s;z-index:4}
+#bubble.show{opacity:1}
+#hero{position:absolute;font-size:44px;z-index:6;display:none;transition:left .1s,top .1s;filter:drop-shadow(0 0 12px var(--gold))}
+#eaBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;font-family:'Archivo Black';padding:6px 14px;border-radius:20px;border:3px solid #000;display:none;z-index:7;white-space:nowrap;font-size:14px}
+#meetingCover{position:absolute;inset:0;background:rgba(10,10,30,.85);display:none;z-index:20;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:16px}
+#meetingCover h2{font-family:'Archivo Black';font-size:clamp(24px,6vw,48px);margin:0 0 8px;color:var(--hot)}
+
+/* Buttons */
+#controls{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:var(--navy2);border-top:4px solid #000}
+.btn{flex:1 1 140px;border:3px solid #000;border-radius:12px;padding:10px 8px;font-weight:900;font-size:14px;box-shadow:4px 4px 0 #000;color:#000;position:relative;overflow:hidden}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #000}
+.btn small{display:block;font-weight:400;font-size:11px;opacity:.75}
+.btn:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+.btn .cd{position:absolute;left:0;bottom:0;height:4px;background:#000;width:0}
+#bPivot{background:var(--sky)}#bAI{background:#e2d4ff}#bEA{background:var(--gold);flex-basis:200px}#bBean{background:#ffb48a}
+#ticker{background:#000;color:var(--lime);font-size:12px;white-space:nowrap;overflow:hidden;padding:5px 0;font-weight:700}
+#ticker span{display:inline-block;padding-left:100%;animation:tick 40s linear infinite}
+@keyframes tick{to{transform:translateX(-100%)}}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(5,8,30,.92);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay.show{display:flex}
+.card{background:var(--paper);color:var(--navy);border:4px solid #000;box-shadow:8px 8px 0 #000;border-radius:18px;padding:22px;max-width:560px;width:100%;text-align:center;max-height:94vh;overflow:auto}
+.card h1{font-family:'Archivo Black',sans-serif;font-size:clamp(30px,8vw,52px);margin:0;line-height:.95;letter-spacing:-.02em}
+.card h1 em{font-style:normal;color:var(--hot)}
+.card .sub{margin:8px 0 16px;font-size:14px;opacity:.8}
+.card ul{text-align:left;font-size:14px;padding-left:20px;margin:0 0 16px}
+.card li{margin:4px 0}
+.card input{width:100%;padding:12px;font-size:16px;border:3px solid #000;border-radius:10px;font-family:inherit;font-weight:700;margin-bottom:12px}
+.big{background:var(--hot);color:#fff;border:3px solid #000;border-radius:12px;padding:14px 22px;font-size:18px;font-weight:900;box-shadow:4px 4px 0 #000;width:100%}
+.big:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #000}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;text-align:left}
+.stats div{background:#fff;border:2px solid #000;border-radius:10px;padding:8px;font-size:12px}
+.stats b{display:block;font-family:'Archivo Black';font-size:17px}
+
+/* Hiring minigame */
+#hireCard{max-width:760px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(20px,1fr));gap:1px;background:#000;padding:4px;border-radius:10px;margin:10px 0;max-height:52vh;overflow:auto}
+#grid span{background:#fff;font-size:14px;line-height:20px;text-align:center;cursor:pointer}
+#grid span:hover{background:var(--gold)}
+#hireTimer{font-family:'Archivo Black';font-size:22px;color:var(--hot)}
+#hireMsg{min-height:20px;font-size:13px;font-weight:700}
+
+/* Max popup */
+#maxPop{position:fixed;right:14px;bottom:110px;z-index:40;background:#fff;color:var(--navy);border:3px solid #000;box-shadow:6px 6px 0 #000;border-radius:14px;padding:12px;width:270px;display:none;animation:slide .3s}
+@keyframes slide{from{transform:translateX(120%)}}
+#maxPop .row{display:flex;gap:6px;margin-top:8px}
+#maxPop button{flex:1;border:2px solid #000;border-radius:8px;padding:6px;font-weight:700;background:var(--lime)}
+@media (max-width:600px){.item{font-size:12px;max-width:170px}#founder{font-size:46px}#maxPop{left:12px;right:12px;width:auto;bottom:150px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div id="coName"><small>Your startup</small><span id="coNameTxt">—</span></div>
+    <div class="stat"><small>Valuation</small><b id="valTxt">$0</b></div>
+    <div class="stat"><small>Runway</small><b id="runTxt">18 mo</b></div>
+    <div class="stat"><small>Tasks</small><b id="taskTxt">0</b></div>
+    <div id="stressWrap"><small style="font-size:10px;letter-spacing:.08em;opacity:.6">FOUNDER STRESS</small><div id="stressBar"><div id="stressFill"></div></div></div>
+  </div>
+  <div id="arena">
+    <div id="founder">😀</div>
+    <div id="bubble"></div>
+    <div id="hero">🦸</div>
+    <div id="eaBanner">✨ RAY EA ACTIVE ✨</div>
+    <div id="meetingCover"><h2>YOU ARE IN A MEETING 🫠</h2><div>It could have been an email. Tasks keep falling. Nobody has an agenda.</div></div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="bPivot">🔄 PIVOT<small>new idea, same hoodie</small><i class="cd"></i></button>
+    <button class="btn" id="bAI">🤖 ADD AI<small>valuation go brrr</small><i class="cd"></i></button>
+    <button class="btn" id="bBean">🫘 BUY BEANBAG<small>culture. −1 mo runway</small><i class="cd"></i></button>
+    <button class="btn" id="bEA">🦸 HIRE A RAY EA<small>find the top 0.02%</small><i class="cd"></i></button>
+  </div>
+  <div id="ticker"><span id="tickTxt"></span></div>
+</div>
+
+<div class="overlay show" id="startOv"><div class="card">
+  <h1>FOUNDER<br><em>MELTDOWN</em> 3000</h1>
+  <p class="sub">A RAY AI production. Probably. Legal hasn't seen it.</p>
+  <ul>
+    <li>📧 Admin falls from the sky. <b>Click it</b> before it hits you.</li>
+    <li>📅 <b>Don't</b> click meetings. Dodging them is the whole game.</li>
+    <li>💸 Click money. Money good.</li>
+    <li>🤖 Add AI to boost valuation. No, it doesn't need to make sense.</li>
+    <li>🦸 Hire a RAY EA: find the 1 hire in 40,000 applicants and they'll do it all for you.</li>
+  </ul>
+  <input id="nameIn" maxlength="40" placeholder="Name your startup">
+  <button class="big" id="startBtn">RAISE PRE-SEED & START 🚀</button>
+</div></div>
+
+<div class="overlay" id="hireOv"><div class="card" id="hireCard">
+  <h1 style="font-size:clamp(22px,5vw,34px)">FIND THE <em>0.02%</em></h1>
+  <p class="sub" style="margin:4px 0">40,000 people applied (showing 700). One is great. Click the 🌟. Avoid 🤖 (ChatGPT cover letters).</p>
+  <div id="hireTimer">7.0s</div>
+  <div id="grid"></div>
+  <div id="hireMsg"></div>
+</div></div>
+
+<div class="overlay" id="endOv"><div class="card">
+  <h1 id="endTitle">GAME OVER</h1>
+  <p class="sub" id="endSub"></p>
+  <div class="stats" id="endStats"></div>
+  <p style="font-weight:700;font-size:14px" id="endVerdict"></p>
+  <button class="big" id="againBtn">FOUND ANOTHER STARTUP 🔁</button>
+</div></div>
+
+<div id="maxPop"><b>📨 Max</b> <span style="opacity:.6;font-size:12px">just now</span><div id="maxTxt" style="margin-top:6px;font-size:14px"></div>
+  <div class="row"><button id="maxA">Yes</button><button id="maxB">Yes but louder</button></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+const TASKS=["📧 Re: Re: Re: Fwd: quick q","🧾 Expense a £6 oat flat white","✈️ Book flights to a 'summit' in Lisbon","📅 Reschedule the reschedule",
+"📊 Update the investor update update","🔑 Reset password (4th time today)","🍕 Pizza for 'all hands' (3 people)","📝 Sign the NDA for the NDA",
+"🤝 Circle back on the circle back","💼 LinkedIn: 'Thrilled to announce…'","🗂️ Find that one Google Doc","📞 Call the bank (on hold since Q2)",
+"🧑‍⚖️ Delaware franchise tax?? what","📬 1,204 unread emails","🎂 Co-founder's birthday (today??)","🏢 WeWork wants the beanbag back",
+"🧹 Inbox zero (lol)","🪪 Renew passport before Web Summit","🧾 Find receipt for a taxi in 2023","📎 'Please see attached' (nothing attached)",
+"🗓️ Find a time that works for 9 people","🐦 Reply-guy your own tweet","📦 Return the standing desk","🔁 Cancel 14 SaaS free trials"];
+const MEETINGS=["📅 'Quick 15-min sync'","📅 'Let's hop on a call'","📅 Brainstorm (no agenda)","📅 Coffee w/ a 'thought leader'","📅 Sync about the sync","📅 'Can I pick your brain?'"];
+const MONEY=["💸 Angel cheque","🦄 Mysterious family office","💰 Grant you forgot you applied for","💸 Your aunt believes in you"];
+const VC=["🧠 VC: 'have you considered AI?'","🧠 VC: 'but what if it was AI'","🧠 VC: 'love it, now add agents'"];
+const IDEAS=["Uber for Goldfish","Tinder for Houseplants","Blockchain for Sandwiches","Airbnb for Ducks","Slack but it only says 'per my last email'",
+"Netflix for Spreadsheets","Peloton for Thumbs","SaaS for Sock Pairing","Calendly for Ghosts","Duolingo for Corporate Jargon","Stripe for Pocket Money",
+"LinkedIn for Dogs","Notion for Napping","Deliveroo for Single Grapes","Strava for Doomscrolling","Figma for Fridge Magnets"];
+const AI_PREFIX=["AI-powered ","Generative ","Agentic ","Quantum ","AGI-native ","Sentient ","Multimodal ","AI ","AI ","AI "];
+const HOOKS=["Synergised!","Circled back!","Per my last email!","Actioned!","Looped in!","Took offline!","Moved the needle!","Low-hanging fruit!","Unblocked!","Shipped!"];
+const SAYS=["We're default alive. Probably.","Sleep is a Series B problem.","It's not a bug, it's a roadmap.","I'm not stressed, I'm 'in founder mode'.",
+"What if we just… raised more?","My calendar is a crime scene.","I should really get an EA.","Hustle culture? I prefer hustle cult.","We're pre-revenue. And pre-sleep."];
+const REJECT=["Rejected: listed 'Excel' as a personality trait","Rejected: CV was a 9-page PDF","Rejected: replied-all to the interview invite",
+"Rejected: 'I'm a people person' ×6","Rejected: font was Comic Sans","Rejected: thinks Calendly is a spice","Rejected: cover letter started 'As an AI language model'"];
+const EA_NAMES=["Sofia","Priya","Tomás","Ines","Kemi","Lukas","Mariana","Aiden","Zara","Mateo"];
+const MAX_MSGS=["Did we follow up with them?","Quick one: did we follow up?","Following up on the follow-up.","Have we circled back to them yet?"];
+
+const arena=$('arena'),founder=$('founder'),bubble=$('bubble'),hero=$('hero');
+let S,items=[],last=0,raf,ac;
+
+function beep(f=440,d=.08,type='square',v=.05){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();
+o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(ac.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
+
+function fmt(v){if(v<1e3)return'$'+Math.round(v);const u=[[1e15,'Q'],[1e12,'T'],[1e9,'B'],[1e6,'M'],[1e3,'K']];
+if(v>=1e18)return'$a lot';for(const [n,s] of u)if(v>=n)return'$'+(v/n).toFixed(v/n<10?1:0)+s}
+
+function reset(name){
+  items.forEach(i=>i.el.remove());items=[];
+  S={name:name||pick(IDEAS),val:250000,runway:18,stress:0,tasks:0,ai:0,pivots:0,meetings:0,beans:0,hires:0,missed:0,
+     t:0,spawn:0,burn:1,eaUntil:0,meetUntil:0,cds:{bPivot:0,bAI:0,bBean:0,bEA:0},cdMax:{bPivot:8,bAI:5,bBean:6,bEA:20},
+     nextMax:rnd(18,28),nextSay:4,running:true,paused:false};
+  hud();setTicker();
+}
+
+function hud(){
+  $('coNameTxt').textContent=S.name;$('valTxt').textContent=fmt(S.val);
+  $('runTxt').textContent=Math.max(0,S.runway).toFixed(1)+' mo';$('taskTxt').textContent=S.tasks;
+  $('stressFill').style.width=Math.min(100,S.stress)+'%';
+  founder.textContent=S.eaUntil>S.t?'😎':S.stress<20?'😀':S.stress<40?'🙂':S.stress<60?'😅':S.stress<80?'😰':S.stress<92?'🤯':'😵‍💫';
+  $('runTxt').style.color=S.runway<4?'var(--hot)':'';
+}
+function setTicker(){
+  const h=[`BREAKING: ${S.name} valued at ${fmt(S.val)} after adding the word "AI" to its website`,
+  `TechCrunch: "${S.name}" founder spotted answering emails at a wedding`,
+  `RAY AI reports 40,000 EA applicants, accepts 0.02%, founders everywhere weep with joy`,
+  `Study: 97% of "quick syncs" are neither quick nor synced`,
+  `VC firm announces $2B fund exclusively for startups with "agent" in the name`,
+  `Local founder discovers calendar has a "decline" button, refuses to believe it`];
+  $('tickTxt').textContent=h.join('   ★   ');
+}
+
+function say(txt,ms=2200){bubble.textContent=txt;bubble.classList.add('show');clearTimeout(say.t);say.t=setTimeout(()=>bubble.classList.remove('show'),ms)}
+function popAt(x,y,txt,color){const p=document.createElement('div');p.className='pop';p.textContent=txt;p.style.left=x+'px';p.style.top=y+'px';if(color)p.style.color=color;arena.appendChild(p);setTimeout(()=>p.remove(),1000)}
+
+function spawn(){
+  const r=Math.random();let type='task',txt=pick(TASKS);
+  if(r<.14){type='meeting';txt=pick(MEETINGS)}else if(r<.21){type='money';txt=pick(MONEY)}else if(r<.26){type='vc';txt=pick(VC)}
+  const el=document.createElement('div');el.className='item '+type;el.textContent=txt;arena.appendChild(el);
+  const w=el.offsetWidth,x=rnd(6,Math.max(8,arena.clientWidth-w-6));
+  const it={el,type,x,y:-60,sp:rnd(38,70)+S.t*1.4};
+  el.style.transform=`translate(${x}px,${it.y}px)`;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();clickItem(it)});
+  items.push(it);
+}
+function kill(it){it.el.remove();items=items.filter(i=>i!==it)}
+
+function clickItem(it,byEA){
+  if(!S.running||S.paused)return;
+  if(!byEA&&S.meetUntil>S.t)return;
+  const x=it.x+20,y=it.y;
+  kill(it);
+  if(it.type==='task'){S.tasks++;S.val+=20000*(1+S.ai*.6);S.stress=Math.max(0,S.stress-1.5);
+    popAt(x,y,byEA?'✨ handled by EA':pick(HOOKS),byEA?'var(--lime)':null);beep(byEA?880:660,.05)}
+  else if(it.type==='meeting'){
+    if(byEA){popAt(x,y,'✨ EA declined it politely','var(--lime)');S.stress=Math.max(0,S.stress-2);beep(990,.05);return}
+    S.meetings++;S.meetUntil=S.t+2.6;S.stress+=6;$('meetingCover').style.display='flex';beep(140,.4,'sawtooth',.06);}
+  else if(it.type==='money'){S.runway+=4;S.val*=1.15;popAt(x,y,'+4 mo runway 💸','var(--lime)');beep(1046,.15,'triangle',.08)}
+  else if(it.type==='vc'){addAI(true);popAt(x,y,'ok fine, AI it is','#e2d4ff')}
+  hud();
+}
+
+function miss(it){
+  kill(it);
+  if(it.type==='task'){S.stress+=8;S.missed++;founder.classList.remove('shake');void founder.offsetWidth;founder.classList.add('shake');beep(120,.12,'sawtooth');
+    if(Math.random()<.3)say(pick(["I'll do it tomorrow.","That one was important wasn't it","AAAAAA","it's fine. everything's fine."]))}
+  else if(it.type==='meeting'){S.stress=Math.max(0,S.stress-4);popAt(it.x+20,arena.clientHeight-120,'Dodged a meeting! 🎉','var(--lime)')}
+}
+
+function addAI(free){
+  S.val*=rnd(1.4,2.2);S.ai++;S.burn+=.15;S.stress+=3;
+  S.name=AI_PREFIX[Math.min(S.ai-1,AI_PREFIX.length-1)]+S.name;
+  if(!free)say(pick(["We're an AI company now.","GPUs aren't cheap but neither am I.","Is it AI? It's AI-adjacent.","I put AI in the logo. Series A please."]));
+  beep(523,.06);setTimeout(()=>beep(784,.08),70);setTicker();hud();
+}
+
+function eaTick(){
+  if(!items.length)return;
+  const it=items.reduce((a,b)=>a.y>b.y?a:b);
+  if(it.type==='money'){clickItem(it,true);return}
+  hero.style.left=(it.x+30)+'px';hero.style.top=(it.y-10)+'px';clickItem(it,true);
+}
+
+function loop(ts){
+  const dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;
+  if(S.running&&!S.paused){
+    S.t+=dt;
+    S.runway-=dt*S.burn/3;
+    S.spawn-=dt;
+    const rate=Math.max(.38,1.5-S.t*.018);
+    if(S.spawn<=0){spawn();S.spawn=rate*rnd(.6,1.2)}
+    const H=arena.clientHeight;
+    for(const it of [...items]){it.y+=it.sp*dt;it.el.style.transform=`translate(${it.x}px,${it.y}px)`;if(it.y>H-70)miss(it)}
+    // EA
+    if(S.eaUntil>S.t){hero.style.display='block';$('eaBanner').style.display='block';S.eaAcc=(S.eaAcc||0)+dt;
+      if(S.eaAcc>.18){S.eaAcc=0;eaTick()}S.stress=Math.max(0,S.stress-dt*6)}
+    else{hero.style.display='none';$('eaBanner').style.display='none'}
+    if(S.meetUntil<=S.t)$('meetingCover').style.display='none';
+    // cooldowns
+    for(const k in S.cds){S.cds[k]=Math.max(0,S.cds[k]-dt);const b=$(k);b.disabled=S.cds[k]>0;b.querySelector('.cd').style.width=(S.cds[k]/S.cdMax[k]*100)+'%'}
+    // chatter
+    S.nextSay-=dt;if(S.nextSay<=0){say(pick(SAYS));S.nextSay=rnd(7,12)}
+    S.nextMax-=dt;if(S.nextMax<=0){showMax();S.nextMax=rnd(22,34)}
+    hud();
+    if(S.runway<=0)end('runway');else if(S.stress>=100)end('stress');
+  }
+  raf=requestAnimationFrame(loop);
+}
+
+function showMax(){
+  const fri=new Date().getDay()===5;
+  $('maxTxt').textContent=fri?"It's Friday. Do NOT send follow-ups. Schedule them for Sunday evening.":pick(MAX_MSGS);
+  $('maxPop').style.display='block';beep(880,.05,'sine',.08);setTimeout(()=>beep(1175,.08,'sine',.08),90);
+}
+['maxA','maxB'].forEach(id=>$(id).onclick=()=>{$('maxPop').style.display='none';if(id==='maxB'){say('YES WE FOLLOWED UP',1500);S.stress+=2}});
+
+// Buttons
+$('bPivot').onclick=()=>{if(S.cds.bPivot>0||!S.running)return;S.cds.bPivot=S.cdMax.bPivot;S.pivots++;
+  const ais=AI_PREFIX.slice(0,S.ai).filter((v,i,a)=>a.indexOf(v)===i).slice(-2).join('');
+  S.name=ais+pick(IDEAS.filter(i=>!S.name.endsWith(i)));S.val*=rnd(.3,3.2);S.runway-=1.5;S.stress=Math.max(0,S.stress-12);
+  say(pick(["This is the one.","We're not pivoting, we're 'evolving'.","Same team, same hoodie, new deck.","The market just wasn't ready for the last one."]));
+  beep(330,.06);setTimeout(()=>beep(440,.06),60);setTimeout(()=>beep(660,.1),120);setTicker();hud()};
+$('bAI').onclick=()=>{if(S.cds.bAI>0||!S.running)return;S.cds.bAI=S.cdMax.bAI;addAI()};
+$('bBean').onclick=()=>{if(S.cds.bBean>0||!S.running)return;S.cds.bBean=S.cdMax.bBean;S.beans++;S.runway-=1;S.stress=Math.max(0,S.stress-15);
+  popAt(arena.clientWidth/2-60,arena.clientHeight-140,'+1 beanbag 🫘 +culture','#ffb48a');
+  say(S.beans>3?`We have ${S.beans} beanbags. That's a culture.`:'Culture, baby.');beep(200,.15,'triangle',.08);hud()};
+$('bEA').onclick=()=>{if(S.cds.bEA>0||!S.running)return;startHire()};
+
+// Hiring minigame
+let hire;
+function startHire(){
+  S.paused=true;const g=$('grid');g.innerHTML='';const N=700,star=Math.floor(Math.random()*N);
+  const people=['👤','👤','👤','👤','🧑','👩','👨','🧑‍💼','🤖'];
+  for(let i=0;i<N;i++){const s=document.createElement('span');s.textContent=i===star?'🌟':pick(people);s.dataset.i=i;g.appendChild(s)}
+  $('hireMsg').textContent='';$('hireOv').classList.add('show');
+  hire={left:7,star,done:false};
+  g.onpointerdown=e=>{const s=e.target.closest('span');if(!s||hire.done)return;
+    if(+s.dataset.i===star)hireEnd(true);
+    else{hire.left-=.6;$('hireMsg').textContent=s.textContent==='🤖'?'Rejected: cover letter began "As an AI language model…"':pick(REJECT);
+      s.style.background='#ffb3b3';s.textContent='❌';beep(150,.08,'sawtooth')}};
+  hire.iv=setInterval(()=>{hire.left-=.1;$('hireTimer').textContent=Math.max(0,hire.left).toFixed(1)+'s';if(hire.left<=0)hireEnd(false)},100);
+}
+function hireEnd(ok){
+  if(hire.done)return;hire.done=true;clearInterval(hire.iv);
+  if(ok){const n=pick(EA_NAMES);$('hireMsg').innerHTML=`🎉 Meet <b>${n}</b>, your new RAY EA. 39,999 rejected. You're welcome.`;
+    beep(523,.1,'triangle',.1);setTimeout(()=>beep(659,.1,'triangle',.1),110);setTimeout(()=>beep(784,.2,'triangle',.1),220);}
+  else $('hireMsg').textContent='⏰ Too slow. The 0.02% got hired by someone with a better calendar.';
+  setTimeout(()=>{$('hireOv').classList.remove('show');S.paused=false;S.cds.bEA=S.cdMax.bEA;
+    if(ok){S.hires++;S.eaUntil=S.t+12;say(`${'EA'} is handling it. I'm going to… touch grass?`,3000)}
+    else say('I will simply do everything myself. Forever.')},1400);
+}
+
+function end(why){
+  S.running=false;
+  const t={runway:['OUT OF RUNWAY 🪦',`${S.name} has been acqui-hired for one (1) hoodie and a lifetime supply of oat milk.`],
+           stress:['FOUNDER HAS LEFT THE CHAT 🫠',`You've ascended into a LinkedIn thought leader. Your first post: "What ${S.name} taught me about resilience 🧵"`]}[why];
+  $('endTitle').textContent=t[0];$('endSub').textContent=t[1];
+  const st=[['Peak valuation',fmt(S.val)],['Tasks handled',S.tasks],['Tasks dropped',S.missed],['Times added AI',S.ai],
+            ['Pivots',S.pivots],['Meetings attended (why)',S.meetings],['Beanbags',S.beans],['RAY EAs hired',S.hires]];
+  $('endStats').innerHTML=st.map(([k,v])=>`<div>${k}<b>${v}</b></div>`).join('');
+  $('endVerdict').textContent=S.hires>0?`You hired ${S.hires>1?S.hires+' RAY EAs':'a RAY EA'}. Easily the smartest thing ${S.name} ever did.`
+    :'You never hired an EA. Bold. Wrong, but bold.';
+  $('maxPop').style.display='none';$('meetingCover').style.display='none';
+  setTimeout(()=>$('endOv').classList.add('show'),400);beep(220,.2,'sawtooth');setTimeout(()=>beep(165,.4,'sawtooth'),220);
+}
+
+$('nameIn').placeholder='Name your startup (or we pick: '+pick(IDEAS)+')';
+$('startBtn').onclick=()=>{$('startOv').classList.remove('show');reset($('nameIn').value.trim());beep(660,.08);say("Let's change the world. Or at least the deck.",2500)};
+$('againBtn').onclick=()=>{$('endOv').classList.remove('show');reset();say('Second time founder. Way more credible.',2500)};
+reset();S.running=false;hud();raf=requestAnimationFrame(loop);
+</script>
+</body>
+</html>
