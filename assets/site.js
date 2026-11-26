@@ -458,23 +458,35 @@
 
   /* ---------------- Rate after playing ---------------- */
   // Once someone has played a game for PLAY_SECONDS (their "first go"), they're asked to rate it
-  // before moving on: when they leave the game, and on any page until they do. Ratings can still
-  // be changed later from the game's page.
-  var PLAY_SECONDS = 30;
+  // before moving on: when they leave the game, and on any page until they do. Signed-out players
+  // are asked to sign in first. Ratings can still be changed later from the game's page.
+  var PLAY_SECONDS = 20;
+  var ANON_KEY = "bonanza.played.anon";
 
-  function playedKey() { return "bonanza.played." + Auth.me.user.email; }
-  function playedMap() {
-    if (!signedIn()) return {};
-    try { return JSON.parse(localStorage.getItem(playedKey()) || "{}"); } catch (e) { return {}; }
-  }
+  function playedKey() { return signedIn() ? "bonanza.played." + Auth.me.user.email : ANON_KEY; }
+  function readMap(key) { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) { return {}; } }
+  function playedMap() { return readMap(playedKey()); }
   function markPlayed(slug) {
     var m = playedMap();
     if (m[slug]) return;
     m[slug] = Date.now();
     try { localStorage.setItem(playedKey(), JSON.stringify(m)); } catch (e) { /* private mode */ }
   }
+  // Games played before signing in count once they sign in.
+  function adoptAnonPlays() {
+    if (!signedIn()) return;
+    var anon = readMap(ANON_KEY), keys = Object.keys(anon);
+    if (!keys.length) return;
+    var m = playedMap();
+    keys.forEach(function (k) { if (!m[k]) m[k] = anon[k]; });
+    try { localStorage.setItem(playedKey(), JSON.stringify(m)); localStorage.removeItem(ANON_KEY); } catch (e) { /* ignore */ }
+  }
   function isMine(g) { return signedIn() && (Auth.me.mySubmissions || []).some(function (x) { return x.slug === g.slug; }); }
-  function needsRating(g) { return ratable(g) && signedIn() && !CFG.winnersAnnounced && !isMine(g) && !myRating(g.slug); }
+  // Signed-in players: games that aren't theirs and they haven't rated. Signed-out: any ratable game.
+  function needsRating(g) {
+    if (!ratable(g) || CFG.winnersAnnounced) return false;
+    return !signedIn() || (!isMine(g) && !myRating(g.slug));
+  }
 
   // The earliest game this person has played but not yet rated (ignoring the one they're on).
   function owedRating(games, exceptSlug) {
@@ -483,44 +495,62 @@
       .sort(function (a, b) { return m[a.slug] - m[b.slug]; })[0] || null;
   }
 
+  var gateState = null; // { game, opts } while the box is open, so it can update after sign-in
+
   function closeGate() {
     var el = $("#rating-gate");
     if (el) el.remove();
+    gateState = null;
     document.body.classList.remove("gate-open");
   }
 
   // leaving: true when they're leaving the game they just played (they may choose to keep playing).
   function showRatingGate(g, opts) {
     opts = opts || {};
-    closeGate();
-    var el = document.createElement("div");
-    el.className = "gate";
-    el.id = "rating-gate";
+    var el = $("#rating-gate");
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "gate";
+      el.id = "rating-gate";
+      document.body.appendChild(el);
+      document.body.classList.add("gate-open");
+    }
+    gateState = { game: g, opts: opts };
+    var ask = signedIn()
+      ? '<div class="gate-stars">' + starsWidget(g) + "</div>"
+      : '<p class="gate-signin">Sign in with your RAY Google account to rate it.</p><div class="auth-slot gate-auth" data-auth="large"></div>';
     el.innerHTML = '<div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">' +
       '<span class="gate-emoji" aria-hidden="true">' + esc(g.emoji || "🎮") + "</span>" +
       '<h2 id="gate-title">How was ' + esc(g.title) + "?</h2>" +
       '<p class="muted">' + (opts.leaving ? "Rate it before you go." : "You played this earlier. Rate it before you carry on.") +
-      " It counts towards People's choice, and you can change it any time.</p>" +
-      '<div class="gate-stars">' + starsWidget(g) + "</div>" +
+      " It counts towards People's choice. Ratings are anonymous, and you can change yours any time.</p>" +
+      ask +
       (opts.leaving
         ? '<button type="button" class="btn btn-small" data-gate-stay>Keep playing</button>'
         : '<a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">Play it again first</a>') +
       "</div>";
-    document.body.appendChild(el);
-    document.body.classList.add("gate-open");
-    bindStars(el, g, function () { closeGate(); if (opts.after) opts.after(); });
+    if (signedIn()) bindStars(el, g, function () { closeGate(); if (opts.after) opts.after(); });
+    else renderAuthSlots();
     var stay = $("[data-gate-stay]", el);
     if (stay) {
       stay.addEventListener("click", closeGate);
-      el.addEventListener("keydown", function (e) { if (e.key === "Escape") closeGate(); });
+      el.onkeydown = function (e) { if (e.key === "Escape") closeGate(); };
     }
     var first = $("[data-stars]", el);
     if (first) first.focus();
   }
 
+  // After signing in from the box: show the stars, or move on if it's their own game / already rated.
+  function refreshGate() {
+    if (!gateState || !signedIn()) return;
+    var g = gateState.game, opts = gateState.opts;
+    if (needsRating(g)) showRatingGate(g, opts);
+    else { closeGate(); if (opts.after) opts.after(); }
+  }
+
   // On every page: if they owe a rating, ask for it (one game at a time).
   function checkOwedRatings(exceptSlug) {
-    if (!apiOn() || !signedIn() || $("#rating-gate")) return;
+    if (!apiOn() || $("#rating-gate")) return;
     loadGames().then(function (games) {
       var g = owedRating(games, exceptSlug);
       if (g && !$("#rating-gate")) showRatingGate(g, { after: function () { checkOwedRatings(exceptSlug); } });
@@ -852,7 +882,7 @@
   pages.gallery = function () {
     renderStatus();
     var el = slot("gallery");
-    var state = { q: "", llm: "all", sort: "shuffle" };
+    var state = { q: "", llm: "all", sort: "shuffle", unrated: false };
     var all = [], shuffled = [];
 
     function draw() {
@@ -866,13 +896,14 @@
       var q = state.q.trim().toLowerCase();
       list = list.filter(function (g) {
         if (state.llm !== "all" && (g.llm || "Other") !== state.llm) return false;
+        if (state.unrated && !(ratable(g) && !isMine(g) && !myRating(g.slug))) return false;
         if (!q) return true;
         return (g.title + " " + (g.authors || []).join(" ") + " " + (g.blurb || "")).toLowerCase().indexOf(q) !== -1;
       });
       var grid = slot("grid");
       grid.innerHTML = list.length
         ? '<div class="games">' + list.map(function (g) { return gameCard(g); }).join("") + "</div>"
-        : '<div class="empty"><span class="big" aria-hidden="true">🔍</span><p>No games match that search.</p></div>';
+        : '<div class="empty"><span class="big" aria-hidden="true">' + (state.unrated ? "🎉" : "🔍") + "</span><p>" + (state.unrated ? "You've rated every game. Thank you!" : "No games match that search.") + "</p></div>";
       bindThumbFallbacks(grid);
       fill("count", list.length === all.length ? plural(all.length, "game") : list.length + " of " + plural(all.length, "game"));
     }
@@ -894,12 +925,20 @@
         ['<button class="chip" type="button" aria-pressed="true" data-llm="all">All</button>'].concat(llms.map(function (l) {
           return '<button class="chip" type="button" aria-pressed="false" data-llm="' + esc(l) + '">' + esc(l) + "</button>";
         })).join("") + "</div>" +
+        (apiOn() ? '<button class="chip" type="button" aria-pressed="false" data-unrated>Not rated by me</button>' : "") +
         '<label class="visually-hidden" for="sort">Order</label>' +
         '<select class="chip" id="sort" data-filter="sort"><option value="shuffle">Shuffled</option><option value="new">Newest first</option>' +
         (apiOn() ? '<option value="top">Top rated</option>' : "") + '<option value="az">A to Z</option></select>' +
         '</div><p class="muted" data-slot="count" aria-live="polite"></p><div data-slot="grid"></div>';
       $('[data-filter="q"]', el).addEventListener("input", function (e) { state.q = e.target.value; draw(); });
       $('[data-filter="sort"]', el).addEventListener("change", function (e) { state.sort = e.target.value; draw(); });
+      var unratedBtn = $("[data-unrated]", el);
+      if (unratedBtn) unratedBtn.addEventListener("click", function () {
+        if (!signedIn()) { toast("Sign in with your RAY Google account to see which games you haven't rated."); return; }
+        state.unrated = !state.unrated;
+        unratedBtn.setAttribute("aria-pressed", String(state.unrated));
+        draw();
+      });
       $$("[data-llm]", el).forEach(function (b) {
         b.addEventListener("click", function () {
           state.llm = b.getAttribute("data-llm");
@@ -1368,8 +1407,12 @@
     }
     bindCopyButtons();
     var current = page === "play" ? new URLSearchParams(location.search).get("game") : null;
-    onAuth(function () { checkOwedRatings(current); });
+    onAuth(function () {
+      adoptAnonPlays();
+      if (gateState) refreshGate(); else checkOwedRatings(current);
+    });
     initAuth();
+    checkOwedRatings(current);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

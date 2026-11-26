@@ -469,3 +469,6 @@ details.judge-item > .judge-form { color: var(--ink); padding: 0 1.1rem 1.1rem; 
 @media (max-width: 520px) { .ji-name .muted { display: none; } }
 
 .judge-scores .field > span .muted { display: inline; margin: 0; }
+
+.gate-signin { font-weight: 500; margin: 1rem 0 .5rem; }
+.gate-auth { justify-content: center; margin: 0 0 1.25rem; }
