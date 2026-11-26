@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Human Exhibit</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;position:fixed;touch-action:none;overscroll-behavior:none;background:#2f6b3a;font-family:"Trebuchet MS",system-ui,sans-serif;color:#33241a}
+canvas{position:fixed;inset:0;display:block}
+.screen{position:fixed;inset:0;display:flex;padding:12px;overflow:auto;background:rgba(20,45,25,.72);z-index:2;touch-action:pan-y}
+.screen[hidden]{display:none}
+/* the Freedom ending: a golden card, a title that bounces in, and confetti on its own layer */
+#over.free .card{border-color:#f2a900;background:linear-gradient(#fffbe6,#ffe7a0)}
+#over.free h1{display:table;margin:0 auto;color:#17824a;text-shadow:2px 2px 0 #ffd23f;animation:popin .8s .15s ease-out both}
+@keyframes popin{0%{transform:scale(0) rotate(-14deg)}55%{transform:scale(1.35) rotate(5deg)}72%{transform:scale(.86) rotate(-3deg)}86%{transform:scale(1.1) rotate(1deg)}100%{transform:none}}
+#confetti{width:100%;height:100%;pointer-events:none;z-index:2}
+#confetti[hidden]{display:none}
+.card{margin:auto;width:min(480px,100%);background:#fff6dc;border:6px solid #8a5a2b;border-radius:18px;padding:14px 18px;text-align:center;box-shadow:0 10px 0 #0004}
+h1{font-size:clamp(26px,7vw,40px);color:#d9482b;letter-spacing:1px;text-shadow:2px 2px 0 #ffd23f}
+.lead{font-weight:bold;font-size:clamp(14px,3.8vw,17px);margin:4px 0 10px}
+.board{background:#2f6b4f;color:#fffbe8;border:3px dashed #ffd23f;border-radius:10px;padding:8px 12px;text-align:left;font-size:clamp(12px,3.3vw,14px);line-height:1.35}
+.board h2{font-size:1.05em;text-align:center;color:#ffd23f;margin-bottom:4px}
+.board p{margin:3px 0;text-wrap:pretty}
+.board b{color:#ffd23f}
+.how{margin:10px 0 2px;font-weight:bold;font-size:clamp(13px,3.6vw,16px)}
+.keys{font-size:12px;opacity:.7;margin-bottom:8px}
+.power{margin:5px 0;padding:5px 8px;background:#d9f8ff;border:2px solid #2aa9c4;border-radius:10px;font-size:clamp(12px,3.3vw,14px);line-height:1.3}
+button{font:bold 19px "Trebuchet MS",system-ui,sans-serif;cursor:pointer;background:#ff7a2f;color:#fff;border:0;border-radius:40px;padding:11px 30px;box-shadow:0 5px 0 #a8431a}
+button:active{transform:translateY(3px);box-shadow:0 2px 0 #a8431a}
+#mute{position:fixed;right:6px;top:7px;z-index:3;font-size:20px;width:44px;height:44px;padding:0;background:#fff6dc;box-shadow:0 3px 0 #0005}
+@media (max-height:459px){#mute{top:5px;width:34px;height:34px}}
+#act{position:fixed;z-index:1;left:0;right:0;margin:auto;bottom:max(11px,env(safe-area-inset-bottom));width:min(320px,calc(100% - 32px));height:70px;padding:0;touch-action:none;font-size:22px;line-height:1.15;border:4px solid #fff6dc;--p:0%;background:linear-gradient(90deg,#8d8278 var(--p),#ff7a2f var(--p))}
+#act small{display:block;font-size:13px}
+#hint{position:fixed;z-index:1;left:0;right:0;margin:auto;bottom:94px;width:max-content;max-width:calc(100% - 16px);pointer-events:none;background:#fff6dc;border:3px solid #ff7a2f;border-radius:20px;padding:6px 14px;font-weight:bold;font-size:15px;text-align:center}
+#act[hidden],#hint[hidden]{display:none}
+#act.now{border-color:#7ff6ff;animation:glow .6s ease-in-out infinite alternate}
+@keyframes glow{from{box-shadow:0 5px 0 #a8431a,0 0 0 0 #7ff6ff}to{box-shadow:0 5px 0 #a8431a,0 0 0 8px #7ff6ff}}
+#hint small{display:block;font-size:.85em;font-weight:normal}
+body.side #act{left:auto;right:8px;margin:0;bottom:12px;width:100px;height:112px;border-radius:30px;font-size:16px}
+body.side #act small{font-size:12px;padding:0 4px}
+body.side #hint{left:auto;right:6px;margin:0;bottom:134px;width:104px;padding:6px;font-size:13px;border-radius:14px}
+.big{font-size:54px;font-weight:bold;color:#2f6b4f;line-height:1.1}
+.small{font-size:14px;margin-bottom:10px}
+.board[hidden]{display:none}
+.pick{display:flex;gap:10px;justify-content:center;margin-bottom:8px}
+.pick button{flex:1;max-width:180px;display:flex;align-items:center;justify-content:center;gap:6px;padding:3px 8px;background:#fff;color:#33241a;border:3px solid #cbb98f;border-radius:14px;box-shadow:none;font-size:17px}
+.pick button[aria-checked=true]{border-color:#d9482b;background:#ffe3bd}
+.pick span{white-space:nowrap}
+.pick button[aria-checked=true] span::after{content:" ✓";color:#d9482b}
+.pick canvas{position:static;display:block;width:50px;height:56px}
+.choose{font-weight:bold;font-size:13px;color:#2f6b4f;margin-bottom:4px}
+.who{font-size:14px;font-weight:bold;color:#2f6b4f;margin-top:6px}
+.review{background:#fff;border:3px solid #cbb98f;border-radius:12px;padding:4px 10px 6px;margin:5px 0}
+.review .who{margin:0}
+.stars{font-size:28px;line-height:1.15;letter-spacing:3px;color:#e89b00}
+.quote{font-size:17px;font-weight:bold;line-height:1.25}
+@media (max-height:700px){.card{padding:8px 14px}h1{font-size:26px}.lead{margin:0 0 5px;font-size:13px}.board{font-size:12px;line-height:1.25;padding:5px 10px}.board p{margin:1px 0}.pick{margin-bottom:5px}.pick canvas{width:36px;height:40px}.choose{margin-bottom:2px}.how{margin:5px 0 0;font-size:13px}.power{font-size:12px;margin:4px 0;padding:3px 6px}.keys{font-size:11px;margin-bottom:5px}#start button{font-size:16px}#go{padding:7px 24px}}
+@media (max-height:560px){.card{width:min(760px,100%);padding:8px 14px}h1{font-size:24px}.big{font-size:30px}.stars{font-size:22px}.quote{font-size:14px}.small{margin-bottom:6px}button{font-size:16px;padding:7px 24px}#mute{font-size:20px}.who{margin-top:2px}}
+@media (max-height:560px) and (min-width:540px){.cols{display:flex;gap:12px;align-items:center}.cols>div{flex:1;min-width:0}}
+/* very small phones: tighten the start card so Start is on screen without scrolling */
+@media (max-height:360px),(max-width:359px) and (max-height:600px){#start{padding:4px}#start .card{padding:3px 10px 6px;border-width:4px;box-shadow:none}#start h1{font-size:19px}#start .lead{font-size:11.5px;margin:0 0 2px}.choose{display:none}.pick{margin-bottom:3px}.pick button{font-size:14px;padding:0 4px}.pick canvas{width:27px;height:30px}.board{font-size:11px;line-height:1.18;padding:3px 7px;border-width:2px}.board h2{margin:0}.board p{margin:0}.how{font-size:12px;margin-top:3px;line-height:1.2}.power{font-size:11px;line-height:1.2;margin:3px 0;padding:2px 5px}.keys{font-size:10.5px;margin-bottom:6px;line-height:1.15}#start #go{font-size:15px;padding:5px 22px}}
+@media (max-width:359px) and (max-height:520px){#start .keys{display:none}#start .lead{font-size:11px}.board{font-size:10.5px}}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Zoo enclosure game area"></canvas>
+
+<div class="screen" id="start"><div class="card">
+  <h1>HUMAN EXHIBIT</h1>
+  <p class="lead">The animals have unionised and seized the zoo. Humans are now the exhibit.</p>
+  <div class="cols"><div>
+  <p class="choose" id="chooseLabel">Choose your visitor:</p>
+  <div class="pick" role="radiogroup" aria-labelledby="chooseLabel">
+    <button type="button" role="radio" aria-checked="true" data-v="gary"><canvas width="144" height="160"></canvas><span>Gary</span></button>
+    <button type="button" role="radio" aria-checked="false" data-v="brenda"><canvas width="144" height="160"></canvas><span>Brenda</span></button>
+  </div>
+  <div class="board" id="b-gary">
+    <h2>🔎 SPECIMEN #4471: "GARY, PROBABLY"</h2>
+    <p><b>Species:</b> <i>Homo bewilderus</i> (Day-Tripper).</p>
+    <p><b>Habitat:</b> Queues, gift shops, the wrong car park.</p>
+    <p><b>Diet:</b> $9 hot dogs and regret.</p>
+    <p><b>Behaviours:</b></p>
+    <p>• Pats pockets for keys already in hand.</p>
+    <p>• Taps glass, then reads "Do not tap".</p>
+    <p>• Pretends this was all part of the plan.</p>
+    <p><b>Status:</b> Only came for the gift shop.</p>
+  </div>
+  <div class="board" id="b-brenda" hidden>
+    <h2>🔎 SPECIMEN #4472: "BRENDA, MAYBE"</h2>
+    <p><b>Species:</b> <i>Homo narratus</i> (Rambler).</p>
+    <p><b>Habitat:</b> Stopped dead in the middle of the busiest path.</p>
+    <p><b>Diet:</b> Sandwiches made at 6am. Mentions it constantly.</p>
+    <p><b>Behaviours:</b></p>
+    <p>• Reads every sign aloud. Does the voices.</p>
+    <p>• Says sorry to every animal that chases her.</p>
+    <p>• Takes 40 photos. 38 are of her thumb.</p>
+    <p><b>Status:</b> Demanding to speak to the zookeeper.</p>
+  </div>
+  </div><div>
+  <p class="how">Collect goodies, dodge animals. Survive 60 seconds, or reach <span class="goal"></span> points to go free.</p>
+  <p class="power">🤳 <b>Cornered? ACT NATURAL</b> (button or Space): nearby animals freeze and can't touch you, so you can escape.</p>
+  <p class="keys">Arrows / WASD to move, or drag your finger (or mouse).</p>
+  <button id="go">🎟️ Start</button>
+  </div></div>
+</div></div>
+
+<div class="screen" id="over" hidden><div class="card">
+  <h1 id="oTitle"></h1>
+  <p class="lead" id="oText"></p>
+  <div class="big" id="oScore"></div>
+  <div class="review">
+    <div class="who" id="oWho"></div>
+    <div class="stars" id="oStars" role="img"></div>
+    <div class="quote" id="oRating"></div>
+  </div>
+  <p class="small" id="oStats"></p>
+  <button id="again"></button>
+</div></div>
+
+<canvas id="confetti" hidden aria-hidden="true"></canvas>
+
+<button id="mute" aria-label="Mute sound">🔊</button>
+<button id="act" hidden>🤳 ACT NATURAL<small id="actSub"></small></button>
+<div id="hint" hidden>Animals too close? Act natural.<small>Nearby animals freeze, so you can slip away.</small></div>
+
+<script>
+"use strict";
+const FREEDOM_TARGET=1200; // ← points needed to win your freedom. Change this one number to tune it.
+const $=id=>document.getElementById(id), cv=$('c'), X=cv.getContext('2d');
+const TAU=Math.PI*2, rnd=(a,b)=>a+Math.random()*(b-a), pick=a=>a[Math.random()*a.length|0],
+  clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const EMO='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+
+for(const e of document.querySelectorAll('.goal'))e.textContent=FREEDOM_TARGET; // keeps the start screen in step
+
+/* ---------- sound ---------- */
+let AC,master,muted=false;
+function initAudio(){
+  try{
+    if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=muted?0:.5;master.connect(AC.destination);}
+    if(AC.state==='suspended')AC.resume();
+  }catch(e){}
+}
+function cutSound(){ // silence anything still queued, e.g. the game-over tune on a quick restart
+  if(!AC)return;master.disconnect();master=AC.createGain();master.gain.value=muted?0:.5;master.connect(AC.destination);
+}
+function tone(f,end,dur,type='sine',vol=.2,delay=0,wob=0){
+  if(!AC||muted)return;
+  const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(end,t+dur);
+  if(wob){const l=AC.createOscillator(),lg=AC.createGain();l.frequency.value=wob;lg.gain.value=f*.08;l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+dur);}
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.015);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02);
+}
+const SFX={
+  levelUp:()=>{ // quick climb, then a little chord
+    [523,659,784,880,1047,1175].forEach((f,i)=>tone(f,f*1.02,.12,'triangle',.22,i*.1));[1047,1319,1568].forEach(f=>tone(f,f,.5,'triangle',.11,.62));},
+  freedom:()=>{ // marching band: "ta-DA!", snare roll, brassy oompah, cymbal crash
+    if(!AC)return;const t=AC.currentTime+.02,o=master;
+    brass(o,t,.13,[55,62,67],.1);brass(o,t+.15,.5,[60,64,67,72],.12);crash(o,t+.15,1.1,.22);tuba(o,t+.15,.45,36,.3);
+    for(let i=0;i<18;i++)snare(o,t+.55+i*.045,.05+i*.008); // roll, getting louder
+    [[1.36,36,[60,64,67]],[1.62,31,[59,62,67]],[1.88,36,[64,67,72]]].forEach(([at,b,ch])=>{tuba(o,t+at,.2,b,.32);brass(o,t+at+.12,.13,ch,.09);snare(o,t+at+.12,.14);});
+    brass(o,t+2.18,.95,[60,67,72,76,79],.11);tuba(o,t+2.18,.9,36,.32);crash(o,t+2.18,1.6,.25);},
+  ping:v=>{const f=v>=50?880:v>=25?740:620;tone(220,760,.06,'sine',.2);tone(f,f,.1,'triangle',.25);tone(f*1.5,f*1.5,.18,'triangle',.2,.07);if(v>=50)tone(f*2,f*2,.25,'sine',.18,.15);},
+  monkey:()=>[0,.1,.2].forEach((d,i)=>tone(500+i*120,900+i*150,.08,'square',.07,d)),
+  goat:()=>tone(420,300,.55,'sawtooth',.1,0,22),
+  dog:()=>{tone(330,150,.12,'square',.13);tone(360,160,.14,'square',.13,.17);},
+  goose:()=>{tone(280,240,.2,'sawtooth',.13,0,40);tone(300,200,.25,'sawtooth',.13,.22,40);},
+  penguin:()=>{tone(600,380,.18,'sawtooth',.07,0,30);},
+  llama:()=>tone(180,260,.35,'triangle',.25,0,12),
+  parrot:()=>{tone(1400,800,.14,'square',.08,0,45);tone(1100,1700,.18,'square',.08,.16,45);},
+  hit:()=>{tone(700,90,.35,'sawtooth',.18);tone(110,50,.25,'square',.2,.05);},
+  start:()=>[392,523,659,784].forEach((f,i)=>tone(f,f,.14,'triangle',.2,i*.09)),
+  tick:()=>tone(1000,1000,.07,'square',.08),
+  act:()=>{tone(900,1300,.16,'sine',.2);tone(1300,700,.3,'sine',.18,.18,9);},
+  event:()=>[660,880,660,990].forEach((f,i)=>tone(f,f,.11,'square',.09,i*.1)),
+  shutter:()=>{tone(2400,500,.05,'square',.14);tone(1800,300,.07,'square',.12,.09);},
+  over:win=>{
+    const boing=at=>tone(110,440,.4,'sine',.28,at,17),squeak=at=>{tone(900,1800,.09,'square',.08,at);tone(1800,900,.12,'square',.08,at+.12);};
+    if(win){ // kazoo fanfare, slide whistle, boing, rubber duck
+      [523,523,523,659,784,659,1047].forEach((f,i)=>tone(f,f,i>5?.55:.13,'sawtooth',.11,i*.14,28));
+      tone(300,1900,.55,'sine',.18,1.45);boing(2.05);squeak(2.5);
+    }else{ // sad trombone, falling slide whistle, boing, raspberry, rubber duck
+      [392,370,349].forEach((f,i)=>tone(f,f*.95,.31,'sawtooth',.14,i*.34,6));tone(330,104,1,'sawtooth',.16,1.02,5);
+      tone(1500,180,.6,'sine',.18,2.05);boing(2.65);tone(95,55,.6,'sawtooth',.22,3.1,33);squeak(3.75);
+    }
+  }
+};
+/* ---------- start-screen soundtrack: tuba, kazoo and a distant animal riot ---------- */
+const MUSIC={on:false,unlocked:false,bus:null,far:null,timer:0,step:0,next:0,riotAt:0};
+const BEAT=.25,hz=m=>440*2**((m-69)/12);
+const BASS=[36,36,41,36,43,41,36,43]; // one root per bar, played oom-pah
+const TUNE=[ // eight bars of eighth notes (MIDI numbers, 0 = rest)
+  72,0,76,79,0,76,72,0, 74,76,74,72,67,0,0,0, 77,0,81,84,0,81,77,0, 79,78,79,76,72,0,0,0,
+  79,0,79,81,79,0,74,0, 77,0,77,79,77,0,72,0, 76,77,79,76,72,74,76,72, 74,0,71,0,67,69,71,0];
+function voice(out,t,dur,f,end,{type='sawtooth',vol=.2,cut=800,q=1,filter='lowpass',wob=0,depth=.02}={}){
+  if(muted)return;
+  const o=AC.createOscillator(),flt=AC.createBiquadFilter(),g=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(end,t+Math.min(dur,.5));
+  if(wob){const l=AC.createOscillator(),lg=AC.createGain();l.frequency.value=wob;lg.gain.value=end*depth;l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+dur);}
+  flt.type=filter;flt.frequency.value=cut;flt.Q.value=q;
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.025);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(flt);flt.connect(g);g.connect(out);o.start(t);o.stop(t+dur+.02);
+}
+function farAnimal(t){ // muffled, as if the riot is over by the penguin house
+  const o=MUSIC.far,say=(at,dur,f,end,wob,depth,type='sawtooth')=>voice(o,t+at,dur,f,end,{type,vol:.5,cut:1100,wob,depth});
+  const kind=Math.random()*4|0;
+  if(kind===0){say(0,.22,290,250,38,.09);say(.27,.3,310,215,38,.09);} // goose honks
+  else if(kind===1)say(0,.8,430,330,19,.11); // goat bleat
+  else if(kind===2)for(let i=0;i<6;i++)say(i*.11,.09,520+i%3*140,760+i%3*160,0,0,'square'); // monkey chatter
+  else{say(0,.13,340,160,0,0,'square');say(.2,.16,370,170,0,0,'square');} // dog
+}
+function musicSchedule(until){
+  while(MUSIC.next<until){
+    const i=MUSIC.step%TUNE.length,bar=i>>3,beat=i%8,t=MUSIC.next+(i%2?.035:0); // a little swing
+    if(beat%2===0){const m=BASS[bar]+(beat%4===2?7:0)+(bar===7&&beat===6?5:0);
+      voice(MUSIC.bus,t,.3,hz(m)*1.12,hz(m),{vol:.55,cut:330,q:2});voice(MUSIC.bus,t,.28,hz(m),hz(m),{type:'sine',vol:.35});}
+    const n=TUNE[i];
+    if(n)voice(MUSIC.bus,t,TUNE[(i+1)%TUNE.length]?.24:.42,hz(n)*.94,hz(n),{vol:.2,cut:1300,q:3.5,filter:'bandpass',wob:7,depth:.025});
+    if(t>=MUSIC.riotAt){farAnimal(t);MUSIC.riotAt=t+3+Math.random()*3;}
+    MUSIC.next+=BEAT;MUSIC.step++;
+  }
+}
+function musicSetup(){
+  MUSIC.bus=AC.createGain();MUSIC.bus.gain.setValueAtTime(.001,AC.currentTime);
+  MUSIC.bus.gain.linearRampToValueAtTime(.2,AC.currentTime+.8);MUSIC.bus.connect(master); // quiet, and under the mute button
+  MUSIC.far=AC.createGain();MUSIC.far.gain.value=.4;MUSIC.far.connect(MUSIC.bus);
+  MUSIC.step=0;MUSIC.next=AC.currentTime+.08;MUSIC.riotAt=AC.currentTime+2;
+}
+function musicStop(){
+  if(!MUSIC.on)return;
+  MUSIC.on=false;clearInterval(MUSIC.timer);MUSIC.bus.disconnect();
+}
+// plays exactly while the start screen is showing, once a tap has unlocked sound
+function musicSync(){
+  const want=state==='start'&&MUSIC.unlocked&&!!AC&&!document.hidden;
+  if(want&&!MUSIC.on){musicSetup();MUSIC.on=true;MUSIC.timer=setInterval(()=>musicSchedule(AC.currentTime+.35),90);}
+  else if(!want)musicStop();
+}
+/* ---------- marching band: instruments, and the victory tune for the Freedom screen ---------- */
+let noiseBuf=null;
+function noise(out,t,dur,vol,filter,freq){
+  if(muted)return;
+  if(!noiseBuf||noiseBuf.sampleRate!==AC.sampleRate){noiseBuf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}
+  const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();
+  s.buffer=noiseBuf;f.type=filter;f.frequency.value=freq;
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  s.connect(f);f.connect(g);g.connect(out);s.start(t);s.stop(t+dur+.02);
+}
+const snare=(out,t,vol)=>noise(out,t,.09,vol,'bandpass',1900),
+  crash=(out,t,dur,vol)=>noise(out,t,dur,vol,'highpass',5200),
+  brass=(out,t,dur,notes,vol)=>notes.forEach(m=>voice(out,t,dur,hz(m)*.96,hz(m),{vol,cut:2100,q:1.2,wob:5.5,depth:.008})),
+  tuba=(out,t,dur,m,vol)=>voice(out,t,dur,hz(m)*1.06,hz(m),{vol,cut:360,q:1.5});
+const MARCH={on:false,bus:null,timer:0,step:0,next:0};
+const MARCH_ROOTS=[48,48,43,48,41,48,43,48],MARCH_TUNE=[ // eight bars of eighth notes
+  67,0,72,0,76,0,72,0, 79,0,0,79,76,0,72,0, 74,0,79,0,77,0,74,0, 76,0,72,0,67,0,0,0,
+  69,0,72,0,77,0,72,0, 76,0,79,0,84,0,79,0, 77,0,74,0,71,0,74,0, 72,0,76,72,72,0,0,0];
+function marchSchedule(until){
+  if(MARCH.next<AC.currentTime)MARCH.next=AC.currentTime+.05; // catch up after a hidden tab
+  while(MARCH.next<until){
+    const i=MARCH.step%MARCH_TUNE.length,bar=i>>3,beat=i%8,t=MARCH.next,o=MARCH.bus,root=MARCH_ROOTS[bar];
+    if(beat%4===0)tuba(o,t,.34,root-(beat?5:12),.5); // oom...
+    if(beat%4===2){brass(o,t,.12,[root+16,root+19],.12);snare(o,t,.22);} // ...pah
+    if(bar===7&&beat>=5)snare(o,t+.125,.14);
+    if(i===0)crash(o,t,.9,.18);
+    const n=MARCH_TUNE[i];if(n)brass(o,t,MARCH_TUNE[(i+1)%64]?.22:.4,[n],.26);
+    MARCH.next+=BEAT;MARCH.step++;
+  }
+}
+function marchStart(delay){
+  marchStop();if(!AC)return;
+  MARCH.bus=AC.createGain();MARCH.bus.gain.value=.22;MARCH.bus.connect(master); // modest, and under the mute button
+  MARCH.step=0;MARCH.next=AC.currentTime+delay;MARCH.on=true;
+  MARCH.timer=setInterval(()=>{if(!document.hidden)marchSchedule(AC.currentTime+.35);},90);
+}
+function marchStop(){if(!MARCH.on)return;MARCH.on=false;clearInterval(MARCH.timer);MARCH.bus.disconnect();}
+
+for(const type of ['pointerdown','click','keydown'])addEventListener(type,e=>{
+  if(state!=='start'||e.target.closest?.('#go'))return; // pressing Start goes straight into the game
+  initAudio();MUSIC.unlocked=true;musicSync();
+},true);
+addEventListener('visibilitychange',()=>musicSync());
+
+$('mute').onclick=()=>{initAudio();muted=!muted;if(master)master.gain.value=muted?0:.5;$('mute').textContent=muted?'🔇':'🔊';$('mute').blur();};
+
+/* ---------- world & layout ----------
+   The world has a fixed area (~520k units) but takes the screen's aspect ratio. */
+let W=900,H=600,S=1,OX=0,OY=0,DPR=1,vw=0,vh=0,HUD=56,bg,side=false;
+// screen space for the world: leaves a strip for the Act Natural button (at the side on short, wide screens)
+function area(){side=vh<520&&vw>vh*1.4;document.body.classList.toggle('side',side);
+  return{aw:Math.max(1,vw-(side?116:0)),ah:Math.max(100,vh-HUD-(side?0:92))};}
+function fit(){const{aw,ah}=area();S=Math.min(aw/W,ah/H);OX=(aw-W*S)/2;OY=HUD+(ah-H*S)/2;}
+const PAD=30;
+let pond,rocks=[],trough,decor=[],signs=[];
+function layout(){
+  vw=innerWidth;vh=innerHeight;DPR=Math.min(devicePixelRatio||1,2);
+  cv.width=Math.max(1,vw*DPR);cv.height=Math.max(1,vh*DPR); // a hidden frame can report size 0
+  cv.style.width=vw+'px';cv.style.height=vh+'px';
+  HUD=vh<460?44:58;
+  if(state==='start'){ // pick the world shape when a round is set up
+    const{aw,ah}=area(),ar=clamp(aw/ah,.5,2.1);W=Math.sqrt(520000*ar);H=520000/W;buildScenery();
+  }
+  fit();
+  paintBg();
+}
+function buildScenery(){
+  pond={x:W*.76,y:H*.25,rx:Math.min(105,W*.16),ry:Math.min(70,H*.12)};
+  rocks=[{x:W*.22,y:H*.30,r:30},{x:W*.70,y:H*.74,r:36},{x:W*.76,y:H*.77,r:22}];
+  trough={x:W*.12,y:H*.76,w:100,h:36};
+  signs=[ // flat to the ground: you can walk over them, and tap them
+    // "|" marks where a sign wraps onto two lines on small screens
+    {x:W/2,y:H-17,t:'PLEASE DO NOT|FEED THE HUMAN',reply:'Rules? Never heard of them.',feed:true},
+    {x:W*.46,y:46,t:'SPECTATORS:|NO WAVING',reply:'A panda saw that.'},
+    {x:pond.x,y:pond.y+pond.ry+24,t:'DUCK:|JUST VISITING',reply:'The duck disputes this.'},
+    {x:105,y:H*.52,t:'DO NOT TAP|THE HUMAN',reply:'You tapped the sign. Bold.'},
+    {x:W-80,y:H*.9,t:'EXIT:|CLOSED',reply:'Back after lunch. Since 1987.'}
+  ];
+  decor=[];
+  for(let i=0;i<90;i++)decor.push({x:rnd(PAD,W-PAD),y:rnd(PAD,H-PAD),t:Math.random()<.18?pick(['#fff','#ffd23f','#ff8fb1']):0});
+}
+function ell(c,x,y,rx,ry,fill,stroke,lw){c.beginPath();c.ellipse(x,y,Math.max(0,rx),Math.max(0,ry),0,0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=lw||3;c.stroke();}}
+function box(c,x,y,w,h,r,fill,stroke,lw){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=lw||3;c.stroke();}}
+function txt(c,s,x,y,size,fill,align='center',outline){c.font=`bold ${size}px "Trebuchet MS",system-ui,sans-serif`;c.textAlign=align;c.textBaseline='middle';if(outline){c.lineJoin='round';c.lineWidth=size/4;c.strokeStyle=outline;c.strokeText(s,x,y);}c.fillStyle=fill;c.fillText(s,x,y);}
+function emo(c,s,x,y,size){c.font=`${size}px ${EMO}`;c.textAlign='center';c.textBaseline='middle';c.fillStyle='#000';c.fillText(s,x,y);}
+function paintBg(){
+  bg=document.createElement('canvas');bg.width=cv.width;bg.height=cv.height;
+  const c=bg.getContext('2d');c.scale(DPR,DPR);
+  c.fillStyle='#3f7d3c';c.fillRect(0,0,vw,vh);
+  c.translate(OX,OY);c.scale(S,S);
+  box(c,0,0,W,H,26,'#8fd15a');
+  c.save();c.clip();
+  c.fillStyle='#98d862';for(let x=0;x<W;x+=110)c.fillRect(x,0,55,H);
+  ell(c,W*.45,H*.55,W*.2,H*.13,'#d9bd7c55');
+  c.restore();
+  for(const d of decor){
+    if(d.t){for(let i=0;i<5;i++)ell(c,d.x+Math.cos(i*1.26)*4,d.y+Math.sin(i*1.26)*4,3,3,d.t);ell(c,d.x,d.y,2.5,2.5,'#f29a1f');}
+    else{c.strokeStyle='#5fa83c';c.lineWidth=2;c.beginPath();c.moveTo(d.x-5,d.y-6);c.lineTo(d.x,d.y);c.lineTo(d.x+1,d.y-8);c.moveTo(d.x,d.y);c.lineTo(d.x+6,d.y-5);c.stroke();}
+  }
+  const p=pond;
+  ell(c,p.x,p.y,p.rx+10,p.ry+10,'#d9bd7c');ell(c,p.x,p.y,p.rx,p.ry,'#4db8e8','#2a8fc4',4);
+  ell(c,p.x-p.rx*.4,p.y-p.ry*.4,p.rx*.25,p.ry*.12,'#bfeaff');
+  ell(c,p.x+p.rx*.35,p.y+p.ry*.3,17,11,'#3c9b46');emo(c,'🦆',p.x-p.rx*.2,p.y+p.ry*.15,26);
+  for(const r of rocks){ell(c,r.x+4,r.y+r.r*.55,r.r*1.1,r.r*.45,'#0002');ell(c,r.x,r.y,r.r,r.r*.82,'#a7a4ad','#6d6a75',4);ell(c,r.x-r.r*.3,r.y-r.r*.3,r.r*.35,r.r*.2,'#d3d1d8');}
+  const t=trough;
+  box(c,t.x-t.w/2,t.y-t.h/2,t.w,t.h,9,'#a8692f','#6b3f19',4);box(c,t.x-t.w/2+8,t.y-t.h/2+6,t.w-16,t.h-15,6,'#6b3f19');
+  ['🥕','🥬','🍎'].forEach((e,i)=>emo(c,e,t.x-27+i*27,t.y-8,22));
+  const fs=clamp(10.5/S,13,24); // sign lettering never drops below about 10 screen pixels
+  txt(c,'HUMAN FEED',Math.max(t.x,fs*3.8),t.y+t.h/2+fs*.9,fs,'#4a2c10','center','#fff6dc');
+  // fence
+  c.strokeStyle='#8a5a2b';c.lineWidth=6;
+  for(const o of [5,17]){box(c,o,o,W-o*2,H-o*2,22,0,'#8a5a2b',4);}
+  const post=(x,y)=>box(c,x-6,y-11,12,22,4,'#c08648','#6b3f19',2.5);
+  const nx=Math.round(W/64),ny=Math.round(H/64);
+  for(let i=0;i<=nx;i++){const x=12+(W-24)*i/nx;post(x,11);post(x,H-11);}
+  for(let i=1;i<ny;i++){const y=12+(H-24)*i/ny;post(11,y);post(W-11,y);}
+  for(const s of signs){
+    const lines=fs>14?s.t.split('|'):[s.t.replace('|',' ')],lh=fs*1.12;
+    c.font=`bold ${fs}px "Trebuchet MS",system-ui,sans-serif`;
+    s.w=Math.max(...lines.map(l=>c.measureText(l).width))+fs+5;s.h=lines.length*lh+11;
+    s.ax??=s.x;s.ay??=s.y; // keep the whole sign inside the fence, whatever its size
+    s.x=clamp(s.ax,s.w/2+3,W-s.w/2-3);
+    s.y=s.t.startsWith('DUCK')?pond.y+pond.ry+10+s.h/2:clamp(s.ay,s.h/2+(s.feed?3:24),H-s.h/2-(s.feed?4:8));
+    if(!s.feed)for(const o of [-1,1])box(c,s.x+o*(s.w/2-12)-3,s.y+s.h/2-5,6,13,2,'#8a5a2b','#6b3f19',1.5);
+    box(c,s.x-s.w/2,s.y-s.h/2,s.w,s.h,6,'#fff6dc','#8a5a2b',3);
+    lines.forEach((l,i)=>txt(c,l,s.x,s.y+1+(i-(lines.length-1)/2)*lh,fs,'#7a3a12'));
+  }
+}
+
+/* ---------- state ---------- */
+const DUR=60;
+let state='start',P,animals=[],items=[],floats=[],parts=[],visitors,score=0,hearts=3,elapsed=0,
+  spawnT=0,shake=0,banner=null,pendingA=null,best=0,got=0,lastTick=0;
+const keys={},touch={on:false,x:0,y:0,id:null};
+
+const ITEMS=[
+  {e:'🍌',v:10},{e:'🍌',v:10},{e:'🧸',v:10},{e:'🧦',v:10},{e:'🪀',v:15},{e:'🥨',v:15},{e:'🦆',v:15},
+  {e:'🔑',v:25},{e:'🕶️',v:25},{e:'📱',v:25}
+];
+const RARE=[{e:'💎',v:50},{e:'👑',v:60},{e:'🏆',v:50}];
+
+function blocked(x,y,r){
+  return x<PAD+r||x>W-PAD-r||y<PAD+r||y>H-PAD-r-8||rocks.some(k=>Math.hypot(x-k.x,y-k.y)<k.r+r)||
+    (Math.abs(x-trough.x)<trough.w/2+r&&Math.abs(y-trough.y)<trough.h/2+r);
+}
+function spawnItem(rare){
+  let x,y,i=0,bestS=-1,cx,cy;
+  // rare goodies appear beside an animal, or in a corner, i.e. somewhere risky
+  const near=rare&&animals.filter(a=>a.enter<=0);
+  while(i<60){
+    i++;
+    if(rare){
+      if(near.length&&Math.random()<.65){const a=pick(near),q=rnd(0,TAU),d=rnd(55,100);x=a.x+Math.cos(q)*d;y=a.y+Math.sin(q)*d;}
+      else{x=Math.random()<.5?rnd(50,100):W-rnd(50,100);y=Math.random()<.5?rnd(50,100):H-rnd(58,108);}
+    }else{x=rnd(55,W-55);y=rnd(55,H-60);}
+    if(blocked(x,y,18))continue;
+    const sc=Math.min(dist({x,y},P),...items.map(o=>Math.hypot(o.x-x,o.y-y)));
+    if(sc>bestS){bestS=sc;cx=x;cy=y;}
+    if(sc>85)break;
+  }
+  if(cx===undefined)return;
+  const d=pick(rare?RARE:ITEMS);
+  items.push({x:cx,y:cy,e:d.e,v:d.v,rare,age:0,life:rare?6.5:14});
+}
+function float(x,y,s,col='#fff',size=24,life=1.3){
+  // keep captions inside the fence
+  X.font=`bold ${size}px "Trebuchet MS",system-ui,sans-serif`;
+  const half=X.measureText(s).width/2+14;
+  floats.push({x:clamp(x,half,W-half),y:clamp(y,50,H-20),s,col,size,t:0,life});
+}
+function burst(x,y,e,n){for(let i=0;i<n;i++){const a=rnd(0,TAU),s=rnd(60,190);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,e,t:0});}}
+
+/* ---------- animals ---------- */
+const KINDS={
+  monkey:{r:20,sign:'Monkey. Hold on to your hat.',spd:84,msg:['Monkey rifled your pockets!','Monkey wore you as a hat!','Monkey checked you for fleas!']},
+  goat:{r:22,sign:'Goat. Do not make eye contact.',spd:340,msg:['Headbutted. Politely.','Goat ate your receipt!','Goat booped your bum!']},
+  dog:{r:21,sign:'Dog. Not ours. Claims to be staff.',spd:175,msg:['LICKED. Entirely.','Slobbered with love!','Dog sat on your foot!']},
+  parrot:{r:18,sign:'Parrot. Guard your snacks.',spd:150,msg:['Parrot stole your snack!','Your hot dog has flown!','SNACK NABBED. No remorse.']},
+  goose:{r:19,sign:'Goose. Apologise in advance.',spd:98,msg:['HONKED at point blank!','Goose judged your shoes!','Goose took your lunch money!']},
+  penguin:{r:19,sign:'Penguin. Has no brakes.',spd:205,msg:['Belly-slid into your shins!','Audited by a penguin!']},
+  llama:{r:24,sign:'Llama. Already filming you.',spd:68,msg:['PHOTOBOMBED!','Unflattering photo taken!','Llama spat. Artistically.']}
+};
+const LEVELS=[
+  // start: stands in the enclosure as the level begins; later: [seconds into the level, animal] walking in
+  {name:'Warm-up',start:'monkey',later:[],speed:.86,wild:0,weave:95,goodies:10,done:['Level 1 survived.','The monkey is impressed.']},
+  {name:'Getting Busy',start:'goat',later:[[4,'dog']],speed:.935,wild:.35,goodies:6,done:['Level 2 survived.','The goat gives a small bleat of approval.']},
+  {name:'Chaos',later:[[0,'parrot'],[5.5,'goose'],[11,'llama'],[16.5,'penguin']],speed:.98,wild:.8,goodies:6}
+];
+const MAX_ANIMALS=6,MONKEY_OFF=15.7; // the monkey clocks off in Chaos to make room for the last arrival
+let intro=0; // time left on the Level 1 introduction card
+const LEVEL_T=20,BREAK=1.5,GRACE=2,INTRO=2.5;
+let level=0,brk=0,arrived=0;
+function startLevel(n){
+  mood={from:Math.max(0,n-1),k:n?0:1};level=n;brk=0;arrived=0;pendingA=null;ev=null;evQueue=planEvents(n);
+  for(const a of animals){ // everyone calms down for the grace period
+    a.vx=a.vy=a.sayT=a.frozen=0;a.enter=0;a.run=3;a.mode=a.type==='goat'?'roam':'go';a.t=rnd(.7,1.5);
+  }
+  // the level's opening newcomer stands inside the fence, as far from the human as possible
+  const type=LEVELS[n].start;
+  if(!type)return;
+  const r=KINDS[type].r;
+  const s=[[100,H/2],[W-100,H/2],[W/2,100],[W/2,H-105],[100,100],[W-100,H-105],[100,H-105],[W-100,100]]
+    .map(([x,y])=>({type,x,y})).filter(o=>!blocked(o.x,o.y,r)).sort((a,b)=>dist(b,P)-dist(a,P))[0];
+  addAnimal(s);animals[animals.length-1].enter=0;
+  banner={s:KINDS[type].sign,t:2.6};
+}
+function announce(type){
+  // choose the entry side furthest from the human
+  const sides=[{x:-30,y:rnd(H*.2,H*.8)},{x:W+30,y:rnd(H*.2,H*.8)},{x:rnd(W*.2,W*.8),y:-30},{x:rnd(W*.2,W*.8),y:H+30}];
+  sides.sort((a,b)=>dist(b,P)-dist(a,P));
+  const s=type==='parrot'?{x:rnd(W*.2,W*.8),y:-30}:sides[Math.random()*2|0]; // parrots come from above
+  pendingA={type,x:s.x,y:s.y,t:1.2};
+  banner={s:KINDS[type].sign,t:2.6};
+}
+function addAnimal(p){
+  const k=KINDS[p.type];
+  const a={type:p.type,k,x:p.x,y:p.y,vx:0,vy:0,r:k.r,enter:1,mode:'go',t:rnd(1,2),run:3,face:1,seed:rnd(0,9),mul:rnd(.9,1.1),say:'',sayT:0,dx:0,dy:0};
+  a.tx=clamp(p.x,PAD+50,W-PAD-50);a.ty=clamp(p.y,PAD+50,H-PAD-55);
+  if(p.type==='goat'){a.mode='roam';a.t=.7;}
+  if(p.type==='parrot'){a.z=110;a.ty=H*.45;} // z is height above the ground
+  animals.push(a);SFX[p.type]();
+}
+function say(a,s,t=1){a.say=s;a.sayT=t;}
+function steer(a,tx,ty,speed,grip,dt){
+  const dx=tx-a.x,dy=ty-a.y,d=Math.hypot(dx,dy)||1,f=1-Math.exp(-grip*dt);
+  a.vx+=(dx/d*speed-a.vx)*f;a.vy+=(dy/d*speed-a.vy)*f;
+}
+function flyParrot(a,dt,ramp){ // circle overhead -> mark a target -> swoop through it
+  if(a.mode==='dive'){
+    a.u+=dt*ramp/.65;
+    a.x=clamp(a.fx+(a.tx-a.fx)*a.u,PAD,W-PAD);a.y=clamp(a.fy+(a.ty-a.fy)*a.u,PAD,H-PAD);
+    a.z=110*(1-a.u)**2; // touches the ground at u=1, then climbs again
+    if(a.u>=1.7){a.mode='go';a.t=rnd(2.5,4);}
+    return;
+  }
+  a.z+=(110-a.z)*Math.min(1,dt*3);
+  if(a.mode==='go'){
+    const q=elapsed*1.8+a.seed;
+    steer(a,P.x+Math.cos(q)*170,P.y+Math.sin(q)*90,a.k.spd*ramp,3,dt);
+    if(a.t<0&&P.snack&&P.inv<=0){a.mode='aim';a.t=.9;a.tx=P.x;a.ty=P.y;SFX.parrot();say(a,'SNACK!',.9);}
+  }else if(a.mode==='aim'){
+    a.vx*=.85;a.vy*=.85;
+    if(a.t>.4){a.tx=P.x;a.ty=P.y;} // the target follows, then locks
+    if(a.t<0){a.mode='dive';a.u=0;a.fx=a.x;a.fy=a.y;a.vx=a.tx-a.x;a.vy=a.ty-a.y;a.face=a.vx<0?-1:1;}
+    else a.face=P.x<a.x?-1:1;
+  }else{ // 'away': making off with the loot
+    steer(a,a.x+a.face*120,a.y-100,230,3,dt);
+    if(a.t<0){a.mode='go';a.t=rnd(2,3);a.loot=false;}
+  }
+  a.x=clamp(a.x+a.vx*dt,PAD,W-PAD);a.y=clamp(a.y+a.vy*dt,PAD,H-PAD);
+  if(a.mode!=='aim'&&Math.abs(a.vx)>12)a.face=Math.sign(a.vx);
+}
+function updateAnimal(a,dt){
+  const ramp=LEVELS[level].speed, sp=a.k.spd*ramp*a.mul, wild=LEVELS[level].wild;
+  a.t-=dt;a.sayT-=dt;
+  if(a.enter>0){ // walk in through the fence, harmless until inside
+    a.enter-=dt*.9;steer(a,a.tx,a.ty,a.z?280:130,8,dt);a.x+=a.vx*dt;a.y+=a.vy*dt;
+    if(Math.abs(a.vx)>8)a.face=Math.sign(a.vx);return;
+  }
+  if(a.type==='parrot'){flyParrot(a,dt,ramp);return;}
+  const lead={dog:.25,goat:.12,penguin:.25}[a.type]||0, px=P.x+P.vx*lead, py=P.y+P.vy*lead; // how far ahead they aim
+  switch(a.type){
+    case 'monkey': // chases, weaving; sometimes stops to scratch
+      if(a.mode==='go'){
+        // "weave" adds extra zig-zag from a distance only, so it still closes in properly up close
+        const q=Math.sin(elapsed*3+a.seed)*(35+60*wild),near=Math.min(1,dist(a,P)/160),far=(LEVELS[level].weave||0)*clamp((dist(a,P)-90)/140,0,1);
+        steer(a,P.x+q*near+Math.sin(elapsed*3+a.seed)*far,P.y+Math.cos(elapsed*2.3+a.seed)*(q*near+far),sp,4,dt);
+        if(a.t<0){a.mode='rest';a.t=rnd(.6,1.1);say(a,pick(['*scratch*','ooh ooh','🍌?']),a.t);if(Math.random()<.5)SFX.monkey();}
+      }else{a.vx*=.85;a.vy*=.85;if(a.t<0){a.mode='go';a.t=rnd(2.5,4.5);}}
+      break;
+    case 'goat': // roam -> paw + "!" -> charge in a straight line -> dazed
+      if(a.mode==='roam'){
+        steer(a,a.tx,a.ty,70*ramp,5,dt);
+        if(dist(a,{x:a.tx,y:a.ty})<20){a.tx=rnd(60,W-60);a.ty=rnd(60,H-70);}
+        if(a.t<0){a.mode='paw';a.t=Math.max(.7,1.15-.45*wild);SFX.goat();say(a,'MEEEH!',.8);}
+      }else if(a.mode==='paw'){
+        a.vx=a.vy=0;
+        if(a.t>.35){const dx=px-a.x,dy=py-a.y,d=Math.hypot(dx,dy)||1;a.dx=dx/d;a.dy=dy/d;} // aim locks just before launch
+        a.face=a.dx<0?-1:1;
+        if(Math.random()<dt*14)parts.push({x:a.x-a.face*18,y:a.y+18,vx:-a.face*rnd(20,80),vy:rnd(-50,-10),e:'💨',t:.35});
+        if(a.t<0){a.mode='charge';a.t=1;}
+      }else if(a.mode==='charge'){
+        a.vx=a.dx*sp;a.vy=a.dy*sp;
+        if(a.t<0){a.mode='daze';a.t=.8;}
+      }else{a.vx*=.82;a.vy*=.82;if(a.t<0){a.mode='roam';a.t=rnd(1.2,2.6)-wild*.7;a.tx=rnd(60,W-60);a.ty=rnd(60,H-70);}}
+      break;
+    case 'dog': // fast with terrible brakes, and has to stop for a pant
+      if(a.mode==='go'){
+        steer(a,px,py,sp,1.2+wild*.4,dt);a.run-=dt;
+        const toward=(P.x-a.x)*a.vx+(P.y-a.y)*a.vy;
+        if(toward<0&&dist(a,P)<170&&a.t<0){a.mode='skid';a.t=.8;say(a,pick(['WHEEE','oops','BORK!']),.8);SFX.dog();}
+        else if(a.run<0){a.mode='skid';a.t=1.4;say(a,'*pant pant*',1.3);}
+      }else{a.vx*=Math.exp(-2*dt);a.vy*=Math.exp(-2*dt);if(a.t<0){a.mode='go';a.t=.7;if(a.run<0)a.run=rnd(2,3.5);}}
+      break;
+    case 'goose': // zig-zags, then honks and lunges
+      if(a.mode==='go'){
+        const dx=P.x-a.x,dy=P.y-a.y,d=Math.hypot(dx,dy)||1,z=Math.sin(elapsed*6+a.seed)*Math.min(110,d*.6);
+        steer(a,P.x-dy/d*z,P.y+dx/d*z,sp,5,dt);
+        if(a.t<0&&d<240){a.mode='honk';a.t=.55;SFX.goose();say(a,'HONK!',.9);}
+      }else if(a.mode==='honk'){a.vx*=.8;a.vy*=.8;if(a.t<0){const dx=P.x-a.x,dy=P.y-a.y,d=Math.hypot(dx,dy)||1;a.vx=dx/d*sp*2.1;a.vy=dy/d*sp*2.1;a.mode='lunge';a.t=.45;}}
+      else if(a.t<0){a.mode='go';a.t=rnd(2,3.5);}
+      break;
+    case 'penguin': // waddles, then belly slides and bounces off the fence
+      if(a.mode==='go'){
+        steer(a,a.x+Math.sin(elapsed*4)*60+(P.x-a.x)*.2,P.y,60*ramp,4,dt);
+        if(a.t<0){a.mode='wind';a.t=.65;say(a,'wheee...',.65);SFX.penguin();}
+      }else if(a.mode==='wind'){a.vx=a.vy=0;if(a.t<0){const q=Math.atan2(py-a.y,px-a.x);a.vx=Math.cos(q)*sp;a.vy=Math.sin(q)*sp;a.mode='slide';a.t=2;}}
+      else if(a.t<0){a.mode='go';a.t=rnd(1.5,3);}
+      break;
+    case 'llama': // ambles ahead of you to get in the shot
+      steer(a,P.x+P.vx*1.1,P.y+P.vy*1.1+Math.sin(elapsed+a.seed)*50,sp,2.5,dt);
+      if(a.t<0){a.t=rnd(3,5);say(a,pick(['📸 smile!','📸 *click*','content!']),1.1);SFX.llama();}
+      break;
+  }
+  a.x+=a.vx*dt;a.y+=a.vy*dt;
+  if(Math.abs(a.vx)>12)a.face=Math.sign(a.vx);
+  const m=PAD+a.r*.7;
+  if(a.x<m||a.x>W-m){a.x=clamp(a.x,m,W-m);a.vx*=a.type==='penguin'?-1:-.3;if(a.mode==='charge'){a.mode='daze';a.t=1.1;say(a,'bonk',1);}}
+  if(a.y<m||a.y>H-m){a.y=clamp(a.y,m,H-m);a.vy*=a.type==='penguin'?-1:-.3;if(a.mode==='charge'){a.mode='daze';a.t=1.1;say(a,'bonk',1);}}
+}
+
+/* ---------- Act Natural ---------- */
+const ACT_R=190,FREEZE=1.5,COOLDOWN=6;
+let pulse=0,hintSeen=false,hintT=0; // the hint shows once per visit
+let barHintSeen=false,barHintT=0,barCovered=false,barBox=null; // "Fill this bar" hint, also once per visit
+const inRange=a=>!a.leaving&&dist(a,P)<ACT_R+a.r;
+// how many animals a press would usefully freeze right now (0 while recharging or while they're standing still or harmless anyway)
+const catchable=()=>P.cd>0||intro>0||brk>0||elapsed-level*LEVEL_T<GRACE||is('feeding')||snapped()?0:animals.filter(a=>!(a.frozen>0)&&inRange(a)).length;
+function act(){
+  if(state!=='play'||intro>0||brk>0||P.cd>0||snapped())return;
+  P.cd=COOLDOWN;P.pose=FREEZE;P.poseKind=1-P.poseKind;pulse=.5;hintSeen=true;hintT=0;SFX.act();
+  let n=0;
+  for(const a of animals)if(inRange(a)){
+    n++;a.frozen=FREEZE;a.vx=a.vy=a.sayT=0;
+    // whatever it was plotting is forgotten, so it restarts gently
+    if(a.enter<=0){a.mode=a.type==='goat'?'roam':'go';a.t=rnd(1.2,2.2);a.run=3;a.loot=false;}
+  }
+  float(P.x,P.y-86,P.poseKind?'*awkward wave*':'*checks phone*','#fff',19,1.4);
+  float(P.x,P.y-60,n?n+(n>1?' animals':' animal')+' frozen. Escape!':'Too far away. Nobody froze.','#7ff6ff',23,1.6);
+  if(n)crowdReact('cards');
+}
+
+// walk straight out through the nearest fence, harmlessly, within 1.8 seconds
+function sendOff(a){
+  const[,x,y]=[[a.x,-60,a.y],[W-a.x,W+60,a.y],[a.y,a.x,-60],[H-a.y,a.x,H+60]].sort((p,q)=>p[0]-q[0])[0];
+  a.leaving=1.8;a.frozen=0;a.mode='go';a.vx=(x-a.x)/1.8;a.vy=(y-a.y)/1.8;a.face=a.vx<0?-1:1;say(a,'union break!',1.8);
+}
+
+/* ---------- random events ---------- */
+const EVENTS={
+  feeding:{icon:'🥕',name:'FEEDING TIME!',tip:'Animals are busy eating. Points ×2!',col:'#c96f00'},
+  selfie:{icon:'📸',name:'SELFIE STAMPEDE!',tip:'Each flash freezes everyone, you too.',col:'#8e44ad'},
+  sprinkler:{icon:'💦',name:'SPRINKLER SURPRISE!',tip:'Slippery ground. Everyone slows down.',col:'#1b77b5'},
+  cart:{icon:'🛺',name:"ZOOKEEPER'S GOLF CART!",tip:'It won\'t stop. Get out of its way!',col:'#277a44'}
+};
+const CART_WARN=1.3,SNAP=.8,SPRINKLERS=[[.28,.28],[.68,.48],[.32,.72],[.74,.86]];
+let ev=null,evQueue=[]; // only ever one event at a time
+const is=type=>!!ev&&ev.type===type,snapped=()=>!!ev&&ev.hold>0;
+// times are seconds into the level; every event finishes before the level does
+function planEvents(n){
+  if(n===0)return[];
+  if(n===1)return[{at:rnd(3.5,10),type:pick(['feeding','selfie']),dur:rnd(5,8)}];
+  const at=rnd(2.5,3.5),dur=rnd(5.5,7),next=at+dur+rnd(1,1.8);
+  return[{at,dur,type:pick(['sprinkler','cart'])},{at:next,dur:rnd(5,7),type:'feeding'}]; // then some relief
+}
+function beginEvent(e){
+  ev={type:e.type,dur:e.dur,t:0,hold:0,next:1.5};
+  if(ev.type==='cart'){const dir=Math.random()<.5?1:-1;ev.cart={x:dir>0?-90:W+90,y:H*rnd(.36,.64),dir,isCart:true};}
+  SFX.event();
+}
+function endEvent(){
+  if(is('feeding')){ // back to business, with a moment to get clear
+    for(const a of animals)if(!a.leaving&&a.enter<=0){a.mode=a.type==='goat'?'roam':'go';a.t=rnd(1.2,2.2);a.run=3;a.sayT=0;}
+    P.inv=Math.max(P.inv,1.2);
+  }
+  ev=null;
+}
+function feed(a,dt){ // gather round the trough
+  const i=animals.indexOf(a),q=-1.8+i*.6,rad=80+(i%2)*40,
+    tx=clamp(trough.x+Math.cos(q)*rad*1.3,PAD+a.r,W-PAD-a.r),ty=clamp(trough.y+Math.sin(q)*rad,PAD+a.r,H-PAD-a.r-10),
+    d=Math.hypot(tx-a.x,ty-a.y);
+  a.sayT-=dt;
+  if(d>14){steer(a,tx,ty,Math.min(340,d*4),8,dt);if(Math.abs(a.vx)>12)a.face=Math.sign(a.vx);}
+  else{a.vx=a.vy=0;a.face=trough.x<a.x?-1:1;if(a.sayT<-1&&Math.random()<dt)say(a,'nom nom',.9);}
+  a.x+=a.vx*dt;a.y+=a.vy*dt;
+  if(a.type==='parrot')a.z+=((d>60?110:0)-a.z)*Math.min(1,dt*3);
+}
+function shove(o,r){ // the cart is solid, but it never costs dignity
+  const c=ev.cart,hw=60+r*.8,hh=30+r*.8,dx=o.x-c.x,dy=o.y-c.y,ox=hw-Math.abs(dx),oy=hh-Math.abs(dy);
+  if(ox<=0||oy<=0)return;
+  const nx=c.x+Math.sign(dx||1)*hw;
+  if(ox<oy&&nx>PAD+r&&nx<W-PAD-r)o.x=nx;else o.y=c.y+Math.sign(dy||1)*hh;
+}
+
+/* ---------- visitor reviews ---------- */
+const REVIEWS=[ // one list per star rating, 1 to 5
+  ['Left early. Left a shoe.','Less lively than the rock.','Screamed at a duck.','Tripped over nothing. Twice.','Asked the goat for directions.'],
+  ['Smelled of coffee.','Fled politely. Nothing special.','Mostly flapping.','Kept asking about the exit.','Seen better humans in car parks.'],
+  ['Adequate panic.','Ran in circles. We respect that.','Decent exhibit. Weak snacks.','The llama got one good photo.','Would watch again, if free.'],
+  ['Superb flailing.','The goat requested an autograph.','Collects socks with real passion.','Dodged like a tax form.','Brought joy and a hot dog.'],
+  ['Flawless human. We wept.','Union voted: keep this one.','Even the goose clapped.','Best exhibit since the revolving door.','Ten out of ten kneecaps.']
+],lastReview=[];
+// level reached sets the range; score decides where in it you land
+const starsFor=(win,lv,pts)=>win?3+(pts>=900)+(pts>=1400):lv===1?1:lv===2?1+(pts>=500):2+(pts>=800);
+function freshReview(stars){ // never the same line twice running for a rating
+  const list=REVIEWS[stars-1];let i;
+  do i=Math.random()*list.length|0;while(i===lastReview[stars]);
+  lastReview[stars]=i;return list[i];
+}
+
+/* ---------- Easter eggs: tap the human, the duck or a sign ---------- */
+const POKES={
+  gary:['Oi. No tapping the exhibit.','Is this part of the tour?','I paid £22 for this.','Have you seen my keys?'],
+  brenda:['Brenda is being poked.','Brenda did not care for that.','Snack? No? Suit yourself.','Brenda is making a note.']
+};
+let pokes=0,quacks=0,tapWait=0;
+function tap(x,y){
+  if(state!=='play'||tapWait>0)return;
+  const near=(px,py,r)=>Math.hypot(x-px,y-py)<r,sign=signs.find(s=>Math.abs(x-s.x)<s.w/2+8&&Math.abs(y-s.y)<s.h/2+8);
+  if(near(P.x,P.y-5,38)){
+    if(++pokes%5===0){P.spin=.6;burst(P.x,P.y-20,'🎉',10);float(P.x,P.y-60,'Achievement: Professional Poke','#ffe14d',22,1.8);SFX.start();}
+    else{float(P.x,P.y-60,POKES[visitor][(pokes-1)%4],'#fff',19,1.6);tone(500,900,.12,'sine',.18);}
+  }else if(near(pond.x-pond.rx*.2,pond.y+pond.ry*.15,28)){
+    SFX.goose();burst(x,y,'🦆',++quacks%3?1:7);float(x,y-34,quacks%3?'QUACK.':'The duck has called a union rep.','#fff',19,1.6);
+  }else if(sign){
+    if(sign.feed){for(const e of ['🍌','🥨','🥕','🍕','🍩','🍌','🥨'])parts.push({x:sign.x+rnd(-90,90),y:sign.y-rnd(90,150),vx:rnd(-20,20),vy:rnd(0,60),e,t:0});SFX.ping(50);}
+    else tone(220,180,.1,'square',.12);
+    float(sign.x,sign.y-30,sign.reply,'#fff',19,1.6);
+  }else return;
+  tapWait=.4;
+}
+
+/* ---------- game flow ---------- */
+function start(){
+  musicStop();initAudio();cutSound();SFX.start();pops=[];partyStop();pa=null;resetPA();crowd.t=0;
+  state='start';layout();
+  state='play';
+  P={x:W/2,y:H/2,vx:0,vy:0,r:17,inv:1,face:1,walk:0,oh:0,snack:true,snackT:0,cd:0,pose:0,poseKind:1,spin:0};pulse=hintT=pokes=quacks=tapWait=barHintT=0;barCovered=false;
+  animals=[];items=[];floats=[];parts=[];score=0;hearts=3;elapsed=0;spawnT=1;shake=0;got=0;lastTick=0;
+  for(const k in keys)keys[k]=false;touch.on=false;
+  startLevel(0);intro=INTRO;
+  for(let i=0;i<LEVELS[0].goodies;i++)spawnItem(false);
+  spawnItem(true);
+  for(const o of items)o.age=.2; // already popped in behind the introduction card
+  $('start').hidden=$('over').hidden=true;
+  document.activeElement&&document.activeElement.blur();
+}
+// confetti for the Freedom ending: a heavy burst from the top and sides, then a gentle rain
+const CONFETTI_MAX=60,CONFETTI_RAIN=18,BURST_TIME=2.5;
+const party={on:false,t:0,wait:0,bits:[]};
+function confettiBit(from){ // from: 0 top, 1 left side, 2 right side
+  const w=innerWidth,h=innerHeight,side=from>0,dir=from===2?-1:1,i=Math.random()*40|0;
+  party.bits.push({x:side?(dir>0?-10:w+10):rnd(0,w),y:side?rnd(h*.35,h*.85):rnd(-40,-10),
+    vx:side?dir*rnd(w*.5,w*1.5):rnd(-40,40),vy:side?-rnd(h*.25,h*.8):rnd(60,party.t<BURST_TIME?260:120),
+    spin:rnd(-9,9),a:rnd(0,TAU),s:rnd(7,13),colour:pick(['#ff5a5f','#ffd23f','#2ec4b6','#7b61ff','#ff8fd0','#4ec33a','#ff7a2f']),
+    emoji:i<5?['🎉','⭐','🍌','🌭','🎊'][i]:null});
+}
+function partyStart(){
+  Object.assign(party,{on:true,t:0,wait:0,bits:[]});$('confetti').hidden=false;
+  for(let i=0;i<39;i++)confettiBit(i%3); // the opening "ta-da!" volley
+}
+function partyStop(){party.on=false;party.bits=[];$('confetti').hidden=true;marchStop();}
+function partyTick(dt){
+  if(!party.on)return;
+  party.t+=dt;party.wait-=dt;
+  const burst=party.t<BURST_TIME;
+  if(burst){for(let i=0;i<4&&party.bits.length<CONFETTI_MAX;i++)confettiBit(Math.random()*3|0);}
+  else if(party.wait<=0&&party.bits.length<CONFETTI_RAIN){confettiBit(0);party.wait=.18;}
+  const cc=$('confetti'),d=Math.min(devicePixelRatio||1,1.5),w=Math.max(1,innerWidth*d|0),h=Math.max(1,innerHeight*d|0);
+  if(cc.width!==w||cc.height!==h){cc.width=w;cc.height=h;}
+  const c=cc.getContext('2d');c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,innerWidth,innerHeight);
+  for(const p of party.bits){
+    p.vx*=Math.exp(-1.6*dt);p.vy=Math.min(p.vy+420*dt,110+p.s*7);p.a+=p.spin*dt;
+    p.x+=(p.vx+Math.sin(p.a)*22)*dt;p.y+=p.vy*dt;
+    c.save();c.translate(p.x,p.y);c.rotate(p.a*.6);
+    if(p.emoji)emo(c,p.emoji,0,0,p.s*2);
+    else{c.scale(1,Math.abs(Math.cos(p.a))+.15);c.fillStyle=p.colour;c.fillRect(-p.s/2,-p.s/3,p.s,p.s*.66);} // tumbling paper
+    c.restore();
+  }
+  party.bits=party.bits.filter(p=>p.y<innerHeight+30&&p.x>-60&&p.x<innerWidth+60);
+}
+// how the round ended: true = time ran out, false = dignity gone, 'free' = reached the Freedom target
+function end(win){
+  state='over';touch.on=false;
+  const prev=best;best=Math.max(best,score);
+  const free=win==='free';
+  if(free){flash=.5;shake=.55;SFX.freedom();partyStart();marchStart(3.5);} // ta-da! then the band marches on
+  else SFX.over(win);
+  $('over').classList.toggle('free',free);
+  $('oTitle').textContent=free?'FREEDOM!':win?'CLOSING TIME!':'DIGNITY: GONE';
+  const who=VISITORS[visitor].name;
+  $('oText').textContent=free?'The humans rally. Balance is restored. The zoo animals apologise.':win?`${who} survived all three levels!`:`${who} lasted ${Math.floor(elapsed)} seconds and reached Level ${level+1}.`;
+  $('oScore').textContent=score+' pts';
+  const stars=free?5:starsFor(win,level+1,score);
+  $('oWho').textContent=`Visitor review for ${who}:`;
+  $('oStars').textContent='★'.repeat(stars)+'☆'.repeat(5-stars);
+  $('oStars').setAttribute('aria-label',stars+' out of 5 stars');
+  $('oRating').textContent=`“${freshReview(stars)} ${stars} star${stars>1?'s':''}.”`;
+  $('oStats').textContent=`${got} goodies · ${hearts} dignity left · `+(score>prev&&prev>0?'🎉 NEW BEST!':'best this visit: '+best);
+  $('again').textContent=score<best?`🔁 Rematch: beat ${best}`:score?`🔁 Now beat ${score}!`:'🔁 Try scoring. Even once.';
+  setTimeout(()=>{if(state==='over'){$('over').hidden=false;$('again').disabled=true;setTimeout(()=>$('again').disabled=false,500);}},free?1500:900);
+}
+function hit(a){
+  hearts--;P.inv=2.4;P.oh=1.2;shake=.4;SFX.hit();SFX[a.type]();crowdReact('gasp');
+  float(P.x,P.y-60,pick(a.k.msg),'#ff5a5a',25,1.8);
+  burst(P.x,P.y,a.type==='dog'?'💦':a.type==='llama'?'📸':'💫',7);
+  if(a.type==='llama')flash=.5;
+  // shove apart and let the culprit gloat for a moment
+  const dx=P.x-a.x,dy=P.y-a.y,d=Math.hypot(dx,dy)||1;
+  P.vx=dx/d*420;P.vy=dy/d*420;a.vx=-dx/d*130;a.vy=-dy/d*130;
+  a.mode=a.type==='goat'?'daze':a.type==='dog'?'skid':'rest';a.t=1;
+  if(a.type==='goose'||a.type==='penguin'){a.mode='go';a.t=2.5;}
+  if(a.type==='parrot'){a.mode='away';a.t=1.6;a.loot=true;P.snack=false;P.snackT=5;}
+  if(hearts<=0)end(false);
+}
+let flash=0;
+function update(dt){
+  if(intro>0){if((intro-=dt)<=0)float(W/2,H/2-70,`RUN, ${VISITORS[visitor].name.toUpperCase()}!`,'#ffe14d',34,1.6);return;}
+  if(brk>0){if((brk-=dt)<=0)startLevel(level+1);return;} // between levels: clock and action paused
+  elapsed+=dt;
+  if(elapsed>=DUR){elapsed=DUR;score+=hearts*50;end(score>=FREEDOM_TARGET?'free':true);return;} // the closing-time dignity bonus can tip you over the Freedom line
+  if(level<LEVELS.length-1&&elapsed>=(level+1)*LEVEL_T){
+    elapsed=(level+1)*LEVEL_T;brk=BREAK;ev=null;banner=null;floats=[];P.vx=P.vy=P.inv=P.oh=P.pose=hintT=barHintT=0;pops=[];pa=null;crowd.t=0;SFX.levelUp();return;
+  }
+  const levelTime=elapsed-level*LEVEL_T,grace=levelTime<GRACE;
+  const left=Math.ceil(DUR-elapsed);
+  if(left<=5&&left!==lastTick){lastTick=left;SFX.tick();}
+  // events
+  if(ev&&(ev.t+=dt)>=ev.dur)endEvent();
+  if(!ev&&evQueue.length&&levelTime>=evQueue[0].at)beginEvent(evQueue.shift());
+  updatePA(dt,levelTime);
+  if(is('selfie')){
+    if(ev.hold>0){ev.hold-=dt;return;} // caught on camera: nothing moves (the clock still runs)
+    if(ev.t>=ev.next&&ev.dur-ev.t>SNAP){ev.hold=SNAP;ev.next+=1.8;flash=.4;SFX.shutter();return;}
+  }
+  const wet=is('sprinkler');
+  if(is('cart')){const c=ev.cart,k=clamp((ev.t-CART_WARN)/(ev.dur-CART_WARN),0,1);c.x=c.dir>0?-90+(W+180)*k:W+90-(W+180)*k;}
+  // human
+  let ix=(keys.right?1:0)-(keys.left?1:0),iy=(keys.down?1:0)-(keys.up?1:0),mag=1,quick=false;
+  if(ix||iy){const d=Math.hypot(ix,iy);ix/=d;iy/=d;}
+  else if(touch.on){ // follow the finger, aiming a bit above it so it stays visible
+    const tx=(touch.x-OX)/S,ty=(touch.y-OY)/S-(touch.finger?38:0),dx=tx-P.x,dy=ty-P.y,d=Math.hypot(dx,dy);
+    quick=touch.finger&&!wet; // a real finger: full speed sooner and sharper turns, for quick escapes
+    if(d>3){ix=dx/d;iy=dy/d;mag=Math.min(1,d/(quick?14:32));}
+  }
+  const f=1-Math.exp(-(wet?3:quick?32:16)*dt),SP=wet?175:245; // wet grass: slower, and slidey
+  P.vx+=(ix*SP*mag-P.vx)*f;P.vy+=(iy*SP*mag-P.vy)*f;
+  P.x=clamp(P.x+P.vx*dt,PAD+P.r,W-PAD-P.r);P.y=clamp(P.y+P.vy*dt,PAD+P.r,H-PAD-P.r-6);
+  for(const k of rocks){const dx=P.x-k.x,dy=P.y-k.y,d=Math.hypot(dx,dy)||1,m=k.r*.9+P.r;if(d<m){P.x=k.x+dx/d*m;P.y=k.y+dy/d*m;}}
+  {const t=trough,hw=t.w/2+P.r*.8,hh=t.h/2+P.r*.8,dx=P.x-t.x,dy=P.y-t.y;
+   if(Math.abs(dx)<hw&&Math.abs(dy)<hh){if(hw-Math.abs(dx)<hh-Math.abs(dy))P.x=t.x+Math.sign(dx||1)*hw;else P.y=t.y+Math.sign(dy||1)*hh;}}
+  if(is('cart'))shove(P,P.r);
+  // the pond slows you down
+  if(((P.x-pond.x)/pond.rx)**2+((P.y-pond.y)/pond.ry)**2<1){
+    P.x-=P.vx*dt*.4;P.y-=P.vy*dt*.4;
+    if(Math.hypot(P.vx,P.vy)>60&&Math.random()<dt*10)parts.push({x:P.x,y:P.y+14,vx:rnd(-60,60),vy:rnd(-90,-30),e:'💧',t:.4});
+  }
+  const sp=Math.hypot(P.vx,P.vy);if(sp>20)P.walk+=dt*sp*.07;if(Math.abs(P.vx)>20)P.face=Math.sign(P.vx);
+  P.inv-=dt;P.oh-=dt;P.cd-=dt;P.pose-=dt;hintT-=dt;
+  for(const a of animals)if(a.frozen>0)a.frozen-=dt;
+  // first the Freedom bar hint (once the monkey's sign has gone), then the Act Natural one
+  if(level===0&&!barHintSeen&&levelTime>=3&&!banner){barHintSeen=true;barHintT=4;}
+  if(barHintT>0){if(!barCovered)barHintT-=dt;if(levelTime>=12)barHintT=0;} // its 4 seconds only count while it can be seen
+  if(level===0&&!grace&&!hintSeen&&barHintSeen&&barHintT<=0&&(levelTime>=9||animals.some(a=>dist(a,P)<ACT_R))){hintSeen=true;hintT=6;}
+  if(!P.snack&&(P.snackT-=dt)<=0){P.snack=true;float(P.x,P.y-55,'New hot dog: £9','#fff',20);}
+  // arrivals
+  const due=LEVELS[level].later[arrived];
+  if(due&&levelTime>=due[0]){arrived++;announce(due[1]);}
+  if(level===LEVELS.length-1&&levelTime>=MONKEY_OFF){const m=animals.find(a=>a.type==='monkey'&&!a.leaving);if(m)sendOff(m);}
+  if(pendingA&&(pendingA.t-=dt)<=0&&animals.length<MAX_ANIMALS){addAnimal(pendingA);pendingA=null;}
+  for(const a of grace?[]:animals){ // animals stand still (and are harmless) during the grace period
+    if(a.leaving){a.leaving-=dt;a.sayT-=dt;a.x+=a.vx*dt;a.y+=a.vy*dt;continue;}
+    if(a.frozen>0)continue; // captivated: no moving, no mischief
+    if(is('feeding')&&a.enter<=0){feed(a,dt);continue;} // too busy eating to bother you
+    updateAnimal(a,wet&&!a.z?dt*.75:dt);
+    if(is('cart')&&!a.z&&a.enter<=0)shove(a,a.r);
+    if(is('feeding'))continue;
+    // hitboxes are a little smaller than the art, to feel fair; parrots only get you mid-swoop
+    if(P.inv<=0&&a.enter<=0&&!(a.z>24)&&(a.type!=='parrot'||a.mode==='dive')&&dist(a,P)<(a.r+P.r)*.75){hit(a);if(state!=='play')return;}
+  }
+  animals=animals.filter(a=>!(a.leaving<=0));
+  for(let i=0;!grace&&!is('feeding')&&i<animals.length;i++)for(let j=i+1;j<animals.length;j++){
+    const a=animals[i],b=animals[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,o=a.r+b.r-d;
+    if(o>0&&!a.z&&!b.z&&!a.leaving&&!b.leaving&&!(a.frozen>0)&&!(b.frozen>0)){const q=Math.min(o/2,90*dt);a.x-=dx/d*q;a.y-=dy/d*q;b.x+=dx/d*q;b.y+=dy/d*q;}
+  }
+  // goodies
+  for(let i=items.length-1;i>=0;i--){
+    const o=items[i];o.age+=dt;
+    if(dist(o,P)<P.r+19){
+      const x2=is('feeding'),v=o.v*(x2?2:1);
+      items.splice(i,1);score+=v;got++;SFX.ping(v);
+      float(o.x,o.y-20,'+'+v+(x2?' ×2!':''),o.v>=50?'#7ff6ff':'#ffe14d',o.v>=50||x2?34:26);burst(o.x,o.y,'✨',o.rare?8:3);pops.push({x:o.x,y:o.y,e:o.e,rare:o.rare,t:0});if(o.rare)crowdReact('cheer');
+    }else if(o.age>o.life)items.splice(i,1);
+  }
+  if(score>=FREEDOM_TARGET){end('free');return;} // enough goodies before closing time: set free
+  spawnT-=dt;
+  if(spawnT<=0){
+    spawnT=level?.65:.4;
+    if(items.filter(o=>!o.rare).length<LEVELS[level].goodies)spawnItem(false);
+    else if(!items.some(o=>o.rare))spawnItem(true);
+    if(!items.some(o=>o.rare)&&Math.random()<.18)spawnItem(true);
+  }
+}
+function effects(dt){
+  for(const o of floats){o.t+=dt;o.y-=32*dt;}
+  floats=floats.filter(o=>o.t<o.life);
+  for(const p of parts){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=150*dt;}
+  parts=parts.filter(p=>p.t<.8);
+  if(banner&&intro<=0&&(banner.t-=dt)<=0)banner=null;
+  shake=Math.max(0,shake-dt);flash=Math.max(0,flash-dt);pulse=Math.max(0,pulse-dt);tapWait-=dt;if(P&&P.spin>0)P.spin-=dt;
+  for(const p of pops)p.t+=dt;pops=pops.filter(p=>p.t<POP_T);mood.k=Math.min(1,mood.k+dt);crowd.t-=dt;
+}
+
+/* ---------- drawing ---------- */
+/* ---------- visitors: looks only, everyone plays identically ---------- */
+const VISITORS={
+  gary:{name:'Gary',skin:'#e9ab7f',top:'#e8493f',legs:'#3556a8',shoes:'#7a3a12'},
+  brenda:{name:'Brenda',skin:'#a86b45',top:'#1fa89a',legs:'#7b4fa0',shoes:'#ffd23f'}
+};
+let visitor='gary';
+// draws a visitor around (0,0); used in the game and on the selection cards
+function figure(c,id,{face,sw,scared,posing,wave,snack,now}){
+  const v=VISITORS[id],brenda=id==='brenda',O='#33241a',hy=-20;
+  c.lineCap='round';
+  const limb=(x1,y1,x2,y2,col,w)=>{c.strokeStyle=col;c.lineWidth=w;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();};
+  // legs, trousers & shoes
+  limb(-6,10,-7+sw,22,v.legs,8);limb(6,10,7-sw,22,v.legs,8);
+  ell(c,-8+sw+face*2,25,7,4,v.shoes);ell(c,8-sw+face*2,25,7,4,v.shoes);
+  const ay=scared?-17:9;
+  if(posing){ // acting natural: phone check or awkward wave
+    const f=face,hx=f*(wave?23+Math.sin(now*14)*5:22),py=wave?-28:-6;
+    limb(-f*11,-2,-f*19,10,v.top,7);ell(c,-f*20,10,4,4,v.skin);
+    limb(f*11,-2,hx,py,v.top,7);ell(c,hx,py,4,4,v.skin);
+    emo(c,wave?'👋':'📱',hx+f*4,py-7,wave?19:18);
+  }else{
+    limb(-11,-2,-20,ay-sw*.6,v.top,7);limb(11,-2,20,ay+sw*.6,v.top,7);
+    ell(c,-21,ay-sw*.6,4,4,v.skin);ell(c,21,ay+sw*.6,4,4,v.skin);
+    if(snack)emo(c,'🌭',face*24,ay+face*sw*.6-4,17);
+  }
+  // waist and top
+  box(c,-12,3,24,11,4,v.legs,O,2);
+  box(c,-13,-8,26,17,7,v.top,O,2);
+  if(brenda){ // buttoned cardigan and a bulging snack satchel
+    limb(face*2,-6,face*2,7,'#fff6dc',2);
+    for(const y of [-3,2,7])ell(c,face*2,y,1.8,1.8,'#ffd23f',O,.8);
+    limb(-face*10,-7,face*10,6,'#8a4f1c',3);
+    box(c,face*10-7,3,14,11,4,'#c9792f',O,1.5);limb(face*10-4,7,face*10+4,7,'#8a4f1c',2);
+  }else{ // loud shirt and camera
+    for(const [x,y] of [[-7,-2],[6,3],[7,-4],[-4,4]])ell(c,x,y,2.2,2.2,'#ffd23f');
+    box(c,-5+face*2,-1,10,8,2,'#444','#111',1.5);ell(c,face*2,3,2.5,2.5,'#9ddcff');
+  }
+  // head
+  const hair='#3a2418';
+  if(brenda){ell(c,-face*3,hy-17,8,7.5,hair,O,1.5);for(const s of [-1,1])ell(c,s*13,hy-2,6,10,hair,O,1.5);}
+  ell(c,0,hy,15,14,v.skin,O,2);
+  const dome=(y,rx,ry,col)=>{c.fillStyle=col;c.beginPath();c.ellipse(0,y,rx,ry,0,Math.PI,TAU);c.fill();c.strokeStyle=O;c.lineWidth=2;c.stroke();};
+  if(brenda){dome(hy-6,16,11,hair);box(c,-13,hy-13,26,4,2,'#ff6f91',O,1);} // fringe and headband
+  else{dome(hy-8,17,12,'#e8c070');box(c,-21,hy-10,42,5,2.5,'#e8c070',O,1.5);box(c,-13,hy-15,26,4,1,'#2f6b4f');}
+  const ex=face*2.5,er=scared?5:4;
+  for(const s of [-1,1]){ell(c,s*6+ex,hy+1,er,er+.5,'#fff',O,1.2);ell(c,s*6+ex+face*1.2,hy+1.5,scared?1.4:2,scared?1.4:2,'#222');}
+  if(brenda){for(const s of [-1,1])ell(c,s*6.5+ex,hy+1,6.5,6.5,0,'#c0392b',1.6);limb(ex-1,hy,ex+1,hy,'#c0392b',1.6);}
+  if(scared)ell(c,ex,hy+9,3.5,4.2,'#6b2a20');
+  else{c.beginPath();c.moveTo(ex-5,hy+9);c.quadraticCurveTo(ex-1,hy+6,ex+1,hy+9);c.quadraticCurveTo(ex+3,hy+11,ex+6,hy+8);c.strokeStyle=O;c.lineWidth=1.8;c.stroke();}
+}
+function drawHuman(now){
+  const c=X,moving=Math.hypot(P.vx,P.vy)>25,sw=moving?Math.sin(P.walk)*6:0;
+  ell(c,P.x,P.y+25,19,6,'#0003');
+  if(P.inv>0&&(now*12|0)%2)return;
+  const posing=P.pose>0,scared=!posing&&(P.oh>0||animals.some(a=>a.enter<=0&&dist(a,P)<90));
+  c.save();c.translate(P.x,P.y-(moving?Math.abs(Math.sin(P.walk))*3:0));
+  if(P.spin>0)c.rotate(TAU*(1-P.spin/.6));
+  figure(c,visitor,{face:P.face,sw,scared,posing,wave:P.poseKind===1,snack:P.snack,now});
+  c.restore();
+  if(scared&&P.oh<=0)emo(c,'💦',P.x+24,P.y-34,15);
+}
+for(const b of document.querySelectorAll('.pick button')){
+  const c=b.querySelector('canvas').getContext('2d');c.scale(2,2);c.translate(34,49);
+  figure(c,b.dataset.v,{face:1,sw:0,scared:false,posing:false,snack:true,now:0});
+  b.onclick=()=>{
+    initAudio();visitor=b.dataset.v;
+    for(const o of document.querySelectorAll('.pick button')){const on=o===b;o.setAttribute('aria-checked',on);$('b-'+o.dataset.v).hidden=!on;}
+    SFX.ping(10);
+  };
+}
+/* Animals are drawn as chunky cartoon shapes, facing right then mirrored. */
+function drawAnimal(a,now){
+  const c=X,t=a.type,moving=Math.hypot(a.vx,a.vy)>20,
+    bob=moving?Math.abs(Math.sin(now*11+a.seed))*4:Math.sin(now*3+a.seed),
+    paw=a.mode==='paw',z=a.z||0,
+    ay=z&&a.enter<=0?Math.max(14,a.y-z):a.y-z; // where the body is drawn
+  ell(c,a.x,a.y+a.r,a.r*1.15*(1-z/260),a.r*.35*(1-z/260),'#0003');
+  if(a.mode==='paw'){ // charge lane warning
+    c.save();c.strokeStyle=a.t>.25?'#ff3b3066':'#ff3b30cc';c.lineWidth=14;c.setLineDash([16,12]);c.lineDashOffset=-now*70;
+    c.beginPath();c.moveTo(a.x+a.dx*30,a.y+a.dy*30);c.lineTo(a.x+a.dx*330,a.y+a.dy*330);c.stroke();c.restore();
+  }
+  c.save();c.translate(a.x+(paw?Math.sin(now*45)*2:0),ay-bob);c.scale(a.face,1);
+  // squash on landing, stretch at the top of each bounce, pivoting on the feet (looks only: hitboxes don't change)
+  const k=moving?(bob/4-.45)*.2:Math.sin(now*3+a.seed)*.025;
+  c.translate(0,a.r);c.scale(1-k,1+k);c.translate(0,-a.r);
+  if(a.mode==='slide'){c.translate(0,6);c.rotate(1.35);}
+  if(a.mode==='daze')c.rotate(Math.sin(now*14)*.18);
+  const O='#33241a',E=(x,y,rx,ry,f,w=2)=>ell(c,x,y,rx,ry,f,w?O:0,w),
+    L=(pts,col,w)=>{c.strokeStyle=col;c.lineWidth=w;c.lineCap='round';c.lineJoin='round';c.beginPath();c.moveTo(pts[0],pts[1]);for(let i=2;i<pts.length;i+=2)c.lineTo(pts[i],pts[i+1]);c.stroke();},
+    eye=(x,y,r=4)=>{E(x,y,r,r,'#fff',1);ell(c,x+1.2,y,r*.5,r*.5,'#111');},
+    sw=moving?Math.sin(now*18+a.seed)*5:0,
+    legs=(col,y=20)=>{L([-12,8,-13+sw,y],col,6);L([10,8,11-sw,y],col,6);L([-4,8,-3-sw,y],col,6);L([17,8,paw?24+Math.sin(now*22)*9:18+sw,y],col,6);};
+  if(t==='monkey'){
+    L([-12,8,-24,6,-27,-8,-19,-13,-16,-7],'#7a4a26',5);L([-7,10,-11+sw,20],'#7a4a26',7);L([7,10,11-sw,20],'#7a4a26',7);
+    E(0,5,13,13,'#8d5a2f');E(2,8,7,8,'#e8bd8e',0);
+    L([-9,2,-18,-4-sw],'#7a4a26',6);L([10,2,20,-2+sw],'#7a4a26',6);
+    E(-12,-13,7,7,'#e8bd8e');E(16,-13,7,7,'#e8bd8e');E(2,-12,14,13,'#8d5a2f');E(3,-9,10,9,'#e8bd8e',0);
+    eye(-1,-13);eye(8,-13);L([0,-4,4,-2,9,-5],O,2);
+  }else if(t==='goat'){
+    legs('#8b8378');E(-3,2,23,15,'#f4efe4');L([-24,-4,-31,-12],'#f4efe4',7);
+    L([13,-20,7,-31,-1,-30],'#a5844f',6);E(18,-11,12,13,'#f4efe4');E(26,-5,10,8,'#e6ddcc');
+    L([22,-21,18,-33,10,-34],'#c9a463',5);E(7,-13,9,4,'#e6ddcc');
+    eye(18,-14);eye(27,-13,3.5);L([13,-21,22,-18],O,2.5);L([21,2,23,11,27,3],'#cfc6b3',4);ell(c,32,-5,1.5,1.5,O);
+  }else if(t==='dog'){
+    legs('#c07a2c');L([-19,-2,-29,-14+Math.sin(now*30)*8],'#e09a3e',7);E(-2,3,21,14,'#f0ac4c');E(2,9,12,7,'#ffe1ac',0);
+    E(15,-10,15,14,'#f0ac4c');E(26,-5,11,8,'#ffe1ac');E(34,-8,4,3.5,'#222');
+    E(24,6+Math.sin(now*14)*2,4,7,'#ff6f91',1.5);
+    c.save();c.translate(6,-18);c.rotate(.5+Math.sin(now*15)*(moving?.45:.1));E(-3,9,6,13,'#8a4f1c');c.restore();
+    eye(15,-14,4.5);eye(24,-15);L([0,-5,6,7],'#e8493f',4);
+  }else if(t==='goose'){
+    L([-5,10,-6+sw,21,2+sw,21],'#f7931e',4);L([6,10,5-sw,21,13-sw,21],'#f7931e',4);
+    E(-3,4,19,13,'#fff');L([-21,0,-30,-7],'#fff',7);
+    const up=a.mode==='honk'?-6:0;
+    L([8,0,16,-10,14,-23+up],O,12);L([8,0,16,-10,14,-23+up],'#fff',8);E(17,-25+up,9,8,'#fff');
+    L([23,-25+up,34,-24+up],'#f7931e',a.mode==='honk'?4:7);if(a.mode==='honk')L([23,-21+up,32,-15+up],'#f7931e',4);
+    eye(18,-27+up,3);L([13,-33+up,23,-29+up],O,2.5);
+    c.save();c.translate(-6,2);c.rotate(a.mode==='lunge'?-.9+Math.sin(now*40)*.4:0);E(0,0,12,7,'#e3e8ef');c.restore();
+  }else if(t==='penguin'){
+    ell(c,-7,20,7,4,'#f7931e');ell(c,8,20,7,4,'#f7931e');E(0,0,16,22,'#2b3150');E(3,4,10,16,'#fff',0);
+    L([-13,-2,-22,8-sw],'#2b3150',6);eye(0,-11);eye(9,-11);
+    c.fillStyle='#f7931e';c.beginPath();c.moveTo(7,-6);c.lineTo(21,-3);c.lineTo(7,0);c.fill();
+    L([4,3,6,6],'#e8493f',5);L([6,6,4,15],'#e8493f',4); // work tie
+  }else if(t==='parrot'){
+    const dive=a.mode==='dive',flap=dive?.5:Math.sin(now*20)*.8;
+    L([-10,6,-31,17],'#2f7de1',7);L([-11,2,-33,6],'#e8493f',6);
+    E(-1,2,15,12,'#e8493f');E(11,-10,12,11,'#e8493f');E(15,-11,7,7,'#fff',0);eye(16,-12,3.5);
+    c.beginPath();c.moveTo(20,-15);c.quadraticCurveTo(35,-13,28,1);c.lineTo(26,-5);c.lineTo(20,-5);c.closePath();
+    c.fillStyle='#ffcf33';c.fill();c.strokeStyle=O;c.lineWidth=2;c.stroke();
+    c.save();c.translate(-2,-1);c.rotate(flap);E(-12,-3,17,8,'#2f7de1');E(-19,-4,9,4,'#ffd23f',0);c.restore();
+    if(a.loot)emo(c,'🌭',29,2,20);
+  }else{ // llama
+    legs('#c99f6c',23);E(-3,4,23,14,'#f1d6a8');E(-5,1,13,9,'#c0539b');
+    L([12,0,16,-24],O,16);L([12,0,16,-24],'#f1d6a8',12);E(18,-29,11,10,'#f1d6a8');E(27,-25,8,6,'#fbeacb');
+    L([12,-36,9,-47],'#c99f6c',6);L([21,-37,23,-48],'#c99f6c',6);
+    eye(17,-31,3.5);eye(25,-31,3.2);L([24,-23,30,-23],O,1.5);
+    L([8,-14,27,-4],'#444',2);box(c,20,-8,17,12,3,'#333',O,1.5);E(29,-2,4,4,'#9ddcff',1);
+  }
+  c.restore();
+  if(paw){const s=1+Math.sin(now*16)*.15;ell(c,a.x,a.y-58,15*s,15*s,'#ffe14d',O,3);txt(c,'!',a.x,a.y-57,26*s,'#d92d20');}
+  if(a.mode==='honk'||a.mode==='wind')txt(c,'!',a.x,a.y-52,28,'#ffe14d','center',O);
+  if(a.mode==='daze')for(let i=0;i<3;i++)emo(c,'⭐',a.x+Math.cos(now*6+i*2.1)*22,a.y-34+Math.sin(now*6+i*2.1)*6,12);
+  if(a.sayT>0&&a.enter<=0){
+    const y=ay-(paw?88:t==='llama'?66:t==='parrot'?36:50);
+    txt(c,a.say,clamp(a.x,50,W-50),Math.max(14,y),15,'#33241a','center','#fff');
+  }
+}
+/* ---------- polish: level moods and pickup pops ---------- */
+// sunny morning, orange afternoon, purple dusk. Only the ground is tinted, so everything on it stays clear.
+// each mood is a list of [blend, colour, strength]; a null colour means the sunset gradient
+const MOODS=[[['multiply','#fff0a0',.3]],[['multiply','#ffa95c',.55]],[['soft-light','#ff3f86',.9],['source-over',null,1]]];
+function sunset(){ // rosy pink overhead, melting into warm peach
+  const g=X.createLinearGradient(0,0,0,cv.height);
+  g.addColorStop(0,'rgba(255,110,150,.42)');g.addColorStop(.55,'rgba(255,150,165,.2)');g.addColorStop(1,'rgba(255,190,120,.18)');
+  return g;
+}
+const POP_T=.4;
+let mood={from:0,k:1},pops=[];
+function tintGround(){
+  X.save();
+  for(const[i,w] of [[mood.from,1-mood.k],[level,mood.k]]){ // cross-fade between levels
+    if(w<=0)continue;
+    for(const[blend,colour,a] of MOODS[i]){X.globalCompositeOperation=blend;X.globalAlpha=a*w;X.fillStyle=colour||sunset();X.fillRect(0,0,cv.width,cv.height);}
+  }
+  X.restore();
+}
+function drawMotes(now){ // drifting pollen, then falling leaves, then fireflies
+  for(let i=0;i<14;i++){
+    const u=(i*.618)%1,v=(i*.373+.11)%1,sway=Math.sin(now*1.3+i*2)*18;
+    if(level===0)ell(X,u*W+sway,((v*H-now*14)%H+H)%H,3,3,'#fffbd0cc');
+    else if(level===1){X.globalAlpha=.8;emo(X,'🍂',u*W+sway*2,(v*H+now*34)%H,15);X.globalAlpha=1;}
+    else{const x=u*W+sway*1.5,y=v*H+Math.cos(now+i)*22,glow=.5+.5*Math.sin(now*4+i*3);
+      X.globalAlpha=glow;ell(X,x,y,11,11,'#ffd23f77');ell(X,x,y,3.5,3.5,'#fffef0','#e07b00',1.2);X.globalAlpha=1;} // golden rim so they show against the pink
+  }
+}
+function drawPop(p){ // the goodie swells and fades inside a ring, with a burst of sparkles
+  const q=p.t/POP_T,out=1-(1-q)**3,R=(p.rare?62:44)*out,col=p.rare?'#7ff6ff':'#ffe14d';
+  X.globalAlpha=1-q*q;
+  ell(X,p.x,p.y,12+R*.75,12+R*.75,0,'#fff',6*(1-q)+2);
+  emo(X,p.e,p.x,p.y-14*out,28*(1+out*.8));
+  const n=p.rare?10:6;
+  for(let i=0;i<n;i++){
+    const a=i/n*TAU+.4,x=p.x+Math.cos(a)*(14+R),y=p.y+Math.sin(a)*(14+R),s=(p.rare?17:13)*(1-q*.5);
+    X.beginPath();for(let j=0;j<8;j++){const b=j*TAU/8,d=j%2?s*.3:s;X.lineTo(x+Math.cos(b)*d,y+Math.sin(b)*d);}
+    X.closePath();X.fillStyle=col;X.fill();X.strokeStyle='#7a3a12';X.lineWidth=1;X.stroke();
+  }
+  X.globalAlpha=1;
+}
+function drawGround(now){ // event scenery under the characters
+  if(is('sprinkler')){
+    box(X,PAD-8,PAD-8,W-2*PAD+16,H-2*PAD+16,20,'#3fa9ff33');
+    SPRINKLERS.forEach(([fx,fy],i)=>{
+      const x=fx*W,y=fy*H;
+      ell(X,x,y+6,62,28,'#6fc8ff66','#dff5ff',2);ell(X,x,y,8,6,'#667','#223',2);
+      for(let j=0;j<3;j++)for(let k=1;k<=7;k++){const q=now*3+i+j*TAU/3-k*.09,d=k*13;
+        ell(X,x+Math.cos(q)*d,y+Math.sin(q)*d*.55-Math.sin(k/7*Math.PI)*34,4,4,'#e8f8ff','#1b77b5',1);}
+    });
+  }
+  if(is('feeding')){
+    const s=1+Math.sin(now*8)*.08;
+    ell(X,trough.x,trough.y,92*s,50*s,'#ffd23f66','#fff',4);
+    emo(X,'🥕',trough.x,trough.y-58+Math.sin(now*8)*6,40);
+  }
+  if(is('cart')&&ev.t<CART_WARN+.4){ // show its lane before it arrives
+    const c=ev.cart,on=(now*6|0)%2;
+    box(X,12,c.y-36,W-24,72,12,on?'#ff3b3055':'#ff3b3030');
+    for(let k=0;k<5;k++)txt(X,c.dir>0?'»':'«',W*(.12+k*.19),c.y,54,'#fff','center','#d92d20');
+  }
+}
+function drawCart(c,now){
+  const O='#33241a',y=c.y+Math.sin(now*22)*1.5;
+  ell(X,c.x,c.y+30,72,12,'#0003');
+  X.save();X.translate(c.x,y);X.scale(c.dir,1);
+  for(const px of [-40,38]){X.strokeStyle=O;X.lineWidth=5;X.beginPath();X.moveTo(px,0);X.lineTo(px,-50);X.stroke();}
+  box(X,-52,-60,104,13,6,'#fff6dc',O,3);
+  ell(X,-6,-26,13,13,'#d99a6c',O,2);box(X,-20,-41,30,9,4,'#7a8f3a',O,2);ell(X,0,-27,2.5,2.5,'#222');
+  box(X,-60,-12,120,34,12,'#39a85b',O,3);box(X,38,-22,22,16,5,'#39a85b',O,3);ell(X,58,0,5,5,'#ffe14d',O,2);
+  for(const px of [-34,36]){ell(X,px,24,15,15,'#333',O,3);ell(X,px,24,5,5,'#ccc');}
+  X.restore();
+  txt(X,'ZOO STAFF',c.x,y+4,14,'#fff','center',O);
+}
+function drawVisitors(now){ // the paying public, peering over the fence
+  const e=['🦁','🐘','🦒','🐼','🦩'],react=crowd.t>0?crowd.type:null,
+    lean=react?Math.min(1,(crowd.dur-crowd.t)*7,crowd.t*7):0, // lean in over the fence, then back
+    fs=clamp(10.5/S,14,22);
+  [[.14,0],[.38,0],[.62,0],[.88,0],[0,.5]].forEach(([fx,fy],i)=>{
+    const side=fx===0,x=clamp(fx*W,3,W-3)+(side?lean*14:0),
+      hop=react==='cheer'?Math.abs(Math.sin(now*13+i))*9:react==='gasp'?4:0,
+      y=clamp(fy*H,0,H)+Math.sin(now*2+i*2)*3+(side?0:lean*14)-hop*lean;
+    emo(X,e[i],x,y,28+lean*6);
+    if(!react)return;
+    const bx=side?x+fs*2.4:x,by=side?y:y+fs*1.7;
+    X.globalAlpha=lean;
+    if(react==='cards'){ // held-up score cards
+      box(X,bx-fs*.8,by-fs*.75,fs*1.6,fs*1.5,4,'#fff','#33241a',2);
+      txt(X,String(crowd.scores[i]),bx,by+1,fs*1.1,'#d9482b');
+    }else{
+      const word=react==='gasp'?'😮 gasp!':'🎉 yay!';
+      X.font=`bold ${fs}px "Trebuchet MS",system-ui,sans-serif`;const w=X.measureText(word).width+12;
+      box(X,bx-w/2,by-fs*.75,w,fs*1.5,fs*.7,react==='gasp'?'#fff':'#ffe14d','#33241a',2);
+      txt(X,word,bx,by+1,fs,'#33241a');
+    }
+    X.globalAlpha=1;
+  });
+  if(state==='start')drawPig(now);
+}
+let pigAt=0,pigGoal=0,pigBox=null;
+function drawPig(now){ // one more spectator, on the right-hand fence, with a placard
+  const fs=clamp(10.5/S,13,24),lines=['FOUR LEGS GOOD,','TWO LEGS BAD'],lh=fs*1.15,size=Math.max(30,fs*2),
+    hop=crowd.t>0&&crowd.type==='cheer'?Math.abs(Math.sin(now*13))*9:0,x=W-size*.55;
+  X.font=`bold ${fs}px "Trebuchet MS",system-ui,sans-serif`;
+  const w=Math.max(...lines.map(l=>X.measureText(l).width))+14,h=lh*2+8,right=x-size*.6,mid=right-w/2;
+  // the pig shuffles along the fence so no goodie ever sits on top of its words
+  const hits=(y,cx,cy,rx,ry)=>cx+rx>right-w&&cx-rx<W&&cy+ry>y-h/2&&cy-ry<y+h/2,
+    spots=Array.from({length:23},(_,i)=>H*(.6+(i%2?1:-1)*Math.ceil(i/2)*.022)) // .60 first, then outwards
+      .filter(y=>y>lh+8&&y<H-lh-8&&!signs.some(s=>hits(y,s.x,s.y,s.w/2,s.h/2+8))), // never over another sign
+    clear=y=>state==='start'||!items.some(o=>hits(y,o.x,o.y,22,24)),
+    // stay put while it can; otherwise shuffle to the nearest clear stretch
+    goal=(pigAt&&spots.includes(pigGoal)&&clear(pigGoal)?pigGoal:spots.filter(clear).sort((a,b)=>Math.abs(a-pigAt)-Math.abs(b-pigAt))[0])??spots[0]??H*.6;
+  pigGoal=goal;pigAt=pigAt&&Math.abs(goal-pigAt)<H*.5?pigAt+(goal-pigAt)*.2:goal;
+  const y=pigAt+Math.sin(now*2+11)*3-hop;
+  pigBox=[right-w,y-h/2,W,y+h/2];
+  box(X,right-3,y-2,x-right+3,5,2,'#8a5a2b'); // the stick it holds
+  // drawn over the goodies so the words always show; goes see-through on the rare occasion one is underneath
+  box(X,right-w,y-h/2,w,h,5,clear(pigAt)?'#fff':'#ffffffb8','#33241a',2.5);
+  lines.forEach((l,i)=>txt(X,l,mid,y+1+(i-.5)*lh,fs,'#b3261e'));
+  emo(X,'🐷',x,y,size);
+}
+
+/* ---------- gags: the crowd reacts, and the zoo makes announcements ---------- */
+let crowd={type:'',t:0,dur:1,scores:[]},cheers=0;
+function crowdReact(type){
+  const dur={gasp:1.2,cheer:1.3,cards:1.7}[type];cheers++;
+  crowd={type,t:dur,dur,scores:[0,1,2,3,4].map(i=>6+(cheers*3+i*2)%5)}; // marks out of ten, 6 to 10
+}
+const ANNOUNCEMENTS=[
+  'Attention visitors: please stop feeding the human.',
+  'Human spotted near the exit. The exit is closed.',
+  'Will the owner of one lost dignity please come forward?',
+  'The gift shop is now selling tiny human hats.',
+  'Reminder: tapping the human only encourages the human.',
+  'The 3pm human talk is cancelled. The human objected.',
+  'A lost child has been reunited with a very large goose.',
+  'The human is acting suspiciously normal. Stay alert.',
+  'The union thanks you for not mentioning overtime.',
+  'All animals are equal. Some are more equal. Please do not ask which.'
+];
+const PA_TIME=3,PA_MIN=12,PA_MAX=18; // seconds on screen, and between announcements
+let pa=null,paDue=15,paSince=0,lastPA=-1,paSeed=Date.now()%2147483646+1;
+const paRandom=()=>(paSeed=paSeed*48271%2147483647)/2147483647; // its own dice, so game randomness is untouched
+function resetPA(){paSince=0;paDue=PA_MIN+paRandom()*(PA_MAX-PA_MIN);}
+function announcePA(){
+  let i;do i=paRandom()*ANNOUNCEMENTS.length|0;while(i===lastPA);
+  lastPA=i;pa={text:ANNOUNCEMENTS[i],t:PA_TIME,low:true};resetPA();
+}
+function updatePA(dt,levelTime){
+  if(pa&&((pa.t-=dt)<=0||ev))pa=null;
+  paSince+=dt;
+  if(pa||ev||paSince<PA_MIN)return;
+  // clear air: time before the next event or the end of this level
+  const clear=Math.min(LEVEL_T-levelTime,evQueue.length?evQueue[0].at-levelTime:LEVEL_T);
+  // speak when due, or a little early if this is the last gap before something gets in the way
+  if(clear>=PA_TIME&&(paSince>=paDue||clear<PA_TIME+1))announcePA();
+}
+function drawPA(){
+  const s=clamp(vw/28,12.5,17),playW=vw-(side?116:0),mid=playW/2,max=playW-40;
+  X.font=`bold ${s}px "Trebuchet MS",system-ui,sans-serif`;
+  const lines=[''];
+  for(const word of ('📢 '+pa.text).split(' ')){
+    const next=(lines.at(-1)+' '+word).trim();
+    if(X.measureText(next).width>max&&lines.at(-1))lines.push(word);else lines[lines.length-1]=next;
+  }
+  const w=Math.max(...lines.map(l=>X.measureText(l).width))+24,h=lines.length*s*1.3+10,x=mid-w/2;
+  // two possible spots; skip one that another banner is using or that the human is under
+  const low=Math.min(OY+H*S,side?vh:vh-92)-h-6,high=HUD+44, // the high spot stays below the spectators' reactions
+    hx=OX+P.x*S,top=OY+(P.y-48)*S,bottom=OY+(P.y+32)*S,reach=34*S+10,
+    pig=pigBox&&[OX+pigBox[0]*S,OY+pigBox[1]*S,OX+pigBox[2]*S,OY+pigBox[3]*S],
+    free=y=>!(hx+reach>x&&hx-reach<x+w&&bottom+10>y&&top-10<y+h)&&!(pig&&pig[2]>x&&pig[0]<x+w&&pig[3]>y&&pig[1]<y+h),
+    spots=[[true,low,hintT<=0],[false,high,!banner&&barHintT<=0]].filter(([,y,open])=>open&&free(y));
+  if(!spots.length)return;
+  const [isLow,y]=spots.find(p=>p[0]===pa.low)||spots[0];pa.low=isLow; // stay put unless it has to move
+  X.globalAlpha=Math.min(1,pa.t*3,(PA_TIME-pa.t)*5);
+  box(X,x,y,w,h,10,'#263a5c','#fff6dc',2.5);
+  lines.forEach((l,i)=>txt(X,l,mid,y+5+s*1.3*(i+.5)+1,s,'#fff6dc'));
+  X.globalAlpha=1;
+}
+const TOUCH=matchMedia('(pointer:coarse)').matches;
+function updateButton(){
+  const playing=state==='play',b=$('act');
+  b.hidden=!playing;$('hint').hidden=!(playing&&hintT>0);
+  if(!playing)return;
+  const cd=Math.max(0,P.cd),n=catchable(),
+    label=cd?'Ready again in '+Math.ceil(cd)+'s'
+      :n?(side?'Freeze '+n+' now!':(TOUCH?'Tap':'Press Space')+' now to freeze '+n+(n>1?' animals!':' animal!'))
+      :side?'Freezes animals':'Freezes nearby animals'+(TOUCH?'':' · Space');
+  if($('actSub').textContent!==label)$('actSub').textContent=label;
+  b.classList.toggle('now',n>0);
+  b.style.setProperty('--p',(cd/COOLDOWN*100).toFixed(1)+'%');
+}
+function render(now){
+  updateButton();
+  // screen shake: ground and characters jolt together, fading out in under half a second
+  const jx=shake?rnd(-1,1)*shake*26:0,jy=shake?rnd(-1,1)*shake*26:0;
+  X.setTransform(1,0,0,1,0,0);
+  if(shake){X.fillStyle='#3f7d3c';X.fillRect(0,0,cv.width,cv.height);}
+  X.drawImage(bg,jx*DPR,jy*DPR);
+  if(state!=='start')tintGround();
+  X.setTransform(DPR*S,0,0,DPR*S,DPR*(OX+jx),DPR*(OY+jy));
+  if(state!=='start')drawMotes(now);
+  // pond ripple
+  const r=(now*.35)%1;X.globalAlpha=1-r;ell(X,pond.x+10,pond.y-6,pond.rx*.5*r,pond.ry*.5*r,0,'#dff5ff',2);X.globalAlpha=1;
+  drawVisitors(now);
+  if(state!=='start'){
+    drawGround(now);
+    const x2=is('feeding');
+    for(const o of items){
+      if(o.life-o.age<2.5&&(now*8|0)%2)continue;
+      const y=o.y+Math.sin(now*4+o.x)*3,pop=Math.min(1,o.age*5);
+      ell(X,o.x,o.y+17,13,4,'#0002');
+      ell(X,o.x,y,(o.rare?25:20)*pop,(o.rare?25:20)*pop,o.rare?'#7ff6ffaa':'#fffbe099',o.rare?'#fff':0,2);
+      emo(X,o.e,o.x,y,28*pop+.1);
+      if(o.rare){emo(X,'✨',o.x+Math.cos(now*3)*27,y+Math.sin(now*3)*27,13);if(!x2)txt(X,String(o.v),o.x,y+31,14,'#fff','center','#176a80');}
+      if(x2){ell(X,o.x,y,24,24,0,'#ffb300',4);txt(X,'×2',o.x+18,y-18,20,'#ffe14d','center','#7a3a00');}
+    }
+    drawPig(now); // above the goodies, below the characters
+    if(pendingA){ // entry marker, kept below the exhibit sign
+      const top=banner?Math.max(46,(HUD+66-OY)/S):46,x=clamp(pendingA.x,46,W-46),y=clamp(pendingA.y,top,H-52),s=1+Math.sin(now*14)*.15;
+      ell(X,x,y,18*s,18*s,'#ff7a2fdd','#fff',3);txt(X,'!!',x,y+1,18*s,'#fff');}
+    for(const a of animals)if(a.mode==='aim'||(a.mode==='dive'&&a.u<1)){ // parrot's landing target
+      const s=a.mode==='aim'?1+a.t*.5:1;
+      ell(X,a.tx,a.ty+14,30*s,17*s,'#ff3b3033','#d92d20',4);txt(X,'!',a.tx,a.ty+42,26,'#ffe14d','center','#33241a');}
+    if(pulse>0){X.globalAlpha=pulse*2;ell(X,P.x,P.y,ACT_R*(1-pulse*1.4),ACT_R*(1-pulse*1.4),'#7ff6ff33','#fff',5);X.globalAlpha=1;}
+    if(state==='play'&&catchable()){ // reach preview: pressing now would freeze someone
+      X.save();X.setLineDash([14,10]);X.lineDashOffset=-now*30;ell(X,P.x,P.y,ACT_R,ACT_R,'#7ff6ff1c','#fff',3.5);X.restore();
+    }
+    const depth=o=>o.z?o.y+1e4:o.y,all=[...animals,P,...(is('cart')?[ev.cart]:[])].sort((a,b)=>depth(a)-depth(b)); // flyers on top
+    for(const o of all){
+      if(o===P){drawHuman(snapped()?0:now);continue;}
+      if(o.isCart){drawCart(o,now);continue;}
+      const stuck=o.frozen>0;
+      if(stuck)ell(X,o.x,o.y+o.r*.5,o.r*1.7,o.r*.9,'#7ff6ff88','#fff',3); // icy patch
+      drawAnimal(o,stuck||snapped()?o.seed:now); // a frozen clock holds the pose
+      if(stuck){ // heart eyes, plus a bar showing how long the freeze has left
+        const y=Math.max(18,o.y-(o.z||0)-(o.type==='llama'?72:56));
+        emo(X,'😍',o.x,y,22);box(X,o.x-24,y+13,48,8,4,'#33241a');box(X,o.x-22,y+15,Math.max(4,44*o.frozen/FREEZE),4,2,'#7ff6ff');
+      }
+    }
+    for(const p of pops)drawPop(p);
+    for(const p of parts){X.globalAlpha=Math.max(0,1-p.t/.8);emo(X,p.e,p.x,p.y,17);}
+    X.globalAlpha=1;
+    for(const f of floats){X.globalAlpha=Math.min(1,(f.life-f.t)*3);txt(X,f.s,f.x,f.y,f.size,f.col,'center','#33241a');}
+    X.globalAlpha=1;
+  }
+  // screen-space HUD
+  X.setTransform(DPR,0,0,DPR,0,0);
+  if(flash>0){X.fillStyle=`rgba(255,255,255,${flash*1.4})`;X.fillRect(0,0,vw,vh);}
+  if(state==='start')return;
+  const m=HUD/2,fs=clamp(vw/22,14,24),pw=Math.min(vw-62,640),x0=Math.min((vw-pw)/2,vw-56-pw),mid=x0+pw/2; // leaves room for mute
+  box(X,x0,5,pw,HUD-10,14,'#fff6dc','#8a5a2b',3);
+  const left=Math.ceil(DUR-elapsed);
+  const wide=pw>=480,under=!wide&&HUD>50; // level name sits beside the timer, or under it on narrow screens
+  // the Freedom bar shares the top bar: beside the score on short wide screens, otherwise under it
+  const beside=wide&&HUD<=50;
+  txt(X,'⭐ '+score,x0+12,beside?m+1:m-8,beside||HUD>50?fs:Math.min(fs,17),'#33241a','left');
+  if(beside){X.font=`bold ${fs}px "Trebuchet MS",system-ui,sans-serif`;const bx=x0+12+X.measureText('⭐ 8888').width+10;
+    drawFreedom(bx,m-7,Math.min(130,mid-fs*2.1-bx),15);}
+  else{const room=Math.min(mid-fs*2.4,mid-44);drawFreedom(x0+8,HUD>50?m+6:m+3,Math.min(150,room-x0-8),HUD>50?14:12);}
+  txt(X,'⏱ '+left+'s',mid,m+(under?-10:HUD>50?-3:1),fs*(under?1:1.1),left<=10?'#d92d20':'#2f6b4f');
+  if(wide)txt(X,LEVELS[level].name,mid+fs*2.3,m+(HUD>50?-3:1),fs*.65,'#8a5a2b','left');
+  else txt(X,LEVELS[level].name,under?mid:mid+fs*1.9,under?m+7:m+1,11,'#8a5a2b',under?'center':'left');
+  if(HUD>50){const by=HUD-(under?14:17);box(X,mid-34,by,68,5,2,'#0002');box(X,mid-34,by,Math.max(5,68*(1-elapsed/DUR)),5,2,left<=10?'#d92d20':'#2f6b4f');}
+  const hs=fs*.95;
+  for(let i=0;i<3;i++)emo(X,i<hearts?'❤️':'🖤',x0+pw-14-hs*.55-(2-i)*hs*1.15,m+(HUD>50?4:1),hs);
+  if(HUD>50)txt(X,'DIGNITY',x0+pw-14-hs*1.7,15,10,'#8a5a2b');
+  if(ev&&state==='play')drawEventHud(now);
+  if(pa&&!ev&&intro<=0&&brk<=0&&state==='play')drawPA();
+  if(barHintT>0&&!banner&&intro<=0&&brk<=0&&state==='play')drawBarHint(now);
+  if((intro>0||brk>0)&&state==='play'){ // introduction and between-levels cards
+    // sized and centred in the play area, so a side-mounted button never sits on top of it
+    const cw=vw-(side?116:0),s=clamp(Math.min(cw/18,vh/14),16,28),w=Math.min(cw-20,s*17),h=s*5.6,x=(cw-w)/2,y=(vh-h)/2,mid=cw/2;
+    X.fillStyle='#142d1999';X.fillRect(0,HUD,vw,vh-HUD);
+    box(X,x,y,w,h,18,'#fff6dc','#8a5a2b',6);
+    const [one,two,three]=intro>0?['🐵 NEW: Monkey','Hold on to your hat.','Level 1: '+LEVELS[0].name]
+      :['🎉 '+LEVELS[level].done[0],LEVELS[level].done[1],'Next: '+LEVELS[level+1].name];
+    const ft=(str,sz)=>{X.font=`bold ${sz}px "Trebuchet MS",system-ui,sans-serif`;const m=X.measureText(str).width,mx=w-30;return m>mx?sz*mx/m:sz;}; // shrink a line only if it would spill past the card
+    txt(X,one,mid,y+s*1.4,ft(one,s*1.15),'#d9482b');
+    txt(X,two,mid,y+s*2.9,ft(two,s),'#33241a');
+    txt(X,three,mid,y+s*4.4,ft(three,s*.85),'#2f6b4f');
+  }
+  if(banner&&intro<=0&&state==='play'){ // wooden exhibit sign
+    const s=clamp(vw/25,13,19);X.font=`bold ${s}px "Trebuchet MS",system-ui,sans-serif`;
+    const a='NEW: ',aw=X.measureText(a).width,w=aw+X.measureText(banner.s).width,h=s*2.3,y=HUD+8,x=(vw-w)/2;
+    X.globalAlpha=Math.min(1,banner.t*2);
+    for(const px of [x+10,x+w-18])box(X,px,y+h-4,8,16,2,'#8a5a2b','#6b3f19',2); // sign posts
+    box(X,x-14,y,w+28,h,8,'#fff6dc','#8a5a2b',4);
+    txt(X,a,x,y+h/2+1,s,'#d92d20','left');txt(X,banner.s,x+aw,y+h/2+1,s,'#33241a','left');
+    X.globalAlpha=1;
+  }
+}
+
+function drawBarHint(now){ // a little label hanging under the Freedom bar, arrow pointing up at it
+  const[bx,by,bw,bh]=barBox,s=clamp(vw/27,12.5,15),label='Fill this bar to go free!';
+  X.font=`bold ${s}px "Trebuchet MS",system-ui,sans-serif`;
+  const w=X.measureText(label).width+20,h=s*2,point=bx+bw/2,x=clamp(point-w/2,6,vw-w-6),bob=Math.sin(now*7)*1.5,y=HUD+9+bob,tip=by+bh+1+bob;
+  // stay out of the way while the human is underneath
+  const hx=OX+P.x*S,reach=34*S+8;
+  barCovered=hx+reach>x&&hx-reach<x+w&&OY+(P.y+32)*S+8>tip&&OY+(P.y-48)*S-8<y+h;
+  if(barCovered)return;
+  X.globalAlpha=Math.min(1,barHintT*3);
+  box(X,x,y,w,h,9,'#fff6dc','#d9482b',2.5);
+  X.beginPath();X.moveTo(point,tip);X.lineTo(point+9,y+2);X.lineTo(point-9,y+2);X.closePath();X.fillStyle='#d9482b';X.fill();
+  X.strokeStyle='#fff6dc';X.lineWidth=1.5;X.stroke();
+  txt(X,label,x+w/2,y+h/2+2,s,'#33241a');
+  X.globalAlpha=1;
+}
+function drawFreedom(x,y,w,h){ // progress towards the Freedom target
+  barBox=[x,y,w,h];
+  const done=Math.min(1,score/FREEDOM_TARGET);
+  box(X,x,y,w,h,h/2,'#eadcb4');
+  const gold=done>=.8; // nearly there
+  if(done>0)box(X,x,y,Math.max(h,w*done),h,h/2,gold?'#ffc400':'#7fd6b4');
+  box(X,x,y,w,h,h/2,0,gold?'#b87400':'#8a5a2b',gold?2.5:1.5);
+  const label=`${score}/${FREEDOM_TARGET}`;
+  X.font='bold 11px "Trebuchet MS",system-ui,sans-serif';
+  const flag=X.measureText(label).width+24<=w; // add the flag when there is room for it
+  txt(X,(flag?'🏁 ':'')+label,x+w/2,y+h/2+1,11,'#33241a');
+}
+// a banner along the bottom of the enclosure: full announcement first, then a small countdown
+function drawEventHud(now){
+  const e=EVENTS[ev.type],s=clamp(Math.min(vw/23,vh/24),13.5,19),big=ev.t<2.5,left=Math.max(0,ev.dur-ev.t);
+  if(is('selfie')){ // photographers round the edges
+    for(let i=0;i<8;i++){const fx=i<4?.14+i*.24:i%2?.04:.96,fy=i<4?.05:i<6?.38:.68;
+      emo(X,'📸',OX+W*S*fx,OY+H*S*fy,(snapped()?34:24)+Math.sin(now*9+i)*3);}
+    if(snapped()){X.strokeStyle='#fff';X.lineWidth=14;X.strokeRect(OX+7,OY+7,W*S-14,H*S-14);txt(X,'📸 FREEZE!',vw/2,OY+H*S*.36,s*2.2,'#fff','center','#8e44ad');}
+    else if(ev.next-ev.t<.6&&ev.dur-ev.next>SNAP)txt(X,'say cheese…',vw/2,OY+H*S*.36,s*1.4,'#fff','center','#8e44ad');
+  }
+  const title=big?e.icon+' '+e.name:`${e.icon} ${e.name} ${Math.ceil(left)}s`,ts=big?s*1.15:s*.95;
+  X.font=`bold ${ts}px "Trebuchet MS",system-ui,sans-serif`;let w=X.measureText(title).width;
+  if(big){X.font=`bold ${s*.9}px "Trebuchet MS",system-ui,sans-serif`;w=Math.max(w,X.measureText(e.tip).width);}
+  w=Math.min(vw-10,w+30);
+  const h=big?s*3.7:s*2,mid=side?(vw-116)/2:vw/2,x=mid-w/2,y=OY+H*S-h-6;
+  box(X,x,y,w,h,12,e.col,'#fff',3);
+  txt(X,title,mid,y+(big?s*1.15:s*.85),ts,'#fff');
+  if(big)txt(X,e.tip,mid,y+s*2.6,s*.9,'#fff');
+  box(X,x+10,y+h-7,Math.max(4,(w-20)*left/ev.dur),4,2,'#ffe14d');
+}
+
+/* ---------- input ---------- */
+const KEY={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',KeyA:'left',KeyD:'right',KeyW:'up',KeyS:'down'};
+addEventListener('keydown',e=>{if(e.code==='Space'&&state==='play'){e.preventDefault();if(!e.repeat)act();}});
+$('act').addEventListener('pointerdown',e=>{e.preventDefault();initAudio();act();}); // works with a second finger
+$('act').addEventListener('click',e=>{if(!e.detail)act();}); // keyboard activation
+addEventListener('keydown',e=>{const k=KEY[e.code];if(k){keys[k]=true;touch.on=false;e.preventDefault();}});
+addEventListener('keyup',e=>{const k=KEY[e.code];if(k)keys[k]=false;});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;touch.on=false;});
+function point(e){touch.x=e.clientX;touch.y=e.clientY;touch.finger=e.pointerType==='touch';}
+cv.addEventListener('pointerdown',e=>{initAudio();if(state!=='play')return;e.preventDefault();window.focus();
+  if(touch.on&&e.pointerId!==touch.id)return; // the first finger keeps steering; a stray second one can't hijack it
+  touch.on=true;touch.id=e.pointerId;point(e);try{cv.setPointerCapture(e.pointerId);}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(touch.on&&e.pointerId===touch.id)point(e);});
+const lift=e=>{if(e.pointerId===touch.id)touch.on=false;};
+cv.addEventListener('pointerup',lift);cv.addEventListener('pointercancel',lift);cv.addEventListener('lostpointercapture',lift);
+// a quick press that barely moves counts as a tap (for the Easter eggs); dragging still just steers
+const downs={};
+cv.addEventListener('pointerdown',e=>{downs[e.pointerId]={x:e.clientX,y:e.clientY,t:e.timeStamp};});
+cv.addEventListener('pointerup',e=>{const d=downs[e.pointerId];
+  if(d&&e.timeStamp-d.t<350&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12)tap((e.clientX-OX)/S,(e.clientY-OY)/S);});
+for(const ev of ['touchmove','gesturestart','dblclick','contextmenu','wheel'])
+  document.addEventListener(ev,e=>{if(state==='play'||!e.target.closest('.screen'))e.preventDefault();},{passive:false});
+$('go').onclick=$('again').onclick=start;
+
+/* ---------- loop ---------- */
+let last=performance.now();
+function frame(ms){
+  const dt=Math.min(.05,Math.max(0,(ms-last)/1000));last=ms;
+  if(state==='play'&&!document.hidden)update(dt);
+  musicSync();effects(dt);render(ms/1000);partyTick(dt);
+  requestAnimationFrame(frame);
+}
+addEventListener('resize',()=>{
+  const oldW=W,oldH=H;layout();
+  // a rotated screen mid-round: reshape the world and move everything with it
+  const{aw,ah}=area();
+  if(state!=='start'&&Math.abs(Math.log(clamp(aw/ah,.5,2.1)/(oldW/oldH)))>.35){
+    const ar=clamp(aw/ah,.5,2.1);W=Math.sqrt(520000*ar);H=520000/W;buildScenery();
+    const sx=W/oldW,sy=H/oldH;
+    for(const o of [P,...animals,...items,...floats,...parts,...pops,...(is('cart')?[ev.cart]:[])]){o.x*=sx;o.y*=sy;if('tx' in o){o.tx*=sx;o.ty*=sy;}if('fx' in o){o.fx*=sx;o.fy*=sy;}}
+    if(pendingA){pendingA.x*=sx;pendingA.y*=sy;}
+    fit();touch.on=false;paintBg();
+  }
+});
+layout();requestAnimationFrame(frame);
+</script>
+</body>
+</html>

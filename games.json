@@ -45,5 +45,21 @@
     "award": null,
     "thumbnail": "games/thumbs/macarena-survive-the-founders.jpg",
     "photo": "games/photos/macarena-survive-the-founders.jpg"
+  },
+  {
+    "slug": "faith-human-exhibit",
+    "title": "Human Exhibit",
+    "authors": [
+      "Faith Andati"
+    ],
+    "llm": "Claude",
+    "file": "games/faith-human-exhibit.html",
+    "blurb": "The animals have unionized 🐒. You're the zoo exhibit now 🫨. Dodge them, grab goodies, escape! 🏃💨",
+    "emoji": "🐒",
+    "added": "2026-11-26",
+    "version": 1,
+    "award": null,
+    "thumbnail": "games/thumbs/faith-human-exhibit.jpg",
+    "photo": "games/photos/faith-human-exhibit.jpg"
   }
 ]
