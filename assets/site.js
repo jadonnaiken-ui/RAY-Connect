@@ -1298,14 +1298,21 @@
       document.title = g.title + " · " + CFG.name;
       var version = Number(g.version) || 1;
 
-      // Count time actually spent on the game (tab visible). After the first go, it needs a rating.
-      var seconds = 0;
-      var timer = setInterval(function () {
+      // Measure real time spent on the game while the tab is visible (by the clock, not by timer
+      // ticks, which a busy computer can delay). After the first go, it needs a rating.
+      var playedMs = 0, lastTick = Date.now();
+      function addPlayTime() {
+        var now = Date.now(), step = Math.min(now - lastTick, 5000);
+        lastTick = now;
         if (document.hidden || !needsRating(g)) return;
-        if (++seconds >= PLAY_SECONDS) { markPlayed(g.slug); clearInterval(timer); }
-      }, 1000);
+        playedMs += step;
+        if (playedMs >= PLAY_SECONDS * 1000) { markPlayed(g.slug); clearInterval(timer); }
+      }
+      var timer = setInterval(addPlayTime, 1000);
+      document.addEventListener("visibilitychange", function () { lastTick = Date.now(); });
       $$('.player-bar a[href="gallery.html"]').forEach(function (a) {
         a.addEventListener("click", function (e) {
+          addPlayTime();
           if (!playedMap()[g.slug] || !needsRating(g)) return;
           e.preventDefault();
           showRatingGate(g, { leaving: true, after: function () { location.href = a.href; } });
