@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>PRINTER-7 (Do Not Trust)</title>
+<style>
+  html,body{margin:0;height:100%;background:#14152a;overflow:hidden;
+    font-family:"Comic Sans MS","Chalkboard SE","Trebuchet MS",system-ui,sans-serif;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+  #stage{position:absolute;left:50%;top:50%;width:520px;height:760px;
+    transform:translate(-50%,-50%);overflow:hidden;border-radius:14px;
+    box-shadow:0 0 50px rgba(0,0,0,.6);background:#2a2f4f}
+  canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block;touch-action:none}
+  .overlay{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box;
+    background:rgba(18,18,40,.9);color:#fff;gap:12px}
+  .hidden{display:none}
+  .big{font-size:64px;line-height:1}
+  h1{margin:0;font-size:36px;line-height:1.05;color:#ffe66d;text-shadow:0 3px 0 #b5442f}
+  h1 small{display:block;font-size:20px;color:#ff8a7a;text-shadow:none;margin-top:4px;letter-spacing:2px}
+  .how{font-size:18px;line-height:1.3;margin:4px 0;max-width:400px}
+  .legend{font-size:14px;line-height:1.6;opacity:.9;background:rgba(255,255,255,.08);
+    border-radius:12px;padding:10px 14px}
+  .tiny{font-size:12px;opacity:.65;margin:0}
+  button{font:inherit;font-weight:bold;font-size:24px;padding:12px 34px;border:0;border-radius:999px;
+    background:#ffe66d;color:#2a2020;cursor:pointer;box-shadow:0 6px 0 #c9a82c;margin-top:6px}
+  button:active{transform:translateY(4px);box-shadow:0 2px 0 #c9a82c}
+  #mute{position:absolute;top:6px;right:8px;width:30px;height:28px;padding:0;font-size:16px;
+    border-radius:8px;background:rgba(255,255,255,.18);box-shadow:none;margin:0;color:#fff}
+  #oScore{font-size:44px;font-weight:bold;color:#ffe66d}
+  #oRank{font-size:20px;color:#9be7ff;max-width:380px}
+  #oCause{font-size:15px;opacity:.85;max-width:380px}
+  #oBest{font-size:14px;opacity:.7}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <button id="mute" title="Toggle sound">🔊</button>
+
+  <div id="menu" class="overlay">
+    <div class="big">🖨️</div>
+    <h1>PRINTER-7<small>(DO NOT TRUST)</small></h1>
+    <p class="how">Move your bin to catch blank paper and memes, and dodge the 47-page policy docs, reply-all emails and toner until 5:00 PM!</p>
+    <div class="legend">📄 paper +1 &nbsp;·&nbsp; 😹 meme +5 &nbsp;·&nbsp; 💌 raise +25<br>
+      📚 policy doc · 📧 reply-all · 🖤 toner = HR warning<br>
+      3 warnings and you're fired!</div>
+    <button id="start">CLOCK IN</button>
+    <p class="tiny">Mouse, finger drag, or ← → keys</p>
+  </div>
+
+  <div id="over" class="overlay hidden">
+    <div class="big" id="oEmoji">📦</div>
+    <h1 id="oTitle">YOU'RE FIRED</h1>
+    <div id="oScore">0</div>
+    <div id="oRank"></div>
+    <div id="oCause"></div>
+    <div id="oBest"></div>
+    <button id="again">CLOCK IN AGAIN</button>
+    <p class="tiny">Screenshot your rank and show off at the party!</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var W = 520, H = 760;
+  var stage = document.getElementById('stage');
+  var cv = document.getElementById('c');
+  var ctx = cv.getContext('2d');
+  cv.width = W * 2; cv.height = H * 2; ctx.scale(2, 2);
+  function $(id) { return document.getElementById(id); }
+
+  function fit() {
+    var s = Math.min(window.innerWidth / W, window.innerHeight / H);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+  window.addEventListener('resize', fit); fit();
+
+  /* ---------------------------------------------------------------- AUDIO */
+  var AC = null, muted = false;
+  function ac() {
+    if (!AC) {
+      try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; }
+    }
+    if (AC && AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  function tone(f, d, type, vol, slide, delay) {
+    var a = AC; if (!a || muted) return;
+    try {
+      var t = a.currentTime + (delay || 0);
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(f, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+      g.gain.setValueAtTime(vol || 0.15, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + d);
+      o.connect(g); g.connect(a.destination);
+      o.start(t); o.stop(t + d + 0.03);
+    } catch (e) {}
+  }
+  function noise(d, vol, f0, f1) {
+    var a = AC; if (!a || muted) return;
+    try {
+      var n = Math.floor(a.sampleRate * d);
+      var buf = a.createBuffer(1, n, a.sampleRate), dat = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) dat[i] = Math.random() * 2 - 1;
+      var s = a.createBufferSource(); s.buffer = buf;
+      var fl = a.createBiquadFilter(); fl.type = 'bandpass';
+      fl.frequency.setValueAtTime(f0, a.currentTime);
+      fl.frequency.exponentialRampToValueAtTime(f1, a.currentTime + d);
+      var g = a.createGain();
+      g.gain.setValueAtTime(vol, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + d);
+      s.connect(fl); fl.connect(g); g.connect(a.destination); s.start();
+    } catch (e) {}
+  }
+  var sfx = {
+    start: function () { tone(330, .1, 'square', .1); tone(440, .1, 'square', .1, 0, .1); tone(660, .18, 'square', .1, 0, .2); },
+    spit: function () { noise(.07, .04, 2600, 900); },
+    paper: function () { tone(520 + Math.min(combo, 30) * 22, .1, 'triangle', .16, 220); },
+    meme: function () { tone(660, .09, 'square', .09); tone(880, .12, 'square', .09, 0, .08); },
+    raise: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, .16, 'triangle', .16, 0, i * .07); }); },
+    spam: function () { tone(900, .05, 'sine', .07); },
+    bad: function () { tone(150, .4, 'sawtooth', .2, -90); noise(.25, .15, 500, 120); },
+    toner: function () { noise(.5, .22, 300, 60); tone(90, .5, 'sawtooth', .14, -40); },
+    thud: function () { tone(80, .3, 'sine', .3, -40); noise(.15, .12, 400, 100); },
+    event: function () { tone(440, .12, 'square', .1); tone(440, .12, 'square', .1, 0, .18); tone(330, .25, 'square', .1, 0, .36); },
+    over: function () { [392, 370, 349, 311].forEach(function (f, i) { tone(f, i === 3 ? .9 : .4, 'sawtooth', .16, i === 3 ? -80 : 0, i * .38); }); },
+    win: function () { [523, 659, 784, 659, 784, 1047].forEach(function (f, i) { tone(f, .2, 'triangle', .16, 0, i * .1); }); }
+  };
+
+  /* ---------------------------------------------------------------- STATE */
+  var SIZE = {
+    paper: { w: 32, h: 42, pts: 1 }, meme: { w: 42, h: 42, pts: 5 }, raise: { w: 48, h: 32, pts: 25 },
+    policy: { w: 54, h: 58 }, replyall: { w: 52, h: 38 }, toner: { w: 36, h: 48 }, spam: { w: 28, h: 20 }
+  };
+  var MEMES = ['😹', '🐸', '🦆', '🥔', '🍌', '🐙', '🧀', '🦖', '🐧', '🌮'];
+  var POPS = ['LOL', 'PLORP!', 'RELATABLE', 'NICE!', 'MEME-TASTIC', 'SO TRUE'];
+  var MSGS = [
+    ['Hello. I am printing.', 'Please hold.', 'Printing your feelings...', 'Toner is 4% evil.'],
+    ['PC LOAD LETTER?!', 'Jam in tray 2... and 3', 'I do what I want.', 'Have you tried not asking?'],
+    ["Printing 47 copies of 'Hi'", 'ERROR: SUCCESS', 'TRAY 4 IS ON FIRE (jk)', 'I print therefore I am.'],
+    ['AAAAAAAAAAAAAA', 'I AM THE MEETING NOW', 'REPLACE YOUR LIFE CHOICES', 'PRINT. PRINT. PRINT.']
+  ];
+  var RANKS = [
+    [0, 'Unpaid Intern'], [25, 'Junior Paper Pusher'], [60, 'Senior Associate of Bin Operations'],
+    [110, 'Regional Manager of Catching'], [170, 'VP of Paperwork'], [250, 'Chief Executive Bin Officer']
+  ];
+  var SHIFT = 90;
+
+  var state = 'menu';
+  var elapsed = 0, score = 0, strikes = 0, combo = 0, best = 0;
+  var items = [], parts = [], pops = [], inks = [];
+  var spawnT = 0.6, slowT = 0, shake = 0, nextEvent = 9, evt = null;
+  var queue = 0, queueT = 0, queueSpread = 1;
+  var lastCause = '', binMood = 0, moodT = 0, dyingT = 0, survived = false;
+  var msg = MSGS[0][0], msgT = 0;
+  var banner = { text: '', t: 0, col: '#fff' };
+  var bin = { x: W / 2, tx: W / 2, w: 112, y: H - 100 };
+  var pr = { x: W / 2, tx: W / 2, nt: 1 };
+  var keys = { l: false, r: false };
+
+  function diff() { return Math.min(1, elapsed / SHIFT); }
+  function mult() { return 1 + Math.min(4, Math.floor(combo / 8)); }
+
+  function reset() {
+    elapsed = 0; score = 0; strikes = 0; combo = 0;
+    items = []; parts = []; pops = []; inks = [];
+    spawnT = 0.8; slowT = 0; shake = 0; nextEvent = 9; evt = null;
+    queue = 0; queueT = 0; lastCause = ''; moodT = 0; survived = false;
+    bin.x = bin.tx = W / 2; pr.x = pr.tx = W / 2; pr.nt = 1;
+    msg = MSGS[0][0]; msgT = 0;
+    banner.t = 0;
+  }
+
+  /* ---------------------------------------------------------------- HELPERS */
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function pop(x, y, text, col, size) {
+    pops.push({ x: x, y: y, text: text, col: col || '#fff', size: size || 20, life: 1 });
+  }
+  function confetti(x, y, n, cols) {
+    for (var i = 0; i < n; i++) {
+      parts.push({
+        x: x, y: y, vx: (Math.random() - .5) * 360, vy: -Math.random() * 360 - 60,
+        life: .8 + Math.random() * .6, col: cols[Math.random() * cols.length | 0],
+        s: 4 + Math.random() * 6, rot: Math.random() * 6, vr: (Math.random() - .5) * 14
+      });
+    }
+  }
+  function showBanner(text, col, t) { banner.text = text; banner.col = col || '#fff'; banner.t = t || 2; banner.max = banner.t; }
+
+  /* ---------------------------------------------------------------- SPAWNING */
+  function pickType(d) {
+    var badP = 0.2 + 0.3 * d, r = Math.random();
+    if (Math.random() < badP) return r < .4 ? 'policy' : r < .75 ? 'replyall' : 'toner';
+    return r < .68 ? 'paper' : r < .95 ? 'meme' : 'raise';
+  }
+  function spawn(type, spread) {
+    var d = diff(); spread = spread || 1;
+    items.push({
+      type: type || pickType(d),
+      x: pr.x + (Math.random() - .5) * 50, y: 168,
+      vx: (Math.random() - .5) * 170 * (.5 + d) * spread,
+      vy: 40 + Math.random() * 60 + d * 90,
+      g: 280 + d * 480 + (evt && evt.type === 'frenzy' ? 120 : 0),
+      rot: 0, vr: (Math.random() - .5) * 6,
+      emoji: MEMES[Math.random() * MEMES.length | 0]
+    });
+    sfx.spit();
+  }
+  function spamRain() {
+    for (var i = 0; i < 6; i++) {
+      items.push({
+        type: 'spam', x: 30 + Math.random() * (W - 60), y: 40 - Math.random() * 220,
+        vx: (Math.random() - .5) * 40, vy: 60, g: 260, rot: 0, vr: (Math.random() - .5) * 4, emoji: ''
+      });
+    }
+  }
+
+  /* ---------------------------------------------------------------- EVENTS */
+  function startEvent() {
+    var r = Math.random();
+    sfx.event();
+    if (r < .38) {
+      evt = { type: 'update', t: 1.8 };
+      showBanner('PLEASE WAIT...\nINSTALLING UPDATE (1 of 4,000)', '#9be7ff', 1.8);
+    } else if (r < .72) {
+      evt = { type: 'jam', t: 1.3 };
+      showBanner('PAPER JAM!\ntray 2... and 3... and your heart', '#ffb3a7', 1.3);
+    } else {
+      evt = { type: 'frenzy', t: 2.8 };
+      showBanner('MONDAY MODE!!!', '#ffe66d', 2);
+    }
+  }
+  function endEvent() {
+    if (evt.type === 'update') { queue = 8; queueSpread = 1.6; queueT = 0; showBanner('UPDATE COMPLETE.\nHAVE 8 PAGES.', '#9be7ff', 1.4); }
+    if (evt.type === 'jam') { queue = 6; queueSpread = 2.4; queueT = 0; showBanner('UNJAMMED!', '#ffb3a7', 1); }
+    evt = null;
+    nextEvent = 11 - 5 * diff() + Math.random() * 3;
+  }
+
+  /* ---------------------------------------------------------------- CATCHING */
+  function caught(it) {
+    var S = SIZE[it.type], x = it.x, y = bin.y;
+    if (it.type === 'paper' || it.type === 'meme' || it.type === 'raise') {
+      combo++;
+      var m = mult(), pts = S.pts * m;
+      score += pts;
+      binMood = 1; moodT = .5;
+      if (it.type === 'paper') { sfx.paper(); pop(x, y - 20, '+' + pts, '#fff', 18); confetti(x, y, 4, ['#fff', '#dde']); }
+      if (it.type === 'meme') { sfx.meme(); pop(x, y - 30, POPS[Math.random() * POPS.length | 0] + ' +' + pts, '#ff9de2', 22); confetti(x, y, 8, ['#ff9de2', '#ffe66d', '#9be7ff']); }
+      if (it.type === 'raise') { sfx.raise(); pop(x, y - 40, 'RAISE?! +' + pts, '#ffd23f', 28); confetti(x, y, 30, ['#ffd23f', '#fff', '#ffa']); }
+      if (m > 1 && combo % 8 === 0) pop(bin.x, y - 70, 'COMBO x' + m + '!', '#ffe66d', 26);
+      return;
+    }
+    if (it.type === 'spam') { sfx.spam(); pop(x, y - 20, '+0 spam', '#ffc2d1', 14); return; }
+    strike(it.type, x, y);
+  }
+  function strike(type, x, y) {
+    strikes++; combo = 0; lastCause = type; shake = .5; binMood = -1; moodT = .8;
+    if (type === 'policy') {
+      sfx.thud(); sfx.bad(); slowT = 2.5;
+      pop(x, y - 40, '47 PAGES. NO.', '#ff6b6b', 26); showBanner('BIN IS NOW VERY HEAVY', '#9bb8ff', 1.3);
+      confetti(x, y, 10, ['#1d3557', '#f1faee']);
+    } else if (type === 'replyall') {
+      sfx.bad(); pop(x, y - 40, 'REPLY ALL!', '#ff6b6b', 26); showBanner('CC: EVERYONE', '#ff8a8a', 1.4); spamRain();
+      confetti(x, y, 12, ['#e63946', '#fff']);
+    } else {
+      sfx.toner();
+      pop(x, y - 40, 'TONER!!', '#ff6b6b', 26); showBanner('TONER EVERYWHERE', '#ddd', 1.4);
+      for (var i = 0; i < 8; i++) {
+        inks.push({ x: 40 + Math.random() * (W - 80), y: 190 + Math.random() * 480, r: 40 + Math.random() * 60, life: 2.2 });
+      }
+    }
+    if (strikes >= 3) beginEnd(false);
+  }
+  function beginEnd(win) {
+    state = 'dying'; dyingT = win ? 1.1 : 1.0; survived = win;
+    if (win) { score += 50; pop(W / 2, 330, '+50 SURVIVED THE SHIFT', '#ffd23f', 26); sfx.win(); confetti(W / 2, 300, 50, ['#ffd23f', '#ff9de2', '#9be7ff', '#fff']); }
+    else sfx.over();
+  }
+
+  /* ---------------------------------------------------------------- UPDATE */
+  function updateFx(dt) {
+    var i;
+    for (i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i]; p.vy += 800 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; p.life -= dt;
+      if (p.life <= 0) parts.splice(i, 1);
+    }
+    for (i = pops.length - 1; i >= 0; i--) {
+      var q = pops[i]; q.y -= 40 * dt; q.life -= dt * .9;
+      if (q.life <= 0) pops.splice(i, 1);
+    }
+    for (i = inks.length - 1; i >= 0; i--) { inks[i].life -= dt; if (inks[i].life <= 0) inks.splice(i, 1); }
+    if (banner.t > 0) banner.t -= dt;
+    if (shake > 0) shake = Math.max(0, shake - dt * 1.5);
+    if (moodT > 0) moodT -= dt;
+  }
+
+  function update(dt) {
+    elapsed += dt;
+    if (elapsed >= SHIFT) { elapsed = SHIFT; beginEnd(true); return; }
+    var d = diff(), i;
+
+    if (keys.l) bin.tx -= 650 * dt;
+    if (keys.r) bin.tx += 650 * dt;
+    bin.tx = Math.max(40, Math.min(W - 40, bin.tx));
+    bin.x += (bin.tx - bin.x) * Math.min(1, dt * (slowT > 0 ? 3.5 : 18));
+    if (slowT > 0) slowT -= dt;
+
+    msgT -= dt;
+    if (msgT <= 0) {
+      var set = MSGS[Math.min(3, Math.floor(d * 4))];
+      msg = set[Math.random() * set.length | 0]; msgT = 3;
+    }
+
+    pr.nt -= dt;
+    if (pr.nt <= 0) { pr.tx = 90 + Math.random() * (W - 180); pr.nt = 1.3 - .9 * d + Math.random() * .6; }
+    var ps = (70 + 270 * d) * (evt && evt.type === 'update' ? 0 : 1);
+    var dx = pr.tx - pr.x;
+    pr.x += Math.sign(dx) * Math.min(Math.abs(dx), ps * dt);
+
+    nextEvent -= dt;
+    if (!evt && nextEvent <= 0) startEvent();
+    if (evt) { evt.t -= dt; if (evt.t <= 0) endEvent(); }
+
+    if (!evt || evt.type === 'frenzy') {
+      spawnT -= dt;
+      if (spawnT <= 0) {
+        spawn();
+        spawnT = (evt && evt.type === 'frenzy') ? .17 : (1.05 - .75 * Math.pow(d, .8)) * (.75 + Math.random() * .5);
+      }
+    }
+    if (queue > 0) {
+      queueT -= dt;
+      if (queueT <= 0) { spawn(null, queueSpread); queue--; queueT = .09; }
+    }
+
+    for (i = items.length - 1; i >= 0; i--) {
+      var it = items[i], S = SIZE[it.type];
+      it.vy += it.g * dt; it.y += it.vy * dt; it.x += it.vx * dt; it.rot += it.vr * dt;
+      if (it.x < 24) { it.x = 24; it.vx = Math.abs(it.vx); }
+      if (it.x > W - 24) { it.x = W - 24; it.vx = -Math.abs(it.vx); }
+      var bottom = it.y + S.h / 2;
+      if (it.vy > 0 && bottom >= bin.y && bottom <= bin.y + 62 && Math.abs(it.x - bin.x) < bin.w / 2 + S.w / 4) {
+        items.splice(i, 1); caught(it);
+        if (state !== 'play') return;
+        continue;
+      }
+      if (it.y > H + 40) items.splice(i, 1);
+    }
+    updateFx(dt);
+  }
+
+  /* ---------------------------------------------------------------- DRAWING */
+  function drawBG() {
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#4a5582'); g.addColorStop(1, '#2a2f4f');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,.04)';
+    for (var x = 0; x < W; x += 40) ctx.fillRect(x, 0, 20, H - 60);
+    // posters
+    ctx.save(); ctx.globalAlpha = .55; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#f4efe1'; rr(22, 300, 96, 70, 4); ctx.fill();
+    ctx.fillStyle = '#333'; ctx.font = 'bold 10px sans-serif';
+    ctx.fillText('HANG IN THERE', 70, 316); ctx.font = '28px serif'; ctx.fillText('🐱', 70, 345);
+    ctx.fillStyle = '#f4efe1'; rr(W - 118, 420, 96, 70, 4); ctx.fill();
+    ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('TEAMWORK', W - 70, 440); ctx.font = '9px sans-serif';
+    ctx.fillText('(someone else does it)', W - 70, 458); ctx.font = '20px serif'; ctx.fillText('🤝', W - 70, 477);
+    ctx.restore();
+    // floor
+    ctx.fillStyle = '#7a6a58'; ctx.fillRect(0, H - 60, W, 60);
+    ctx.fillStyle = '#5f5143'; ctx.fillRect(0, H - 60, W, 6);
+    ctx.font = '44px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🪴', 28, H - 36);
+  }
+
+  function drawPrinter() {
+    var d = diff();
+    var sh = (evt && evt.type === 'jam' ? 7 : 0) + d * 3 + (state === 'menu' ? 1 : 0);
+    var sx = (Math.random() - .5) * sh, sy = (Math.random() - .5) * sh;
+    ctx.save(); ctx.translate(pr.x + sx, 112 + sy);
+    // paper sticking out of top
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#99a'; ctx.lineWidth = 2;
+    rr(-28, -76, 56, 28, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ccd'; for (var i = 0; i < 2; i++) ctx.fillRect(-18, -70 + i * 8, 36, 2);
+    // body
+    ctx.fillStyle = '#d4d8e1'; ctx.strokeStyle = '#7d8496'; ctx.lineWidth = 3;
+    rr(-72, -48, 144, 100, 16); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#aeb4c2'; rr(-72, -58, 144, 22, 10); ctx.fill(); ctx.stroke();
+    // lcd
+    ctx.fillStyle = '#0b3d2e'; rr(-64, -32, 52, 18, 3); ctx.fill();
+    ctx.fillStyle = '#5dffa8'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var lcd = evt ? (evt.type === 'update' ? 'UPD 99%' : evt.type === 'jam' ? 'JAM!!' : 'MONDAY') : ['READY', 'ERR 404', 'LOW INK', 'HELP'][Math.floor(elapsed * .6) % 4];
+    ctx.fillText(lcd, -38, -23);
+    // eyes
+    var look = Math.max(-5, Math.min(5, (bin.x - pr.x) / 50));
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+    [-20, 22].forEach(function (ex) {
+      ctx.beginPath(); ctx.arc(ex, 0, 13, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(ex + look, 4, 5, 0, 6.3); ctx.fill(); ctx.fillStyle = '#fff';
+    });
+    // eyebrows
+    var a = .3 + .7 * d;
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-34, -22); ctx.lineTo(-8, -22 + 14 * a); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(10, -22 + 14 * a); ctx.lineTo(36, -22); ctx.stroke();
+    // mouth
+    ctx.lineWidth = 3;
+    if (evt && evt.type === 'update') { ctx.beginPath(); ctx.arc(1, 24, 6, 0, 6.3); ctx.stroke(); }
+    else {
+      var amp = 3 + 6 * d, wob = Math.sin(elapsed * 20) * 2 * d;
+      ctx.beginPath(); ctx.moveTo(-22, 24);
+      for (var k = 1; k <= 8; k++) ctx.lineTo(-22 + k * 5.5, 24 + (k % 2 ? -amp : amp) * .6 + wob);
+      ctx.stroke();
+    }
+    // output slot
+    ctx.fillStyle = '#1c1c28'; rr(-54, 38, 108, 14, 4); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(-36, 38, 72, 5 + Math.sin(elapsed * 14) * 2);
+    // sweat / steam
+    ctx.font = '18px serif';
+    if (d > .45) ctx.fillText('💧', 66, -30 + Math.sin(elapsed * 6) * 3);
+    if (d > .75) { ctx.fillText('💨', -70, -60 + Math.sin(elapsed * 9) * 4); ctx.fillText('💨', 72, -62 + Math.cos(elapsed * 8) * 4); }
+    ctx.restore();
+
+    // speech bubble
+    if (state === 'play' || state === 'dying') {
+      ctx.font = 'bold 19px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      var w = ctx.measureText(msg).width + 26;
+      var bx = pr.x < W / 2 ? pr.x + 80 : pr.x - 80 - w;
+      bx = Math.max(6, Math.min(W - 6 - w, bx));
+      var pulse = 1 + Math.sin(elapsed * 8) * .02;
+      ctx.save(); ctx.translate(bx + w / 2, 62); ctx.scale(pulse, pulse);
+      ctx.fillStyle = '#fffbe0'; ctx.strokeStyle = '#222'; ctx.lineWidth = 3;
+      rr(-w / 2, -19, w, 38, 14); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#c1121f'; ctx.fillText(msg, 0, 1);
+      ctx.restore();
+    }
+  }
+
+  function drawItem(it) {
+    ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 2;
+    var i;
+    var isBad = it.type === 'policy' || it.type === 'replyall' || it.type === 'toner';
+    if (isBad) { ctx.shadowColor = '#ff1f1f'; ctx.shadowBlur = 12 + Math.sin(elapsed * 12) * 4; }
+    switch (it.type) {
+      case 'paper':
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = '#99a'; rr(-16, -21, 32, 42, 3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ccd'; for (i = 0; i < 4; i++) ctx.fillRect(-10, -13 + i * 8, 20, 2);
+        break;
+      case 'meme':
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = '#ff5fb4'; ctx.lineWidth = 3; rr(-21, -21, 42, 42, 7); ctx.fill(); ctx.stroke();
+        ctx.font = '26px serif'; ctx.fillText(it.emoji, 0, 2);
+        break;
+      case 'raise':
+        ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#b8860b'; rr(-24, -16, 48, 32, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#7a5a00'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('RAISE', 0, -4); ctx.fillText('$$$', 0, 9);
+        ctx.font = '15px serif'; ctx.fillText('✨', 20, -14);
+        break;
+      case 'policy':
+        ctx.fillStyle = '#1d3557'; ctx.strokeStyle = '#ff2020'; ctx.lineWidth = 4; rr(-27, -29, 54, 58, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#f1faee'; rr(-19, -22, 38, 28, 3); ctx.fill();
+        ctx.fillStyle = '#d00'; ctx.font = 'bold 20px sans-serif'; ctx.fillText('47', 0, -8);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('PAGES', 0, 14); ctx.fillText('POLICY', 0, 23);
+        break;
+      case 'replyall':
+        ctx.fillStyle = '#e63946'; ctx.strokeStyle = '#ff2020'; ctx.lineWidth = 4; rr(-26, -19, 52, 38, 4); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; rr(-26, -19, 52, 38, 4); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.moveTo(-26, -19); ctx.lineTo(0, 0); ctx.lineTo(26, -19); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('REPLY ALL', 0, 11);
+        break;
+      case 'toner':
+        ctx.fillStyle = '#111'; ctx.strokeStyle = '#ff2020'; ctx.lineWidth = 4; rr(-18, -24, 36, 48, 6); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 8px sans-serif'; ctx.fillText('TONER', 0, 8);
+        ctx.font = '15px serif'; ctx.fillText('💀', 0, -9);
+        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(10, 28, 4, 0, 6.3); ctx.fill();
+        break;
+      case 'spam':
+        ctx.fillStyle = '#ffd6e0'; ctx.strokeStyle = '#d66'; rr(-14, -10, 28, 20, 3); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-14, -10); ctx.lineTo(0, 2); ctx.lineTo(14, -10); ctx.stroke();
+        break;
+    }
+    ctx.restore();
+  }
+
+  function drawBin() {
+    var x = bin.x, y = bin.y, w = bin.w;
+    ctx.save(); ctx.translate(x, y);
+    if (slowT > 0) ctx.rotate(Math.sin(performance.now() / 70) * .07);
+    // paper bits sticking out
+    var n = Math.min(6, Math.floor(score / 15));
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#99a'; ctx.lineWidth = 1.5;
+    for (var i = 0; i < n; i++) {
+      ctx.save(); ctx.translate(-w / 2 + 22 + i * ((w - 44) / 5), -4); ctx.rotate((i % 2 ? 1 : -1) * (.2 + i * .05));
+      ctx.fillRect(-7, -14, 14, 18); ctx.strokeRect(-7, -14, 14, 18); ctx.restore();
+    }
+    ctx.fillStyle = '#7b8190'; ctx.strokeStyle = '#444a58'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0); ctx.lineTo(w / 2 - 13, 66); ctx.lineTo(-w / 2 + 13, 66); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 2;
+    for (var j = -2; j <= 2; j++) { ctx.beginPath(); ctx.moveTo(j * 20, 6); ctx.lineTo(j * 17, 62); ctx.stroke(); }
+    ctx.fillStyle = '#a3aabb'; ctx.strokeStyle = '#444a58'; ctx.lineWidth = 3;
+    rr(-w / 2 - 6, -9, w + 12, 13, 6); ctx.fill(); ctx.stroke();
+    ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000';
+    ctx.fillText(moodT > 0 ? (binMood > 0 ? '😋' : '🤮') : '🙂', 0, 36);
+    ctx.restore();
+  }
+
+  function drawFx() {
+    var i;
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.col; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * .6); ctx.restore();
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    for (i = 0; i < pops.length; i++) {
+      var q = pops[i];
+      ctx.globalAlpha = Math.max(0, Math.min(1, q.life * 1.6));
+      ctx.font = 'bold ' + q.size + 'px sans-serif';
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(q.text, q.x, q.y);
+      ctx.fillStyle = q.col; ctx.fillText(q.text, q.x, q.y);
+    }
+    ctx.globalAlpha = 1;
+    if (banner.t > 0) {
+      var lines = banner.text.split('\n');
+      var k = Math.min(1, banner.t * 3), sc = 1 + Math.sin(elapsed * 14) * .02;
+      ctx.save(); ctx.translate(W / 2, 330); ctx.scale(sc, sc); ctx.globalAlpha = k;
+      for (var l = 0; l < lines.length; l++) {
+        ctx.font = 'bold ' + (l === 0 ? 30 : 17) + 'px sans-serif';
+        ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,.8)';
+        ctx.strokeText(lines[l], 0, l * 34); ctx.fillStyle = banner.col; ctx.fillText(lines[l], 0, l * 34);
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawInk() {
+    for (var i = 0; i < inks.length; i++) {
+      var b = inks[i];
+      ctx.globalAlpha = Math.min(1, b.life * 1.2);
+      ctx.fillStyle = '#050508';
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.3); ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x + b.r * .6, b.y + b.r * .7, b.r * .45, 0, 6.3); ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x - b.r * .7, b.y - b.r * .3, b.r * .35, 0, 6.3); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHUD() {
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(0, 0, W, 40);
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif';
+    var label = '🗑️ ' + score;
+    ctx.fillText(label, 12, 21);
+    if (mult() > 1 && state === 'play') {
+      var tw = ctx.measureText(label).width;
+      ctx.fillStyle = '#ffe66d'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('x' + mult(), 20 + tw, 21);
+    }
+    ctx.textAlign = 'center'; ctx.font = '19px serif';
+    for (var i = 0; i < 3; i++) {
+      ctx.globalAlpha = i < strikes ? 1 : .22;
+      ctx.fillText('⚠️', W / 2 - 28 + i * 28, 21);
+    }
+    ctx.globalAlpha = 1;
+    var mins = Math.floor(diff() * 60);
+    var clock = mins >= 60 ? '5:00 PM' : '4:' + (mins < 10 ? '0' : '') + mins + ' PM';
+    ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; ctx.font = 'bold 17px sans-serif';
+    ctx.fillText('🕓 ' + clock, W - 48, 21);
+    ctx.textAlign = 'center'; ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.fillText('Catch paper & memes. Dodge policy docs, reply-alls and toner!', W / 2, H - 10);
+  }
+
+  function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * shake * 14, (Math.random() - .5) * shake * 14);
+    drawBG(); drawPrinter();
+    for (var i = 0; i < items.length; i++) drawItem(items[i]);
+    drawInk(); drawBin(); drawFx();
+    ctx.restore();
+    drawHUD();
+  }
+
+  /* ---------------------------------------------------------------- FLOW */
+  function rankFor(s) { var r = RANKS[0][1]; for (var i = 0; i < RANKS.length; i++) if (s >= RANKS[i][0]) r = RANKS[i][1]; return r; }
+  var CAUSES = {
+    policy: 'Cause of firing: buried under compliance documentation.',
+    replyall: 'Cause of firing: you were CC\'d on everything, forever.',
+    toner: 'Cause of firing: toner. Just... toner.'
+  };
+  function showOver() {
+    state = 'over';
+    if (score > best) best = score;
+    $('oEmoji').textContent = survived ? '🎉' : '📦';
+    $('oTitle').textContent = survived ? '5:00 PM! GO HOME!' : "YOU'RE FIRED";
+    $('oScore').textContent = score + ' pts';
+    $('oRank').textContent = 'Your rank: ' + rankFor(score);
+    $('oCause').textContent = survived ? 'You survived the whole shift. Nobody has ever done this. (Probably.)' : (CAUSES[lastCause] || '');
+    $('oBest').textContent = 'Best this session: ' + best;
+    $('over').classList.remove('hidden');
+    try { $('again').focus(); } catch (e) {}
+  }
+  function startGame() {
+    ac(); reset();
+    $('menu').classList.add('hidden'); $('over').classList.add('hidden');
+    state = 'play'; sfx.start();
+    showBanner('PRINTER-7 IS FEELING CHATTY', '#fff', 2);
+  }
+
+  var last = 0;
+  function frame(ts) {
+    var dt = Math.min(.05, Math.max(0, (ts - last) / 1000 || 0)); last = ts;
+    if (state === 'play') update(dt);
+    else if (state === 'dying') { updateFx(dt); dyingT -= dt; if (dyingT <= 0) showOver(); }
+    else { elapsed += dt * .3; updateFx(dt); }
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------------------------------------------------------------- INPUT */
+  function setTarget(e) {
+    var r = cv.getBoundingClientRect();
+    bin.tx = Math.max(40, Math.min(W - 40, (e.clientX - r.left) / r.width * W));
+  }
+  cv.addEventListener('pointermove', setTarget);
+  cv.addEventListener('pointerdown', function (e) {
+    setTarget(e);
+    try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+  });
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keys.l = true; e.preventDefault(); }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') { keys.r = true; e.preventDefault(); }
+  });
+  window.addEventListener('keyup', function (e) {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.l = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.r = false;
+  });
+  $('start').addEventListener('click', startGame);
+  $('again').addEventListener('click', startGame);
+  $('mute').addEventListener('click', function () {
+    muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊'; if (!muted) ac();
+  });
+  document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

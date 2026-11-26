@@ -61,5 +61,20 @@
     "award": null,
     "thumbnail": "games/thumbs/faith-human-exhibit.jpg",
     "photo": "games/photos/faith-human-exhibit.jpg"
+  },
+  {
+    "slug": "konrad-printer-7-do-not-trust",
+    "title": "Printer-7-do-not-trust",
+    "authors": [
+      "Konrad Schoombee"
+    ],
+    "llm": "Claude",
+    "file": "games/konrad-printer-7-do-not-trust.html",
+    "blurb": "Printer madness Catch the bonus dodge the policy docs",
+    "emoji": "🖨️",
+    "added": "2026-11-26",
+    "version": 1,
+    "award": null,
+    "photo": "games/photos/konrad-printer-7-do-not-trust.jpg"
   }
 ]
