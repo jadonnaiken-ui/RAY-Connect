@@ -94,5 +94,20 @@
     "award": null,
     "thumbnail": "games/thumbs/dylanne-flap-to-the-boardroom.jpg",
     "photo": "games/photos/dylanne-flap-to-the-boardroom.jpg"
+  },
+  {
+    "slug": "olushola-you-re-on-mute",
+    "title": "You're on mute",
+    "authors": [
+      "Olushola Akilo"
+    ],
+    "llm": "Claude",
+    "file": "games/olushola-you-re-on-mute.html",
+    "blurb": "Nod, laugh and unmute on beat. Survive the meeting that should have been an email",
+    "emoji": "🔇",
+    "added": "2026-11-27",
+    "version": 1,
+    "award": null,
+    "photo": "games/photos/olushola-you-re-on-mute.jpg"
   }
 ]
