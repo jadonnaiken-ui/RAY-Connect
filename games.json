@@ -78,5 +78,21 @@
     "updated": "2026-11-27",
     "thumbnail": "games/thumbs/konrad-printer-7-do-not-trust.jpg",
     "photo": "games/photos/konrad-printer-7-do-not-trust.jpg"
+  },
+  {
+    "slug": "dylanne-flap-to-the-boardroom",
+    "title": "Flap to the Boardroom",
+    "authors": [
+      "Dylanne Abear"
+    ],
+    "llm": "Other",
+    "file": "games/dylanne-flap-to-the-boardroom.html",
+    "blurb": "Flappy flying, but you're an EA with a water-cooler jetpack.",
+    "emoji": "☕",
+    "added": "2026-11-27",
+    "version": 1,
+    "award": null,
+    "thumbnail": "games/thumbs/dylanne-flap-to-the-boardroom.jpg",
+    "photo": "games/photos/dylanne-flap-to-the-boardroom.jpg"
   }
 ]
