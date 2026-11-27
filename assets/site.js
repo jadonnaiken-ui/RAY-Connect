@@ -461,6 +461,8 @@
   // before moving on: when they leave the game, and on any page until they do. Signed-out players
   // are asked to sign in first. Ratings can still be changed later from the game's page.
   var PLAY_SECONDS = 20;
+  var PLAY_INPUTS = 3; // ...or this many key presses / clicks / taps inside the game
+  var PAUSE_SECONDS = 6; // after playing, this long without input usually means the round is over
   var ANON_KEY = "bonanza.played.anon";
 
   function playedKey() { return signedIn() ? "bonanza.played." + Auth.me.user.email : ANON_KEY; }
@@ -521,12 +523,12 @@
       : '<p class="gate-signin">Sign in with your RAY Google account to rate it.</p><div class="auth-slot gate-auth" data-auth="large"></div>';
     el.innerHTML = '<div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">' +
       '<span class="gate-emoji" aria-hidden="true">' + esc(g.emoji || "🎮") + "</span>" +
-      '<h2 id="gate-title">How was ' + esc(g.title) + "?</h2>" +
-      '<p class="muted">' + (opts.leaving ? "Rate it before you go." : "You played this earlier. Rate it before you carry on.") +
+      '<h2 id="gate-title">' + (opts.round ? "Round over! " : "") + "How was " + esc(g.title) + (opts.paused ? " so far" : "") + "?</h2>" +
+      '<p class="muted">' + (opts.round || opts.paused ? "Rate it now, or keep playing and rate it later." : opts.leaving ? "Rate it before you go." : "You played this earlier. Rate it before you carry on.") +
       " It counts towards People's choice. Ratings are anonymous, and you can change yours any time.</p>" +
       ask +
-      (opts.leaving
-        ? '<button type="button" class="btn btn-small" data-gate-stay>Keep playing</button>'
+      (opts.leaving || opts.round || opts.paused
+        ? '<button type="button" class="btn btn-small" data-gate-stay>' + (opts.round ? "Play again" : "Keep playing") + "</button>"
         : '<a class="btn btn-small" href="play.html?game=' + encodeURIComponent(g.slug) + '">Play it again first</a>') +
       "</div>";
     if (signedIn()) bindStars(el, g, function () { closeGate(); if (opts.after) opts.after(); });
@@ -815,9 +817,13 @@
   // Used in the Submit preview: reports errors back to this page so entrants can fix them.
   var ERROR_REPORTER = "(function(){var n=0;function send(m,l){if(n++<5)parent.postMessage({bonanza:\"error\",message:String(m||\"Unknown error\"),line:l||0},\"*\")}addEventListener(\"error\",function(e){if(e.message)send(e.message,e.lineno)});addEventListener(\"unhandledrejection\",function(e){send(e.reason&&e.reason.message||e.reason,0)});addEventListener(\"load\",function(){setTimeout(function(){parent.postMessage({bonanza:\"loaded\"},\"*\")},1500)})})();";
 
+  // Used on the play page: reports when the player is actually playing, and when they click a
+  // "play again / restart" button (a round has ended), so we can ask for a rating at the right moment.
+  var ACTIVITY_REPORTER = "(function(){var last=0;function ping(){var n=Date.now();if(n-last>700){last=n;parent.postMessage({bonanza:'input'},'*')}}['keydown','pointerdown','touchstart'].forEach(function(t){addEventListener(t,ping,true)});addEventListener('click',function(e){var el=e.target&&e.target.closest?e.target.closest('button,a,[role=button],input[type=button],input[type=submit]'):null;if(!el)return;var t=(el.innerText||el.value||el.getAttribute('aria-label')||'').toLowerCase();if(/again|another|restart|retry|replay|reincarnate|new game|new round|reset|\\u21bb|\\u27f3|\\ud83d\\udd01/.test(t))parent.postMessage({bonanza:'round'},'*')},true)})();";
+
   // Inserts our scripts at the very start of the game, without changing its line numbers.
-  function gameDoc(html, report) {
-    var tag = "<script>" + SANDBOX_SHIM + (report ? ERROR_REPORTER : "") + "<\/script>";
+  function gameDoc(html, report, activity) {
+    var tag = "<script>" + SANDBOX_SHIM + (report ? ERROR_REPORTER : "") + (activity ? ACTIVITY_REPORTER : "") + "<\/script>";
     if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, function (m) { return m + tag; });
     if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, function (m) { return m + tag; });
     if (/<!doctype[^>]*>/i.test(html)) return html.replace(/<!doctype[^>]*>/i, function (m) { return m + tag; });
@@ -825,12 +831,12 @@
   }
 
   // Loads a game file and shows it in a sandboxed frame. Calls onMissing if the file isn't there.
-  function loadGameFrame(file, attrs, onMissing) {
+  function loadGameFrame(file, attrs, onMissing, activity) {
     var frame = sandboxedFrame(attrs);
     fetch(file, { cache: "no-cache" }).then(function (r) {
       if (!r.ok) throw new Error("missing");
       return r.text();
-    }).then(function (html) { frame.srcdoc = gameDoc(html, false); }, function () { if (onMissing) onMissing(); });
+    }).then(function (html) { frame.srcdoc = gameDoc(html, false, activity); }, function () { if (onMissing) onMissing(); });
     return frame;
   }
 
@@ -1357,9 +1363,32 @@
 
       var frame = loadGameFrame(g.file, { "class": "player-frame", title: g.title }, function () {
         message("The game file is missing", "<p>The gallery lists this game, but its file isn't published yet. If it was just submitted, wait a minute and refresh.</p>");
-      });
+      }, true);
       main.innerHTML = "";
       main.appendChild(frame);
+
+      // A "go" also counts once they've actually played (a few key presses, clicks or taps), however
+      // short the round. When they click "play again" (a round ended), ask for a rating once per visit.
+      // Many games have no restart button (tap to restart), so a pause after real play also counts:
+      // it's usually the game-over screen. Either way, ask only once per visit.
+      var inputs = 0, asked = false, idleTimer = null;
+      function askOnce(opts) {
+        if (asked || $("#rating-gate") || !needsRating(g)) return;
+        asked = true;
+        markPlayed(g.slug);
+        showRatingGate(g, opts);
+      }
+      window.addEventListener("message", function (e) {
+        if (e.source !== frame.contentWindow || !e.data || !e.data.bonanza || !needsRating(g)) return;
+        if (e.data.bonanza === "input") {
+          if (++inputs >= PLAY_INPUTS) {
+            markPlayed(g.slug);
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(function () { askOnce({ paused: true }); }, PAUSE_SECONDS * 1000);
+          }
+        }
+        if (e.data.bonanza === "round") { clearTimeout(idleTimer); askOnce({ round: true }); }
+      });
       frame.addEventListener("load", function () { try { frame.focus(); } catch (e) { /* ignore */ } });
       var fs = $("#fullscreen");
       var req = frame.requestFullscreen || frame.webkitRequestFullscreen;
